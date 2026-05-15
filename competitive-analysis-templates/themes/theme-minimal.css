@@ -33,6 +33,7 @@ html[data-deck-theme="minimal"] body {
     0 0 0 2px rgba(184, 92, 56, 0.2),
     0 6px 20px rgba(184, 92, 56, 0.1);
   --filter-chip-off-opacity: 0.5;
+  --cr-intro-rule: rgba(42, 38, 34, 0.1);
   --modal-backdrop: rgba(32, 28, 24, 0.42);
   --modal-bg: #fdfcfa;
   --modal-fg: var(--ink);

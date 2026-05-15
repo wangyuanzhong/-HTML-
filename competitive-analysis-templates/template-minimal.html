@@ -67,9 +67,12 @@
         </table>
       </div>
 
-      <div class="slide-actions">
-        <button type="button" class="btn btn--ghost" data-slide-go="1">返回概述</button>
-        <button type="button" class="btn" data-slide-go="3">主观矩阵</button>
+      <div class="matrix-slide-footer">
+        <div class="slide-actions">
+          <button type="button" class="btn btn--ghost" data-slide-go="1">返回概述</button>
+          <button type="button" class="btn" data-slide-go="3">主观矩阵</button>
+        </div>
+        <div class="compare-fab-anchor" id="compare-fab-anchor-objective" aria-hidden="true"></div>
       </div>
     </div>
   </section>
@@ -96,9 +99,12 @@
         </table>
       </div>
 
-      <div class="slide-actions">
-        <button type="button" class="btn btn--ghost" data-slide-go="2">客观矩阵</button>
-        <button type="button" class="btn" data-slide-go="4">结束</button>
+      <div class="matrix-slide-footer">
+        <div class="slide-actions">
+          <button type="button" class="btn btn--ghost" data-slide-go="2">客观矩阵</button>
+          <button type="button" class="btn" data-slide-go="4">结束</button>
+        </div>
+        <div class="compare-fab-anchor" id="compare-fab-anchor-subjective" aria-hidden="true"></div>
       </div>
     </div>
   </section>
@@ -116,11 +122,12 @@
   </section>
   </main>
 
-  <div id="compare-fab-host" class="compare-fab-stack" aria-label="详细对比" hidden>
-    <p class="compare-fab__hint" id="compare-fab-hint" hidden aria-live="polite"></p>
-    <div class="compare-fab__row">
-      <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
-      <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
+  <div id="compare-fab-park" hidden aria-hidden="true">
+    <div id="compare-fab-host" class="compare-fab-stack" aria-label="详细对比" hidden>
+      <div class="compare-fab__row">
+        <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
+        <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
+      </div>
     </div>
   </div>
 
@@ -160,7 +167,7 @@
   "cover": {
     "eyebrow": "选型简报 · Minimal",
     "title": "产品 A · B · C<br><span style=\"opacity:.65;font-size:.48em;letter-spacing:.12em;text-transform:uppercase;display:block;margin-top:.35em;\">Structured comparison</span>",
-    "subtitle": "<p>留白与衬线标题 · 行列可筛选 · 对比报告由矩阵生成</p>"
+    "subtitle": "<p>结构化对照 · 克制留白</p>"
   },
   "overview": {
     "title": "概述",
@@ -187,58 +194,58 @@
     "cells": {
       "positioning::a": {
         "summary": "企业级套件",
-        "detailHtml": "<p>服务对象、行业案例、灯塔客户。</p>"
+        "detailHtml": "<p>面向中大型企业的一体化交付与专属支持。</p>"
       },
       "positioning::b": {
         "summary": "SMB 轻量化",
-        "detailHtml": "<p>获客策略、上手路径。</p>"
+        "detailHtml": "<p>中小团队即开即用与低门槛扩展。</p>"
       },
       "positioning::c": {
         "summary": "个人 / 小型团队",
-        "detailHtml": "<p>免费增值边界。</p>"
+        "detailHtml": "<p>个人创作者与微型团队的轻量入口。</p>"
       },
       "pricing::a": {
         "summary": "席位 / 年",
-        "detailHtml": "<p>梯度表粘贴处。</p>"
+        "detailHtml": "<p>按席位年费，含标准支持等级。</p>"
       },
       "pricing::b": {
         "summary": "按项目计费",
-        "detailHtml": "<p>写明隐藏费用项。</p>"
+        "detailHtml": "<p>项目里程碑结算与可选增值包。</p>"
       },
       "pricing::c": {
         "summary": "Freemium",
-        "detailHtml": "<p>付费墙位置。</p>"
+        "detailHtml": "<p>免费层功能与付费解锁边界清晰。</p>"
       },
       "security::a": {
         "summary": "SOC 2 / ISO",
-        "detailHtml": "<p>附上证书编号与续约时间。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/minsec/520/200\" alt=\"合规清单截图占位\"></figure>"
+        "detailHtml": "<p>年度审计与证书可查。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/minsec/520/200\" alt=\"合规材料示意\"></figure>"
       },
       "security::b": {
         "summary": "区域可用区",
-        "detailHtml": "<p>数据中心分布图链接。</p>"
+        "detailHtml": "<p>多区域部署与数据驻留选项。</p>"
       },
       "security::c": {
         "summary": "基础加密",
-        "detailHtml": "<p>密钥托管策略摘要。</p>"
+        "detailHtml": "<p>传输与静态存储加密基线。</p>"
       },
       "api::a": {
         "summary": "GraphQL / Webhook",
-        "detailHtml": "<p>SLA、速率限制、SDK 成熟度。</p>"
+        "detailHtml": "<p>开放接口与事件回调组合。</p>"
       },
       "api::b": {
         "summary": "REST 优先",
-        "detailHtml": "<p>OpenAPI 版本号。</p>"
+        "detailHtml": "<p>版本化 REST 与兼容路径。</p>"
       },
       "api::c": {
         "summary": "精简 API",
-        "detailHtml": "<p>路线图引用。</p>"
+        "detailHtml": "<p>高频场景的窄接口面。</p>"
       }
     }
   },
   "ending": {
     "eyebrow": "会议结束",
     "title": "谢谢",
-    "bodyHtml": "<p>在 <code>ending.bodyHtml</code> 写<strong>决策摘要与待办</strong>。详情弹层已加宽，并以页缘叠影提示「压在讲演页之上」。</p>"
+    "bodyHtml": "<p>汇报至此。会后材料将同步至共享空间。</p>"
   }
 }
   </script>

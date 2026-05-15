@@ -28,7 +28,7 @@
 2. **Slide 1 — 概述**：`overview`（`overview.title` 可空则隐藏页内二级标题）
 3. **Slide 2 — 竞品对比矩阵（客观）**：与 Slide 3 共用一份 `matrix.*` 数据；双表 DOM 同步
 4. **Slide 3 — 竞品对比矩阵（主观）**：同上
-5. **Slide 4 — 结束页**：`ending`；**客观/主观** 两页显示 `#compare-fab-host` 固定「详细对比」入口
+5. **Slide 4 — 结束页**：`ending`；**客观/主观** 两页将 `#compare-fab-host` 挂到页内 `#compare-fab-anchor-*`，与 `.slide-actions` 同一底栏；其它页停靠 `#compare-fab-park`
 
 ---
 
@@ -73,7 +73,7 @@
 工作目录：competitive-analysis-templates/
 目标文件：template-minimal.html（或 tech / macaron）
 优先只改：<script id="deck-data"> 内的 JSON
-避免改动：`#filter-deck` / `#filter-deck-sub` / `#matrix-*` / `#comparison-table` / `#comparison-table-sub` / `compare-fab-host` / `compare-launch-btn` / `#compare-report-modal*` 等 DOM id；`matrix-core.js` 文件名与路径
+避免改动：`#compare-fab-park` / `#compare-fab-anchor-objective` / `#compare-fab-anchor-subjective` / `#filter-deck` / `#filter-deck-sub` / `#matrix-*` / `#comparison-table` / `#comparison-table-sub` / `compare-fab-host` / `compare-launch-btn` / `#compare-report-modal*` 等 DOM id；`matrix-core.js` 文件名与路径
 新增对比行：matrix.rows.push(...)，并为每个 columns[].id 写 cells["rowId::colId"].summary 与 detailHtml
 结束页：顶层 `ending`: { "eyebrow","title","bodyHtml" }（对应第 5 页，索引 4）
 调试：控制台执行 __matrixDeckReload()
@@ -90,5 +90,5 @@
 | 可筛选行列（胶囊高亮，无系统蓝勾） | `#filter-deck` / `#filter-deck-sub`、`hidden`、`layout.css` `.filter-chip:has()` |
 | 表头行常驻、行列可勾选 | thead 不参与筛选 UI；勾选控制 tbody 行与各产品列，`applyFilters` 同步表头格子 |
 | 大号叠纸详情弹层 | `.modal-page-stack`、`.modal-sheet-under` 叠影 + 加宽 `#modal-shell` |
-| 详细对比（表格多点选 · 大卡报告） | 右下角 FAB + `#compare-report-modal`；Esc 层级见上文 |
+| 详细对比（表格多点选 · 大卡报告） | 矩阵底栏 `#compare-fab-host` + `#compare-report-modal`；Esc 层级见上文 |
 | 三风格 | 三 HTML + `theme-*.css` |

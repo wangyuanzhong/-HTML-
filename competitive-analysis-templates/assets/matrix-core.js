@@ -68,6 +68,31 @@
     return isNaN(n) ? NaN : n;
   }
 
+  function repositionCompareFabHost(idx) {
+    var host = $("#compare-fab-host");
+    var park = $("#compare-fab-park");
+    var aObj = $("#compare-fab-anchor-objective");
+    var aSub = $("#compare-fab-anchor-subjective");
+    if (!host) return;
+    function markAnchors(hasObj, hasSub) {
+      if (aObj) aObj.setAttribute("aria-hidden", hasObj ? "false" : "true");
+      if (aSub) aSub.setAttribute("aria-hidden", hasSub ? "false" : "true");
+    }
+    if (idx === 2 && aObj) {
+      aObj.appendChild(host);
+      host.removeAttribute("hidden");
+      markAnchors(true, false);
+    } else if (idx === 3 && aSub) {
+      aSub.appendChild(host);
+      host.removeAttribute("hidden");
+      markAnchors(false, true);
+    } else {
+      if (park) park.appendChild(host);
+      host.setAttribute("hidden", "");
+      markAnchors(false, false);
+    }
+  }
+
   function goSlide(idx) {
     idx = clampSlideIdx(idx);
     if (idx !== 2 && idx !== 3) exitComparePickQuiet();
@@ -86,8 +111,7 @@
     });
     var nav = $("#slide-nav");
     if (nav) nav.dataset.activeIndex = String(idx);
-    var fabHost = $("#compare-fab-host");
-    if (fabHost) fabHost.hidden = idx !== 2 && idx !== 3;
+    repositionCompareFabHost(idx);
     try {
       history.replaceState(null, "", "#slide-" + idx);
     } catch (_) {}
@@ -205,10 +229,7 @@
           var cellObj =
             m.cells[ck] || {
               summary: "",
-              detailHtml:
-                '<p class="placeholder-note">在 JSON <code>cells["' +
-                ck +
-                '"]</code> 填写 <code>summary</code> 与 <code>detailHtml</code>（可含 &lt;img&gt;）。</p>',
+              detailHtml: "<p>—</p>",
             };
 
           td.innerHTML = cellObj.summary
@@ -578,11 +599,11 @@
 
     var main = $("#compare-launch-btn");
     var cx = $("#compare-fab-cancel");
-    var hint = $("#compare-fab-hint");
     if (main) {
       if (!comparePick.active) {
         main.textContent = "详细对比";
         main.classList.remove("compare-fab__main--armed");
+        main.removeAttribute("aria-label");
       } else {
         main.textContent = "生成对比报告";
         main.classList.toggle("compare-fab__main--armed", compareSelectionValid());
@@ -595,23 +616,6 @@
     if (cx) {
       cx.hidden = !comparePick.active;
       cx.style.display = comparePick.active ? "" : "none";
-    }
-    if (hint && comparePick.active) {
-      var nr = countCompareRowsSel();
-      var nc = countCompareColsSel();
-      if (!nr) {
-        hint.textContent =
-          "① 点左侧行标题，选择对比项（闪烁为可选；格子暂不可展开）";
-      } else if (!nc) {
-        hint.textContent =
-          "② 点顶部产品型号列标题，可多选；角格不可点";
-      } else {
-        hint.textContent = "就绪 · 点此生成大卡报告，或继续增删所选";
-      }
-      hint.hidden = false;
-    } else if (hint) {
-      hint.textContent = "";
-      hint.hidden = true;
     }
   }
 
@@ -660,14 +664,13 @@
     var nr = rowIdsOrdered.length;
     var nc = colIdsOrdered.length;
     var intro =
-      '<header class="cr-intro">' +
-      '<p class="cr-kicker">报告 · 多对比项 × 多型号</p>' +
-      '<h4 class="cr-title">图文并茂对照</h4>' +
-      "<p class=\"cr-muted\">共 " +
+      '<header class="cr-intro cr-intro--tight">' +
+      "<p class=\"cr-muted cr-intro-meta\">" +
       nr +
-      " 条对比项 × " +
+      " 项 × " +
       nc +
-      " 个型号 · cells[\"行::列\"] 汇编</p></header>";
+      " 款</p>" +
+      "</header>";
     var body = "";
 
     rowIdsOrdered.forEach(function (rowId, rbx) {
@@ -693,11 +696,7 @@
         var ck = cellKey(rowId, colId);
         var cell = m.cells[ck] || {};
         var summary = cell.summary ? cell.summary : "—";
-        var detail =
-          cell.detailHtml ||
-          '<p class="cr-muted">请在 <code>cells["' +
-          ck +
-          '"]</code> 补齐 detailHtml。</p>';
+        var detail = cell.detailHtml || "<p>—</p>";
 
         body +=
           '<article class="cr-card cr-card--model" style="animation-delay:' +
@@ -723,7 +722,7 @@
     var shell = $("#compare-report-shell");
     var body = $("#compare-report-body-inner");
     if (!modal || !body) return;
-    if (meta) meta.textContent = "对比报告（大卡）";
+    if (meta) meta.textContent = "对比报告";
     body.innerHTML = html;
     modal.removeAttribute("hidden");
     modal.setAttribute("aria-hidden", "false");

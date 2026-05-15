@@ -41,6 +41,7 @@ html[data-deck-theme="macaron"] body {
     0 12px 34px rgba(255, 130, 180, 0.28);
   --cr-card-bg: rgba(255, 255, 255, 0.94);
   --cr-sum-bg: rgba(255, 220, 236, 0.55);
+  --cr-intro-rule: rgba(232, 112, 168, 0.22);
 }
 
 html[data-deck-theme="macaron"] body.deck {
