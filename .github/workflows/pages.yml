@@ -1,7 +1,7 @@
 # Publishes static templates to GitHub Pages for manual (black-box) testing in a browser.
 # Repository settings → Pages → Build and deployment → Source: GitHub Actions.
 
-name: Deploy Pages
+name: Publish GitHub Pages
 
 on:
   push:

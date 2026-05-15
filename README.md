@@ -31,7 +31,14 @@
 | 能力 | 说明 |
 |------|------|
 | **白盒** | 合并进 `main` 的 PR 与 `main` 本仓库会跑 **GitHub Actions**（`.github/workflows/ci.yml`）：**Playwright** 打开三套模板，校验 DOM、无未捕获 `pageerror`，并走「封面 → 概述 → 客观矩阵」导航。本地：`npm ci` 后 `npm run test:e2e`。 |
-| **黑盒** | **GitHub Pages**（`.github/workflows/pages.yml`）：每次推送到 `main`（或手动运行 workflow）会把 `competitive-analysis-templates/` 发布到站点根目录。在仓库 **Settings → Pages** 将 **Source** 设为 **GitHub Actions** 后，部署完成可在 Actions 里打开 **page URL**，在浏览器里自行操作（矩阵、弹层、编辑模式等）。公开仓库下该 URL 通常对互联网可读；若需非公开预览，请改用带访问控制的静态托管或内网部署。 |
+| **黑盒** | **GitHub Pages**（`.github/workflows/pages.yml`，Actions 里显示为 **「Publish GitHub Pages」**）：每次推送到 `main`（或手动运行该 workflow）会把 `competitive-analysis-templates/` 发布到站点根目录。在仓库 **Settings → Pages** 将 **Source** 设为 **GitHub Actions** 后，用浏览器打开站点即可手动操作（矩阵、弹层、编辑模式等）。公开仓库下该 URL 通常对互联网可读；若需非公开预览，请改用带访问控制的静态托管或内网部署。 |
+
+**黑盒：站点地址去哪找（没有叫「Deploy Pages」的菜单是正常的）**
+
+1. **站点 URL 最稳**：仓库 **Settings（设置）→ Pages（页面）**，在 **Build and deployment** 下方会看到 **Visit site** 或 **Your site is live at `https://…`**。这是 GitHub 官方展示 Pages 地址的位置。
+2. **Actions 里对应什么名字**：顶部 **Actions**，左侧或 **All workflows** 列表里找 **「Publish GitHub Pages」**（不是左侧单独一项「Deploy Pages」；GitHub 没有这个固定子菜单）。
+3. **若列表里根本没有「Publish GitHub Pages」**：多半是 **含 `.github/workflows/pages.yml` 的改动还没合并进默认分支 `main`**。只有 `main` 上已有该文件时，左侧栏才会长期出现这条 workflow，且 `Run workflow` 手动运行才可用；请先合并相关 PR，或把该 workflow 直接推到 `main` 并再进 Actions 查看。
+4. **可选**：在 Actions 里点开最近一次 **绿色成功** 的「Publish GitHub Pages」运行，在 **Summary** / **deploy** job 旁有时会看到 **github-pages** 环境的链接，与 Settings → Pages 的地址一致。
 
 如需 **每个 PR 一条独立预览链接**（不合并也能在云端点），可在同一静态目录上接 **Netlify / Cloudflare Pages / Vercel** 的 PR Preview（需在对应平台连接仓库并配置，本仓库未内置）。
 
