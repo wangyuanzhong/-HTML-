@@ -35,7 +35,17 @@ html[data-deck-theme="macaron"] body {
   --modal-sheet-under-bg: rgba(255, 250, 253, 0.96);
   --modal-sheet-shadow: 0 16px 44px rgba(255, 150, 190, 0.2);
   --modal-sheet-edge: rgba(255, 182, 210, 0.5);
-  --modal-sheet-b-opacity: 0.65;
+  --modal-echo-bg: linear-gradient(
+    148deg,
+    rgba(255, 228, 244, 0.88) 0%,
+    rgba(255, 242, 250, 0.78) 100%
+  );
+  --modal-echo-border: rgba(232, 112, 168, 0.2);
+  --modal-echo-shadow: 0 12px 32px rgba(230, 120, 170, 0.16);
+  --modal-echo-opacity: 0.85;
+  --modal-echo-shift-x: 8px;
+  --modal-echo-shift-y: 10px;
+  --modal-accent-hairline: rgba(232, 112, 168, 0.35);
   --fab-armed-shadow:
     0 0 0 2px rgba(232, 112, 168, 0.45),
     0 12px 34px rgba(255, 130, 180, 0.28);
@@ -90,15 +100,13 @@ html[data-deck-theme="macaron"] .btn--ghost {
   backdrop-filter: blur(10px);
 }
 
+/* 概述「nested-block」与科技风一致：无磨砂卡片区，正文直接铺在背景上 */
 html[data-deck-theme="macaron"] .nested-block {
-  background: rgba(255, 255, 255, 0.58);
-  border-radius: 22px;
-  padding: 1.15rem 1.25rem;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
   border: none;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 12px 40px rgba(200, 160, 200, 0.12),
-    0 0 0 1px rgba(255, 192, 220, 0.35);
+  box-shadow: none;
 }
 
 html[data-deck-theme="macaron"] .table-scroll {

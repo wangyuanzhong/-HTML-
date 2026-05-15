@@ -29,7 +29,13 @@ html[data-deck-theme="tech"] body {
   --modal-sheet-under-bg: rgba(4, 14, 26, 0.9);
   --modal-sheet-shadow: 0 20px 72px rgba(0, 0, 0, 0.55);
   --modal-sheet-edge: rgba(0, 234, 255, 0.2);
-  --modal-sheet-b-opacity: 0.55;
+  --modal-echo-bg: rgba(5, 22, 40, 0.68);
+  --modal-echo-border: rgba(0, 229, 255, 0.2);
+  --modal-echo-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  --modal-echo-opacity: 0.78;
+  --modal-echo-shift-x: 6px;
+  --modal-echo-shift-y: 8px;
+  --modal-accent-hairline: rgba(0, 234, 255, 0.4);
   --fab-armed-shadow:
     0 0 22px rgba(0, 229, 255, 0.45), 0 0 0 1px rgba(0, 229, 255, 0.25);
   --cr-card-radius: var(--table-radius);

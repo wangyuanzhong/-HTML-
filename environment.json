@@ -6,20 +6,28 @@
   "requiredRuntime": [
     {
       "name": "web-browser",
-      "reason": "ES5-compatible JS; no Node required to open templates"
+      "reason": "Open template-*.html; ES5-friendly script, no Node required to preview"
     }
   ],
   "optionalTools": [
     {
       "name": "apache-ant",
       "minVersion": "1.10",
-      "reason": "build.xml targets: dist, clean, verify-layout",
+      "reason": "build.xml: dist, clean, verify-layout, info",
       "verifyCommand": "ant -version"
     },
     {
       "name": "static-http-server",
-      "examples": ["npx serve", "python -m http.server", "any static host"],
-      "reason": "if file:// restrictions apply"
+      "examples": [
+        "npx --yes serve competitive-analysis-templates",
+        "python -m http.server"
+      ],
+      "reason": "If file:// blocks features; not shipped with repo"
+    },
+    {
+      "name": "python3-openpyxl",
+      "reason": "Regenerate demo data/matrix-*.xlsx via tools/build-matrix-xlsx.py",
+      "verifyCommand": "python -c \"import openpyxl\""
     }
   ],
   "sourceRoots": ["competitive-analysis-templates"],
@@ -32,11 +40,20 @@
     "system": "apache-ant",
     "file": "build.xml",
     "artifactDirectory": "build/dist",
-    "defaultTarget": "info"
+    "defaultTarget": "info",
+    "commands": {
+      "package": "ant dist",
+      "clean": "ant clean",
+      "verify": "ant verify-layout"
+    }
   },
   "encoding": "UTF-8",
+  "documentation": {
+    "dependencies": "DEPENDENCIES.md",
+    "templates": "competitive-analysis-templates/README.md"
+  },
   "assumptions": [
-    "No npm install unless user adds a package.json later",
-    "Network optional; demo images may use external URLs"
+    "No npm install unless a package.json is added later",
+    "Demo content may reference external image URLs; replace for strict offline"
   ]
 }

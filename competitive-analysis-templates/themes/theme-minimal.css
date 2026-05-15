@@ -43,7 +43,13 @@ html[data-deck-theme="minimal"] body {
   --modal-sheet-under-bg: #ebe6dc;
   --modal-sheet-shadow: 0 14px 48px rgba(42, 38, 34, 0.08);
   --modal-sheet-edge: rgba(184, 92, 56, 0.35);
-  --modal-sheet-b-opacity: 0.75;
+  --modal-echo-bg: #e9e4da;
+  --modal-echo-border: rgba(42, 38, 34, 0.09);
+  --modal-echo-shadow: var(--modal-sheet-shadow);
+  --modal-echo-opacity: 0.62;
+  --modal-echo-shift-x: 5px;
+  --modal-echo-shift-y: 7px;
+  --modal-accent-hairline: rgba(184, 92, 56, 0.45);
   --fab-armed-shadow: 0 0 0 2px rgba(184, 92, 56, 0.35);
   --cr-card-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
   --cr-card-border: rgba(42, 38, 34, 0.08);
@@ -88,11 +94,13 @@ html[data-deck-theme="minimal"] .slide-inner {
   padding-left: 1.6rem;
 }
 
+/* 概述「nested-block」与科技风一致：无浅底框，只靠 slide-inner 左侧釉线 */
 html[data-deck-theme="minimal"] .nested-block {
-  background: rgba(255, 254, 251, 0.75);
-  border: 1px solid rgba(42, 38, 34, 0.06);
-  border-radius: 4px;
-  box-shadow: 0 8px 32px rgba(42, 38, 34, 0.04);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 html[data-deck-theme="minimal"] .matrix-toolbar h3 {

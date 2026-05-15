@@ -3,7 +3,12 @@
   template-macaron.html — 马卡龙可爱风（圆角 + 粉彩）
   内容填充方式同 template-tech.html，仅 theme 与外链 CSS 不同。
 -->
-<html lang="zh-CN" data-deck-theme="macaron">
+<html
+  lang="zh-CN"
+  data-deck-theme="macaron"
+  data-matrix-objective-xlsx="data/matrix-objective.xlsx"
+  data-matrix-subjective-xlsx="data/matrix-subjective.xlsx"
+>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,7 +29,15 @@
 
   <main id="deck-stage" class="deck-stage" aria-live="polite" tabindex="-1">
   <section data-slide data-slide-index="0" aria-label="封面">
-    <div class="slide-inner">
+    <div class="slide-inner deck-edit-slide-inner">
+      <div class="deck-edit-bar" id="deck-edit-bar">
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-export">导出 JSON</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-import-trigger">导入 JSON</button>
+        <input type="file" id="deck-portable-import-file" accept="application/json,.json,text/json" hidden aria-hidden="true" />
+      </div>
       <p class="cover-eyebrow" id="cover-eyebrow"></p>
       <h1 class="cover-title" id="cover-title"></h1>
       <div class="cover-subtitle" id="cover-subtitle"></div>
@@ -47,7 +60,7 @@
 
   <section data-slide data-slide-index="2" aria-label="竞品对比矩阵（客观）" hidden>
     <div class="slide-inner">
-      <h2>竞品对比矩阵（客观）</h2>
+      <h2 class="slide-matrix-title">竞品对比矩阵（客观）</h2>
 
       <div id="filter-deck" class="matrix-toolbar">
         <div>
@@ -57,6 +70,17 @@
         <div>
           <h3>型号列</h3>
           <div id="filter-cols" class="filter-group"></div>
+        </div>
+        <div class="matrix-structure-tools" aria-label="编辑表格结构">
+          <span class="matrix-structure-tools__hint">结构</span>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-row">+行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-row">−行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-col">+列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-col">−列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">列←</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">列→</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">行↑</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">行↓</button>
         </div>
       </div>
 
@@ -79,7 +103,7 @@
 
   <section data-slide data-slide-index="3" aria-label="竞品对比矩阵（主观）" hidden>
     <div class="slide-inner">
-      <h2>竞品对比矩阵（主观）</h2>
+      <h2 class="slide-matrix-title">竞品对比矩阵（主观）</h2>
 
       <div id="filter-deck-sub" class="matrix-toolbar">
         <div>
@@ -89,6 +113,17 @@
         <div>
           <h3>型号列</h3>
           <div id="filter-cols-sub" class="filter-group"></div>
+        </div>
+        <div class="matrix-structure-tools" aria-label="编辑表格结构">
+          <span class="matrix-structure-tools__hint">结构</span>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-row">+行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-row">−行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-col">+列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-col">−列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">列←</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">列→</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">行↑</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">行↓</button>
         </div>
       </div>
 
@@ -133,13 +168,17 @@
 
   <div id="cell-modal" hidden aria-hidden="true">
     <div id="modal-backdrop"></div>
-    <div class="modal-page-stack">
-      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
-      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
-      <div id="modal-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="modal-meta" tabindex="-1">
+    <div class="modal-sheet-wrap">
+      <div id="modal-shell" role="dialog" aria-modal="true" aria-labelledby="modal-meta" tabindex="-1">
         <header>
           <p id="modal-meta"></p>
-          <button type="button" id="modal-close" aria-label="关闭">×</button>
+          <div class="modal-header-end">
+            <button type="button" class="modal-photo-add" id="modal-photo-trigger" aria-label="添加图片">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/></svg>
+            </button>
+            <input id="modal-image-input" type="file" accept="image/*" multiple hidden />
+            <button type="button" id="modal-close" aria-label="关闭">×</button>
+          </div>
         </header>
         <div id="modal-body"></div>
       </div>
@@ -148,10 +187,8 @@
 
   <div id="compare-report-modal" hidden aria-hidden="true">
     <div id="compare-report-backdrop"></div>
-    <div class="modal-page-stack">
-      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
-      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
-      <div id="compare-report-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="compare-report-meta" tabindex="-1">
+    <div class="modal-sheet-wrap">
+      <div id="compare-report-shell" role="dialog" aria-modal="true" aria-labelledby="compare-report-meta" tabindex="-1">
         <header>
           <p id="compare-report-meta">对比报告</p>
           <button type="button" id="compare-report-close" aria-label="关闭">×</button>
@@ -165,67 +202,80 @@
 {
   "theme": "macaron",
   "cover": {
-    "eyebrow": "马卡龙 · 竞品小简报",
-    "title": "棉花糖 / 薄荷 / 布丁<br><span style=\"opacity:.78;font-size:.55em;display:block;margin-top:.25em;\">横向对比（可爱演示）</span>",
-    "subtitle": "<p>三款并排 · 一览差异</p>"
+    "eyebrow": "竞品分析",
+    "title": "消费类产品导入<br><span style=\"opacity:.78;font-size:.55em;display:block;margin-top:.25em;\">横向对比</span>",
+    "subtitle": "<p>研发中心：王元中</p>"
   },
   "overview": {
     "title": "概述",
     "sections": [
       {
-        "heading": "我们在比什么",
-        "bodyHtml": "<p>资源开发提供了耳机、音响、k歌宝共 <strong>x</strong> 款产品。下面把外观、手感与趣味点放在一起对照。</p>"
+        "heading": "",
+        "bodyHtml": "<p>结合资源开发提供的耳机、音箱、K歌宝，和竞品，进行整体分析</p>"
       }
     ]
   },
   "matrix": {
     "cornerLabel": "对比项 \\ 型号",
     "rows": [
-      { "id": "look", "label": "外观关键词", "hidden": false },
-      { "id": "feel", "label": "手感 & 重量", "hidden": false },
-      { "id": "fun", "label": "趣味功能", "hidden": false }
+      { "id": "price", "label": "价格区间", "hidden": false },
+      { "id": "camera", "label": "主摄方案", "hidden": false },
+      { "id": "ai", "label": "端侧 AI", "hidden": false },
+      { "id": "eco", "label": "生态联动", "hidden": false }
     ],
     "columns": [
-      { "id": "c1", "label": "棉花糖 Pro", "hidden": false },
-      { "id": "c2", "label": "薄荷折叠", "hidden": false },
-      { "id": "c3", "label": "布丁 SE", "hidden": false }
+      { "id": "p1", "label": "Phantom X2", "hidden": false },
+      { "id": "p2", "label": "Nova Air", "hidden": false },
+      { "id": "p3", "label": "Prism Lite", "hidden": false }
     ],
     "cells": {
-      "look::c1": {
-        "summary": "雾面玻璃",
-        "detailHtml": "<p>磨砂手感与抗指纹涂层。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/maclook1/500/220\" alt=\"外观参考\"></figure>"
+      "price::p1": {
+        "summary": "¥6499 起",
+        "detailHtml": "<p><strong>渠道价</strong>含标准套装。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/techprice1/520/220\" alt=\"价格示意\"></figure>"
       },
-      "look::c2": {
-        "summary": "亮面渐变",
-        "detailHtml": "<p>高光表面与铰链露出线条。</p>"
+      "price::p2": {
+        "summary": "¥5299 起",
+        "detailHtml": "<p>多存储梯度与捆绑服务差价。</p>"
       },
-      "look::c3": {
-        "summary": "纯色硅胶壳",
-        "detailHtml": "<p>柔和配色与官方壳型一体感。</p>"
+      "price::p3": {
+        "summary": "¥3999 起",
+        "detailHtml": "<p>入门价位与成本控制取向。</p>"
       },
-      "feel::c1": {
-        "summary": "198g",
-        "detailHtml": "<p>单手握持重心略偏下。</p>"
+      "camera::p1": {
+        "summary": "1\" 云台主摄",
+        "detailHtml": "<p>大底云台模组，夜景与防抖均衡。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/techcam1/520/240\" alt=\"模组示意\"></figure>"
       },
-      "feel::c2": {
-        "summary": "215g",
-        "detailHtml": "<p>展开态略沉，折叠态更贴掌心。</p>"
+      "camera::p2": {
+        "summary": "50MP 双层晶体管",
+        "detailHtml": "<p>弱光成像与算法侧协同方案。</p>"
       },
-      "feel::c3": {
-        "summary": "176g",
-        "detailHtml": "<p>轻量取向，长时间握持更省力。</p>"
+      "camera::p3": {
+        "summary": "64MP 主摄",
+        "detailHtml": "<p>主流价位影像取向与成片风格。</p>"
       },
-      "fun::c1": {
-        "summary": "AI 贴纸相机",
-        "detailHtml": "<p>实时贴纸与多人合影玩法。</p>"
+      "ai::p1": {
+        "summary": "NPU 12TOPS",
+        "detailHtml": "<p>端侧推理与隐私边界下的能力边界。</p>"
       },
-      "fun::c2": {
-        "summary": "双屏萌宠",
-        "detailHtml": "<p>外屏轻互动与息屏展示。</p>"
+      "ai::p2": {
+        "summary": "端云混合",
+        "detailHtml": "<p>时延与离线覆盖的组合策略。</p>"
       },
-      "fun::c3": {
-        "summary": "复古滤镜包",
-        "detailHtml": "<p>内置多套胶片风格与颗粒感。</p>"
+      "ai::p3": {
+        "summary": "基础场景",
+        "detailHtml": "<p>覆盖日常智能助手与影像增强。</p>"
+      },
+      "eco::p1": {
+        "summary": "全场景互联",
+        "detailHtml": "<p>手表、耳机、车况等多设备联动。</p>"
+      },
+      "eco::p2": {
+        "summary": "办公协同",
+        "detailHtml": "<p>跨屏同步与会议场景配套。</p>"
+      },
+      "eco::p3": {
+        "summary": "轻量周边",
+        "detailHtml": "<p>配件与第三方生态接入能力。</p>"
       }
     }
   },
@@ -236,6 +286,7 @@
   }
 }
   </script>
+  <script src="assets/sheetjs.full.min.js"></script>
   <script src="assets/matrix-core.js"></script>
 </body>
 </html>

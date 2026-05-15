@@ -3,13 +3,18 @@
   template-tech.html — 科技风竞品分析演示
   维护约定（给后续聊天机器人阅读）：
   1) 不换文件名则相对路径保持不变：../assets/matrix-core.js、../themes/layout.css + theme-tech.css
-  2) 所有可填充内容只在 <script id="deck-data" type="application/json"> … </script> 内
+  2) 主要可填充内容在 <script id="deck-data" type="application/json"> … </script>；**客观 / 主观矩阵**还可由同级 `data/matrix-*.xlsx` 加载覆盖（详见 README）
   3) 任意对比参数行、任意产品列都可通过勾选隐藏；**表头行（thead）**始终在 DOM，不参与整块勾选删除；JSON 可按需扩充列行
-  4) cells 键必须为 "行id::列id"，summary / detailHtml（详情层为大卡 + 叠纸边示意）
+  4) cells 键必须为 "行id::列id"，summary / detailHtml（详情层：简洁单卡）
   5) `#compare-fab-park` / `compare-fab-anchor-*` + `matrix-core` 挂载；详细对比仅在客观/主观页与底栏按钮同行
   6) `ending` 驱动第五页；幻灯圆点索引 0–4
 -->
-<html lang="zh-CN" data-deck-theme="tech">
+<html
+  lang="zh-CN"
+  data-deck-theme="tech"
+  data-matrix-objective-xlsx="data/matrix-objective.xlsx"
+  data-matrix-subjective-xlsx="data/matrix-subjective.xlsx"
+>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -31,7 +36,15 @@
   <main id="deck-stage" class="deck-stage" aria-live="polite" tabindex="-1">
   <!-- ===== 第 0 页：标题页 ===== -->
   <section data-slide data-slide-index="0" aria-label="封面">
-    <div class="slide-inner">
+    <div class="slide-inner deck-edit-slide-inner">
+      <div class="deck-edit-bar" id="deck-edit-bar">
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-export">导出 JSON</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-import-trigger">导入 JSON</button>
+        <input type="file" id="deck-portable-import-file" accept="application/json,.json,text/json" hidden aria-hidden="true" />
+      </div>
       <p class="cover-eyebrow" id="cover-eyebrow"></p>
       <h1 class="cover-title" id="cover-title"></h1>
       <div class="cover-subtitle" id="cover-subtitle"></div>
@@ -56,7 +69,7 @@
   <!-- ===== 第 2 页：竞品对比矩阵（客观）===== -->
   <section data-slide data-slide-index="2" aria-label="竞品对比矩阵（客观）" hidden>
     <div class="slide-inner">
-      <h2>竞品对比矩阵（客观）</h2>
+      <h2 class="slide-matrix-title">竞品对比矩阵（客观）</h2>
 
       <div id="filter-deck" class="matrix-toolbar">
         <div>
@@ -66,6 +79,17 @@
         <div>
           <h3>产品列</h3>
           <div id="filter-cols" class="filter-group" aria-label="产品列"></div>
+        </div>
+        <div class="matrix-structure-tools" aria-label="编辑表格结构">
+          <span class="matrix-structure-tools__hint">结构</span>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-row">+行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-row">−行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-col">+列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-col">−列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">列←</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">列→</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">行↑</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">行↓</button>
         </div>
       </div>
 
@@ -89,7 +113,7 @@
   <!-- ===== 第 3 页：竞品对比矩阵（主观）===== -->
   <section data-slide data-slide-index="3" aria-label="竞品对比矩阵（主观）" hidden>
     <div class="slide-inner">
-      <h2>竞品对比矩阵（主观）</h2>
+      <h2 class="slide-matrix-title">竞品对比矩阵（主观）</h2>
 
       <div id="filter-deck-sub" class="matrix-toolbar">
         <div>
@@ -99,6 +123,17 @@
         <div>
           <h3>产品列</h3>
           <div id="filter-cols-sub" class="filter-group" aria-label="产品列"></div>
+        </div>
+        <div class="matrix-structure-tools" aria-label="编辑表格结构">
+          <span class="matrix-structure-tools__hint">结构</span>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-row">+行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-row">−行</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-col">+列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-col">−列</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">列←</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">列→</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">行↑</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">行↓</button>
         </div>
       </div>
 
@@ -146,13 +181,17 @@
   <!-- 详情层：detailHtml 注入 #modal-body -->
   <div id="cell-modal" hidden aria-hidden="true">
     <div id="modal-backdrop"></div>
-    <div class="modal-page-stack">
-      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
-      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
-      <div id="modal-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="modal-meta" tabindex="-1">
+    <div class="modal-sheet-wrap">
+      <div id="modal-shell" role="dialog" aria-modal="true" aria-labelledby="modal-meta" tabindex="-1">
         <header>
           <p id="modal-meta"></p>
-          <button type="button" id="modal-close" aria-label="关闭">×</button>
+          <div class="modal-header-end">
+            <button type="button" class="modal-photo-add" id="modal-photo-trigger" aria-label="添加图片">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.86 8.86l-3 3.87L9 13.14 6 17h12l-3.86-5.14z"/></svg>
+            </button>
+            <input id="modal-image-input" type="file" accept="image/*" multiple hidden />
+            <button type="button" id="modal-close" aria-label="关闭">×</button>
+          </div>
         </header>
         <div id="modal-body"></div>
       </div>
@@ -161,10 +200,8 @@
 
   <div id="compare-report-modal" hidden aria-hidden="true">
     <div id="compare-report-backdrop"></div>
-    <div class="modal-page-stack">
-      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
-      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
-      <div id="compare-report-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="compare-report-meta" tabindex="-1">
+    <div class="modal-sheet-wrap">
+      <div id="compare-report-shell" role="dialog" aria-modal="true" aria-labelledby="compare-report-meta" tabindex="-1">
         <header>
           <p id="compare-report-meta">对比报告</p>
           <button type="button" id="compare-report-close" aria-label="关闭">×</button>
@@ -178,16 +215,16 @@
 {
   "theme": "tech",
   "cover": {
-    "eyebrow": "进口消费品 · 选型简报",
-    "title": "Phantom / Nova / Prism<br><span style=\"opacity:.72;font-size:.52em;display:block;margin-top:.2em;font-weight:500;\">横向对比矩阵（演示稿）</span>",
-    "subtitle": "<p>资源开发与供应清单对齐 · 型号与参数一览</p>"
+    "eyebrow": "竞品分析",
+    "title": "消费类产品导入<br><span style=\"opacity:.72;font-size:.52em;display:block;margin-top:.2em;font-weight:500;\">横向对比</span>",
+    "subtitle": "<p>研发中心：王元中</p>"
   },
   "overview": {
     "title": "概述",
     "sections": [
       {
-        "heading": "选型背景",
-        "bodyHtml": "<p>资源开发提供了耳机、音响、k歌宝共 <strong>x</strong> 款产品。以下为客观参数与主观评价的对照，并形成选型建议。</p>"
+        "heading": "",
+        "bodyHtml": "<p>结合资源开发提供的耳机、音箱、K歌宝，和竞品，进行整体分析</p>"
       }
     ]
   },
@@ -262,6 +299,7 @@
   }
 }
   </script>
+  <script src="assets/sheetjs.full.min.js"></script>
   <script src="assets/matrix-core.js"></script>
 </body>
 </html>

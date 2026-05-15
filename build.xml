@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Apache Ant build for static HTML templates.
-  Requires: Apache Ant on PATH (https://ant.apache.org/)
+  Apache Ant — 静态模板打包（无编译）。
 
-  Common commands:
-    ant           → default: show project info
-    ant dist      → copy competitive-analysis-templates → build/dist (for zip/deploy)
-    ant clean     → remove build/
+  需要：Ant 已在 PATH（https://ant.apache.org/）
+
+  ant               → info（默认）
+  ant verify-layout → 检查源码目录是否存在
+  ant clean         → 删除 build/
+  ant dist          → clean 后复制 competitive-analysis-templates → build/dist/
+
+  dist 中会排除编辑器临时文件等（见下方 exclude），便于直接 zip 上传静态站。
 -->
 <project name="vibe-html" default="info" basedir=".">
 
@@ -14,29 +17,39 @@
   <property name="build.dir" location="build"/>
   <property name="dist.dir" location="${build.dir}/dist"/>
 
-  <target name="info">
-    <echo message="Project: vibe-html"/>
-    <echo message="Source: ${src.dir} (static HTML/CSS/JS, no compile step)"/>
-    <echo message="Run: ant dist  →  ${dist.dir}"/>
+  <target name="info" description="Print project hints">
+    <echo message="vibe-html · static competitor-analysis HTML templates"/>
+    <echo message="Source dir: ${src.dir}"/>
+    <echo message="Package: ant dist → ${dist.dir}"/>
+    <echo message="Preview: open template-tech.html (or macaron / minimal) in a browser"/>
   </target>
 
-  <target name="clean" description="Remove build output">
+  <target name="clean" description="Remove build directory">
     <delete dir="${build.dir}" quiet="true"/>
+    <echo message="Removed ${build.dir}"/>
   </target>
 
-  <target name="dist" depends="clean" description="Copy templates to build/dist for packaging or upload">
+  <target name="dist" depends="clean" description="Copy templates into build/dist for zip or static hosting">
     <mkdir dir="${dist.dir}"/>
     <copy todir="${dist.dir}" preservelastmodified="true">
       <fileset dir="${src.dir}">
         <include name="**/*"/>
+        <!-- 常见垃圾 / 临时文件不参与发行包 -->
+        <exclude name="**/.DS_Store"/>
+        <exclude name="**/Thumbs.db"/>
+        <exclude name="**/*~"/>
+        <exclude name="**/*.bak"/>
+        <exclude name="**/*.tmp"/>
+        <exclude name="**/新建 *.txt"/>
+        <exclude name="**/*副本*/**"/>
       </fileset>
     </copy>
-    <echo message="Artifacts → ${dist.dir}"/>
+    <echo message="Done: ${dist.dir}"/>
   </target>
 
-  <target name="verify-layout" description="Fail if main source folder is missing">
+  <target name="verify-layout" description="Fail if competitive-analysis-templates/ is missing">
     <available file="${src.dir}" type="dir" property="src.present"/>
-    <fail unless="src.present" message="Missing folder: ${src.dir}"/>
+    <fail unless="src.present" message="Missing directory: ${src.dir}"/>
     <echo message="OK: ${src.dir} exists"/>
   </target>
 

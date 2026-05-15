@@ -1,62 +1,105 @@
-# Dependencies and environment
+# Dependencies & environment
 
-This document is for **human developers** and **cloud coding agents** (Cursor Cloud Agent, CI, etc.) to determine what must be present to develop, build, and run this repository.
+供**人工开发者**与**自动化（CI / Cursor Agent 等）**判断：在什么环境下能预览、打包、可选地重建演示用 Excel。
 
-## Project type
+---
 
-- **Static front-end**: HTML, CSS, JavaScript (vanilla, no bundler in repo).
-- **No** `package.json`, **no** compile step required to view templates.
-- Primary runtime: **web browser** with JavaScript enabled.
+## 项目形态
 
-## Required for “run / preview”
+| 项目 | 说明 |
+|------|------|
+| 类型 | 静态前端：HTML5 + CSS3 + **ES5 风格** vanilla JS |
+| 包管理 | **无** `package.json`，**无需** `npm install` 即可浏览模板 |
+| 主运行时 | 启用 JavaScript 的现代浏览器 |
 
-| Item | Version / notes |
-|------|-----------------|
-| Modern browser | Chromium / Firefox / Safari / Edge (recent evergreen) |
-| Files | Repository checkout; UTF-8 encoded sources |
+---
 
-Open any `competitive-analysis-templates/template-*.html` directly or via a static HTTP server if `file://` policies cause issues.
+## 必选：浏览模板
 
-## Optional: local static server
+| 依赖 | 说明 |
+|------|------|
+| 浏览器 | Chromium / Firefox / Safari / Edge 等现行版本均可 |
+| 源码 | UTF-8 编码；仓库检出后路径保持完整 |
 
-Not required by the repo. If you use one, any generic static file server is fine.
+入口文件（任选其一打开）：
 
-Example (only if Node.js is already installed elsewhere):
+- `competitive-analysis-templates/template-tech.html`
+- `competitive-analysis-templates/template-macaron.html`
+- `competitive-analysis-templates/template-minimal.html`
+
+核心脚本：`competitive-analysis-templates/assets/matrix-core.js`
+
+---
+
+## 可选：静态 HTTP（仅当 `file://` 不便时）
+
+仓库**不捆绑**任何 Node 服务。**若你已自行安装 Node**，可临时起静态目录，例如：
 
 ```bash
-npx --yes serve competitive-analysis-templates
+npx --yes serve competitive-analysis-templates -p 3000
 ```
 
-Agents should **not** assume Node/npm unless the user or CI explicitly adds them.
+或：
 
-## Optional: Ant build (`build.xml`)
+```bash
+cd competitive-analysis-templates
+python -m http.server 3000
+```
 
-| Item | Purpose |
-|------|---------|
-| [Apache Ant](https://ant.apache.org/) | Runs `ant dist` to copy `competitive-analysis-templates` → `build/dist` |
+（需本机已有对应 Python。**不要**在文档外默认假定 CI 上一定存在 Node/Python。）
 
-**Not required** for editing or viewing HTML. Only needed if you rely on the Ant packaging target.
+---
 
-## Path assumptions
+## 可选：Apache Ant · 打包 `build/dist`
 
-- **Worktree root**: repository root (where `build.xml` and `.gitignore` live).
-- **Source tree**: `competitive-analysis-templates/` (do not rename if you want `build.xml` unchanged).
+| 依赖 | 用途 |
+|------|------|
+| [Apache Ant](https://ant.apache.org/) ≥ 1.10 | 执行根目录 **`build.xml`** |
 
-## Network
+常用命令：`ant verify-layout`、`ant dist`、`ant clean`（详见根目录 **`README.md`**）。
 
-- Sample templates may reference **external image URLs** (e.g. picsum) for demos. Offline use: replace or remove those URLs in JSON.
+**与预览无关**：不写 Ant、不执行 `dist`，照样可以只打开 HTML 开发。
 
-## Encoding
+---
 
-- Source files: **UTF-8** (HTML/CSS/JS with Chinese copy).
+## 可选：Python · 演示用矩阵 Excel
 
-## Verification checklist (for agents)
+仅在需要**重写**演示数据 **`data/matrix-objective.xlsx`** / **`matrix-subjective.xlsx`** 时：
 
-1. `competitive-analysis-templates/` exists.
-2. At least one of `template-tech.html`, `template-macaron.html`, `template-minimal.html` exists.
-3. `competitive-analysis-templates/assets/matrix-core.js` exists.
-4. Browser can load a template page; no server mandatory.
+| 依赖 | 用途 |
+|------|------|
+| Python 3 | 解释器 |
+| [openpyxl](https://openpyxl.readthedocs.io/) | 写 `.xlsx` |
 
-## Machine-readable manifest
+示例（在项目根或 `competitive-analysis-templates` 上一级执行，脚本内路径相对于 `tools/`）：
 
-See root **`environment.json`** for the same facts in JSON form (parseable by automation).
+```bash
+pip install openpyxl
+python competitive-analysis-templates/tools/build-matrix-xlsx.py
+```
+
+业务含义与表格版面见 **`competitive-analysis-templates/README.md`**。
+
+---
+
+## 路径约定（给自动化）
+
+- **工作区根**：与 `build.xml`、`.gitignore`、本文件同级目录。
+- **源码树根**：必须为 **`competitive-analysis-templates/`**（勿改名，否则需同步改 `build.xml`）。
+
+---
+
+## 网络
+
+示例 JSON / 演示图可能引用**外链图片**（如 picsum）。完全离线使用前请替换或删掉这些 URL。
+
+---
+
+## 校验清单（Agent 可逐项核对）
+
+1. 目录 **`competitive-analysis-templates/`** 存在。
+2. 至少存在上述三个 **`template-*.html`** 之一。
+3. 存在 **`competitive-analysis-templates/assets/matrix-core.js`**。
+4. 浏览器能加载模板页面；不要求必须起 HTTP。
+
+机器可读同款字段：**`environment.json`**。

@@ -185,6 +185,30 @@ body.deck {
   opacity: 0.75;
 }
 
+.matrix-toolbar .matrix-structure-tools {
+  flex: 1 1 100%;
+  display: none;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+}
+
+body.deck--editing .matrix-toolbar .matrix-structure-tools {
+  display: flex;
+}
+
+.matrix-structure-tools__hint {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+body.deck--editing .matrix-toolbar .matrix-structure-tools .btn {
+  font-size: 0.82rem;
+  padding: 0.28rem 0.55rem;
+}
+
 .filter-group {
   display: flex;
   flex-wrap: wrap;
@@ -247,6 +271,46 @@ body.deck {
   max-height: min(70vh, 640px);
   border-radius: var(--table-radius, 12px);
   border: 1px solid var(--table-border, rgba(0, 0, 0, 0.08));
+}
+
+/** 矩阵页：筛选/结构与底栏占位固定；表格在长宽增长时仅在内部出现滚动条，不撑开整页 */
+section[data-slide-index="2"],
+section[data-slide-index="3"] {
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+  justify-content: flex-start;
+}
+
+section[data-slide-index="2"] .table-scroll,
+section[data-slide-index="3"] .table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overscroll-behavior: contain;
+}
+
+section[data-slide-index="2"] .slide-inner,
+section[data-slide-index="3"] .slide-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  width: 100%;
+}
+
+section[data-slide-index="2"] .slide-matrix-title,
+section[data-slide-index="3"] .slide-matrix-title,
+section[data-slide-index="2"] .matrix-toolbar,
+section[data-slide-index="3"] .matrix-toolbar {
+  flex-shrink: 0;
+}
+
+section[data-slide-index="2"] .matrix-slide-footer,
+section[data-slide-index="3"] .matrix-slide-footer {
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 #comparison-table,
@@ -329,6 +393,21 @@ body.deck {
   overscroll-behavior: contain;
 }
 
+/** 对比报告大卡：外层视口尺寸固定，仅报告正文区域滚动（子卡片通过更紧排版「挤」进视口） */
+#compare-report-modal:not([hidden]) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#compare-report-modal .modal-sheet-wrap {
+  width: min(1320px, 98vw);
+  max-width: 98vw;
+  max-height: min(96vh, 1180px);
+  margin-top: min(2.5vh, 1.25rem);
+  padding-bottom: 1.25rem;
+  flex-shrink: 0;
+}
+
 #cell-modal,
 #compare-report-modal {
   position: fixed;
@@ -348,8 +427,8 @@ body.deck {
   background: var(--modal-backdrop, rgba(0, 0, 0, 0.55));
 }
 
-/** 大尺寸详情卡 + 背后露出「纸张」叠边，暗示叠在讲演页之上 */
-.modal-page-stack {
+/** 详情大卡：单层背衬 + 前台面板（各 theme 可调 echo 偏移与描边） */
+.modal-sheet-wrap {
   position: relative;
   width: min(1060px, 96vw);
   max-width: 96vw;
@@ -358,29 +437,21 @@ body.deck {
   z-index: 3;
 }
 
-.modal-sheet-under {
+.modal-sheet-wrap::before {
+  content: "";
   position: absolute;
+  z-index: 0;
   left: 0;
   right: 0;
   top: 0;
-  min-height: 100%;
+  bottom: 2.5rem;
   border-radius: var(--modal-radius, 14px);
-  border: 1px solid var(--modal-sheet-border, rgba(255, 255, 255, 0.2));
-  background: var(--modal-sheet-under-bg, rgba(20, 20, 24, 0.45));
-  box-shadow: var(--modal-sheet-shadow, 0 8px 32px rgba(0, 0, 0, 0.18));
   pointer-events: none;
-}
-
-.modal-sheet-under--a {
-  z-index: 0;
-  transform: translate(12px, 14px) scale(0.985);
-  opacity: var(--modal-sheet-a-opacity, 0.88);
-}
-
-.modal-sheet-under--b {
-  z-index: -1;
-  transform: translate(24px, 28px) scale(0.97);
-  opacity: var(--modal-sheet-b-opacity, 0.62);
+  opacity: var(--modal-echo-opacity, 1);
+  background: var(--modal-echo-bg, var(--modal-sheet-under-bg, rgba(24, 24, 28, 0.4)));
+  border: 1px solid var(--modal-echo-border, var(--modal-sheet-border, rgba(255, 255, 255, 0.12)));
+  box-shadow: var(--modal-echo-shadow, var(--modal-sheet-shadow, 0 12px 40px rgba(0, 0, 0, 0.2)));
+  transform: translate(var(--modal-echo-shift-x, 8px), var(--modal-echo-shift-y, 10px));
 }
 
 #modal-shell,
@@ -396,12 +467,30 @@ body.deck {
   border-radius: var(--modal-radius, 14px);
   background: var(--modal-bg);
   color: var(--modal-fg);
-  box-shadow: var(--modal-shadow),
-    0 0 0 1px var(--modal-sheet-edge, rgba(255, 255, 255, 0.06));
+  box-shadow:
+    var(--modal-shadow),
+    0 0 0 1px var(--modal-sheet-edge, rgba(255, 255, 255, 0.06)),
+    inset 0 1px 0 0 var(--modal-accent-hairline, transparent);
   outline: none;
   overflow-y: auto;
   overscroll-behavior: contain;
-  animation: modal-front-rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: modal-front-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#compare-report-shell {
+  min-height: 0;
+  max-height: min(93vh, 1120px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overflow-y: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #modal-shell,
+  #compare-report-shell {
+    animation: none;
+  }
 }
 
 @keyframes modal-front-rise {
@@ -430,6 +519,57 @@ body.deck {
   margin-bottom: 0.85rem;
 }
 
+#compare-report-shell header {
+  flex-shrink: 0;
+}
+
+#compare-report-body-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.modal-header-end {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.modal-photo-add {
+  margin: 0;
+  padding: 0.18rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.72;
+  border-radius: var(--btn-radius, 4px);
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease;
+}
+
+.modal-photo-add:hover,
+.modal-photo-add:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--cell-focus, rgba(0, 234, 255, 0.45));
+  outline-offset: 2px;
+}
+
+.modal-photo-add svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
+  fill: currentColor;
+}
+
 #modal-meta,
 #compare-report-meta {
   font-weight: 600;
@@ -456,9 +596,72 @@ body.deck {
   border-radius: 8px;
 }
 
-#modal-body .detail-figure,
+body:not(.deck--editing) #cell-modal .modal-photo-add {
+  display: none;
+}
+
+#modal-shell .detail-figure,
 #compare-report-body-inner .detail-figure {
-  margin: 0.85rem 0 0;
+  margin-top: 0.85rem;
+}
+
+/** 封面编辑条与编辑态（纯前端改稿） */
+.deck-edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--table-border, rgba(255, 255, 255, 0.12));
+}
+
+.deck-edit-bar__btn[disabled] {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.deck--editing [contenteditable="true"]:focus {
+  outline: 2px solid var(--cell-focus, rgba(0, 229, 255, 0.45));
+  outline-offset: 2px;
+}
+
+.deck--editing .matrix-cell,
+.deck--editing .matrix-row-head,
+.deck--editing thead th {
+  min-height: 1.75em;
+}
+
+.deck--editing #modal-body .detail-figure {
+  position: relative;
+}
+
+.deck--editing .detail-upload-remove {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  z-index: 2;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--btn-radius, 4px);
+  color: inherit;
+  background: rgba(0, 0, 0, 0.38);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+.deck--editing .detail-upload-remove:hover,
+.deck--editing .detail-upload-remove:focus-visible {
+  filter: brightness(1.15);
+  outline: 2px solid var(--cell-focus, rgba(0, 229, 255, 0.45));
+  outline-offset: 1px;
 }
 
 /** 矩阵页底栏：翻页按钮与「详细对比」同一行、Y 轴居中对齐 */
@@ -557,6 +760,15 @@ body.deck {
   cursor: not-allowed !important;
 }
 
+/**
+ * sticky 左上角角格 z-index 高于行头：滚动后会挡住首列行标题的点击，
+ * 非编辑模式下无法点到行头触发对比切换；对比进行中让穿透到下方行头单元格。
+ */
+#comparison-table.compare-picking thead th.matrix-corner,
+#comparison-table-sub.compare-picking thead th.matrix-corner {
+  pointer-events: none;
+}
+
 #comparison-table.compare-picking .matrix-cell,
 #comparison-table-sub.compare-picking .matrix-cell {
   cursor: not-allowed;
@@ -593,6 +805,17 @@ body.deck {
   outline-offset: -5px;
   border-radius: 6px;
   transition: background 0.14s ease, color 0.14s ease;
+}
+
+/**
+ * sticky 列表头（非角格）z-index=3 会压住左侧行头外露区域，
+ * 点选易被当成「点列」。对比中选行阶段抬升行标题命中层级。
+ */
+#comparison-table.compare-picking tbody th.matrix-row-head.is-cp-target,
+#comparison-table.compare-picking tbody th.matrix-row-head.is-cp-selected,
+#comparison-table-sub.compare-picking tbody th.matrix-row-head.is-cp-target,
+#comparison-table-sub.compare-picking tbody th.matrix-row-head.is-cp-selected {
+  z-index: 4;
 }
 
 #comparison-table tbody th.matrix-row-head.is-cp-target:hover,
@@ -718,6 +941,97 @@ body.deck {
   gap: 0.85rem;
 }
 
+/**
+ * 对比报告：按选定列数铺满行宽；列多 / 有大图时单列下限由 JS 抬高，窄于 min 宽度时出现横向滚动。
+ * 单列 minmax(max,1fr) + min-width: max(100%, …) 兼顾「撑满」与「溢出横滑」。
+ */
+#compare-report-body-inner .cr-report-root {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  width: 100%;
+}
+
+#compare-report-body-inner .cr-intro {
+  flex-shrink: 0;
+}
+
+#compare-report-body-inner .cr-block {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0 0 1.35rem;
+}
+
+#compare-report-body-inner .cr-block:last-child {
+  margin-bottom: 0;
+}
+
+#compare-report-body-inner .cr-block-head {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+#compare-report-body-inner .cr-model-grid-scroll {
+  flex: 1 1 auto;
+  min-height: 11rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+}
+
+#compare-report-body-inner .cr-model-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(
+    var(--cr-cols, 1),
+    minmax(var(--cr-cell-min, 200px), 1fr)
+  );
+  grid-auto-rows: minmax(200px, 1fr);
+  align-items: stretch;
+  gap: var(--cr-gap, 0.65rem);
+  width: 100%;
+  min-width: max(
+    100%,
+    calc(
+      var(--cr-cols) * var(--cr-cell-min) + (var(--cr-cols) - 1) * var(--cr-gap)
+    )
+  );
+}
+
+#compare-report-body-inner .cr-card.cr-card--model {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: auto;
+  align-self: stretch;
+  padding: 0.72rem 0.82rem;
+}
+
+#compare-report-body-inner .cr-card-head,
+#compare-report-body-inner .cr-sum {
+  flex-shrink: 0;
+}
+
+#compare-report-body-inner .cr-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#compare-report-body-inner .cr-report-root[data-cr-heavy="1"] .cr-model-grid-scroll {
+  min-height: 14rem;
+}
+
 .cr-muted {
   margin: 0 0 1rem;
   font-size: 0.82rem;
@@ -813,4 +1127,56 @@ body.deck {
     align-items: stretch;
     max-width: 100%;
   }
+}
+
+.matrix-sync-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem clamp(1rem, 4vw, 3rem);
+  font-size: 0.82rem;
+  line-height: 1.42;
+  color: inherit;
+  background: rgba(20, 20, 24, 0.78);
+  color: rgba(253, 253, 255, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.matrix-sync-bar__line {
+  margin: 0;
+  flex: 1 1 14rem;
+  max-width: 56rem;
+}
+
+.matrix-sync-bar__mono {
+  font-family: ui-monospace, monospace;
+}
+
+.matrix-sync-bar__actions {
+  display: flex;
+  align-items: center;
+}
+
+.matrix-sync-bar .btn.btn--ghost {
+  --btn-ghost-fg: rgba(253, 253, 255, 0.95);
+  --btn-ghost-border: rgba(255, 255, 255, 0.42);
+}
+
+html[data-deck-theme="macaron"] .matrix-sync-bar,
+html[data-deck-theme="minimal"] .matrix-sync-bar {
+  background: rgba(255, 251, 252, 0.92);
+  color: rgba(45, 40, 45, 0.92);
+  border-top-color: rgba(110, 80, 95, 0.15);
+}
+
+html[data-deck-theme="macaron"] .matrix-sync-bar .btn.btn--ghost,
+html[data-deck-theme="minimal"] .matrix-sync-bar .btn.btn--ghost {
+  --btn-ghost-fg: inherit;
+  --btn-ghost-border: rgba(110, 80, 95, 0.22);
 }

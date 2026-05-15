@@ -14,7 +14,7 @@ ehthumbs.db
 .classpath
 .settings/
 
-# --- Local VS Code (remove this line if your team commits shared .vscode/) ---
+# VS Code — 删掉下一行即可改为提交团队共用 .vscode/
 .vscode/
 
 # --- Logs & temp ---
@@ -23,18 +23,22 @@ ehthumbs.db
 *.temp
 .cache/
 
-# --- Secrets (never commit) ---
+# --- Secrets ---
 .env
 .env.*
 !.env.example
 
-# --- Build output (see build.xml → build/dist) ---
+# --- Ant / 其他构建产物（见 build.xml）---
 build/
 dist/
 out/
 target/
 
-# --- Future tooling (if you add later) ---
+# --- 常见误拷的整目录副本（勿提交）---
+competitive-analysis-templates - 副本/
+*- 副本/
+
+# --- 若将来加 Node / Python 工具链 ---
 node_modules/
 npm-debug.log*
 yarn-error.log*
@@ -45,6 +49,6 @@ __pycache__/
 *.py[cod]
 .Python
 
-# --- Coverage / reports ---
+# --- 测试覆盖率 ---
 coverage/
 .nyc_output/
