@@ -2,7 +2,7 @@
   "project": "vibe-html",
   "type": "static-html",
   "languageStack": ["html5", "css3", "javascript-es5"],
-  "packageManagers": [],
+  "packageManagers": ["npm"],
   "requiredRuntime": [
     {
       "name": "web-browser",
@@ -28,6 +28,11 @@
       "name": "python3-openpyxl",
       "reason": "Regenerate demo data/matrix-*.xlsx via tools/build-matrix-xlsx.py",
       "verifyCommand": "python -c \"import openpyxl\""
+    },
+    {
+      "name": "nodejs-npm-playwright",
+      "reason": "package.json: npm ci && npm run test:e2e (Playwright); CI uses same",
+      "verifyCommand": "node -v && npm run test:e2e"
     }
   ],
   "sourceRoots": ["competitive-analysis-templates"],
@@ -53,7 +58,7 @@
     "templates": "competitive-analysis-templates/README.md"
   },
   "assumptions": [
-    "No npm install unless a package.json is added later",
+    "npm install is only required for Playwright E2E, not for opening templates in a browser",
     "Demo content may reference external image URLs; replace for strict offline"
   ]
 }

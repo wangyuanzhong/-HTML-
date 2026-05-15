@@ -1,0 +1,11 @@
+{
+  "name": "vibe-html",
+  "private": true,
+  "description": "Dev-only toolchain: Playwright regression for static templates (see README).",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

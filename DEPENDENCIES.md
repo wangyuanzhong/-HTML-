@@ -9,7 +9,7 @@
 | 项目 | 说明 |
 |------|------|
 | 类型 | 静态前端：HTML5 + CSS3 + **ES5 风格** vanilla JS |
-| 包管理 | **无** `package.json`，**无需** `npm install` 即可浏览模板 |
+| 包管理 | 浏览模板仍**无需** npm；根目录 `package.json` 仅用于 **Playwright 云端/本地回归**（`npm ci` + `npm run test:e2e`，见 `README.md`） |
 | 主运行时 | 启用 JavaScript 的现代浏览器 |
 
 ---
