@@ -17,8 +17,9 @@
   <nav id="slide-nav" aria-label="幻灯导航">
     <button type="button" data-slide-dot="0" aria-label="封面"></button>
     <button type="button" data-slide-dot="1" aria-label="概述"></button>
-    <button type="button" data-slide-dot="2" aria-label="矩阵"></button>
-    <button type="button" data-slide-dot="3" aria-label="结束"></button>
+    <button type="button" data-slide-dot="2" aria-label="客观矩阵"></button>
+    <button type="button" data-slide-dot="3" aria-label="主观矩阵"></button>
+    <button type="button" data-slide-dot="4" aria-label="结束"></button>
   </nav>
 
   <main id="deck-stage" class="deck-stage" aria-live="polite" tabindex="-1">
@@ -39,14 +40,14 @@
       <div id="overview-sections"></div>
       <div class="slide-actions">
         <button type="button" class="btn btn--ghost" data-slide-go="0">返回</button>
-        <button type="button" class="btn" data-slide-go="2">矩阵</button>
+        <button type="button" class="btn" data-slide-go="2">客观矩阵</button>
       </div>
     </div>
   </section>
 
-  <section data-slide data-slide-index="2" aria-label="竞品对比矩阵" hidden>
+  <section data-slide data-slide-index="2" aria-label="竞品对比矩阵（客观）" hidden>
     <div class="slide-inner">
-      <h2>竞品对比矩阵</h2>
+      <h2>竞品对比矩阵（客观）</h2>
 
       <div id="filter-deck" class="matrix-toolbar">
         <div>
@@ -66,33 +67,62 @@
         </table>
       </div>
 
-      <aside class="compare-fab-stack" aria-label="详细对比">
-        <p class="compare-fab__hint" id="compare-fab-hint" hidden aria-live="polite"></p>
-        <div class="compare-fab__row">
-          <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
-          <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
-        </div>
-      </aside>
-
       <div class="slide-actions">
         <button type="button" class="btn btn--ghost" data-slide-go="1">返回概述</button>
-        <button type="button" class="btn" data-slide-go="3">结束</button>
+        <button type="button" class="btn" data-slide-go="3">主观矩阵</button>
       </div>
     </div>
   </section>
 
-  <section data-slide data-slide-index="3" aria-label="结束" hidden>
+  <section data-slide data-slide-index="3" aria-label="竞品对比矩阵（主观）" hidden>
+    <div class="slide-inner">
+      <h2>竞品对比矩阵（主观）</h2>
+
+      <div id="filter-deck-sub" class="matrix-toolbar">
+        <div>
+          <h3>参数行</h3>
+          <div id="filter-rows-sub" class="filter-group"></div>
+        </div>
+        <div>
+          <h3>产品列</h3>
+          <div id="filter-cols-sub" class="filter-group"></div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table id="comparison-table-sub">
+          <thead id="matrix-thead-sub"></thead>
+          <tbody id="matrix-tbody-sub"></tbody>
+        </table>
+      </div>
+
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="2">客观矩阵</button>
+        <button type="button" class="btn" data-slide-go="4">结束</button>
+      </div>
+    </div>
+  </section>
+
+  <section data-slide data-slide-index="4" aria-label="结束" hidden>
     <div class="slide-inner">
       <p class="cover-eyebrow" id="ending-eyebrow"></p>
       <h1 class="cover-title" id="ending-title"></h1>
       <div id="ending-body" class="ending-body"></div>
       <div class="slide-actions">
-        <button type="button" class="btn btn--ghost" data-slide-go="2">矩阵</button>
+        <button type="button" class="btn btn--ghost" data-slide-go="3">主观矩阵</button>
         <button type="button" class="btn btn--ghost" data-slide-go="0">封面</button>
       </div>
     </div>
   </section>
   </main>
+
+  <div id="compare-fab-host" class="compare-fab-stack" aria-label="详细对比" hidden>
+    <p class="compare-fab__hint" id="compare-fab-hint" hidden aria-live="polite"></p>
+    <div class="compare-fab__row">
+      <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
+      <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
+    </div>
+  </div>
 
   <div id="cell-modal" hidden aria-hidden="true">
     <div id="modal-backdrop"></div>

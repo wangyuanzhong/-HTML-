@@ -1,8 +1,8 @@
 /**
- * matrix-core.js — 竞品矩阵四页幻灯 + 矩阵交互
+ * matrix-core.js — 竞品矩阵五页幻灯 + 矩阵交互
  *
  * 数据：<script id="deck-data" type="application/json"> 单文件 JSON（见 README）
- * slide：0 封面 · 1 概述 · 2 竞品对比矩阵 · 3 结束页（`ending`）
+ * slide：0 封面 · 1 概述 · 2 竞品对比矩阵（客观）· 3 竞品对比矩阵（主观）· 4 结束页（`ending`）
  * 矩阵 thead 行为产品型号列；tbody 左侧 th 行为对比参数行
  * cells 键："对比项行id::产品列id" → summary / detailHtml（单格弹层大卡）
  * 行列筛选：可隐藏任意「参数行」或「产品列」；thead 型号表头一行不参与筛选逻辑，始终存在于 DOM。
@@ -70,7 +70,7 @@
 
   function goSlide(idx) {
     idx = clampSlideIdx(idx);
-    if (idx !== 2) exitComparePickQuiet();
+    if (idx !== 2 && idx !== 3) exitComparePickQuiet();
 
     slideIndexNav = idx;
     $all("[data-slide]").forEach(function (s) {
@@ -86,6 +86,8 @@
     });
     var nav = $("#slide-nav");
     if (nav) nav.dataset.activeIndex = String(idx);
+    var fabHost = $("#compare-fab-host");
+    if (fabHost) fabHost.hidden = idx !== 2 && idx !== 3;
     try {
       history.replaceState(null, "", "#slide-" + idx);
     } catch (_) {}
@@ -143,128 +145,134 @@
   function renderMatrix() {
     if (!deck) return;
     var m = deck.matrix;
-    var thead = $("#matrix-thead");
-    var tbody = $("#matrix-tbody");
-    var filtersRow = $("#filter-rows");
-    var filtersCol = $("#filter-cols");
-    if (!thead || !tbody || !filtersRow || !filtersCol) return;
+    var setups = [
+      { tsuf: "", rf: "row-filter-", cf: "col-filter-" },
+      { tsuf: "-sub", rf: "row-filter-sub-", cf: "col-filter-sub-" },
+    ];
+    setups.forEach(function (cfg) {
+      var thead = $("#matrix-thead" + cfg.tsuf);
+      var tbody = $("#matrix-tbody" + cfg.tsuf);
+      var filtersRow = $("#filter-rows" + cfg.tsuf);
+      var filtersCol = $("#filter-cols" + cfg.tsuf);
+      if (!thead || !tbody || !filtersRow || !filtersCol) return;
 
-    thead.innerHTML = "";
-    tbody.innerHTML = "";
-    filtersRow.innerHTML = "";
-    filtersCol.innerHTML = "";
-    var tab = thead.closest("table");
-    if (tab) delete tab.dataset.pickDeleg;
+      thead.innerHTML = "";
+      tbody.innerHTML = "";
+      filtersRow.innerHTML = "";
+      filtersCol.innerHTML = "";
+      var tab = thead.closest("table");
+      if (tab) delete tab.dataset.pickDeleg;
 
-    var trHead = document.createElement("tr");
-    var corner = document.createElement("th");
-    corner.className = "matrix-corner";
-    corner.scope = "col";
-    corner.textContent = m.cornerLabel || "对比项 \\ 型号";
-    trHead.appendChild(corner);
-
-    m.columns.forEach(function (col) {
-      var th = document.createElement("th");
-      th.scope = "col";
-      th.dataset.colId = col.id;
-      th.textContent = col.label;
-      trHead.appendChild(th);
-    });
-    thead.appendChild(trHead);
-
-    m.rows.forEach(function (row) {
-      var tr = document.createElement("tr");
-      tr.dataset.rowId = row.id;
-      var thRow = document.createElement("th");
-      thRow.scope = "row";
-      thRow.dataset.rowId = row.id;
-      thRow.textContent = row.label;
-      thRow.className = "matrix-row-head";
-      tr.appendChild(thRow);
+      var trHead = document.createElement("tr");
+      var corner = document.createElement("th");
+      corner.className = "matrix-corner";
+      corner.scope = "col";
+      corner.textContent = m.cornerLabel || "对比项 \\ 型号";
+      trHead.appendChild(corner);
 
       m.columns.forEach(function (col) {
-        var td = document.createElement("td");
-        td.className = "matrix-cell";
-        td.dataset.rowId = row.id;
-        td.dataset.colId = col.id;
-        td.setAttribute("tabindex", "0");
-        td.setAttribute("role", "button");
-        td.setAttribute(
-          "aria-label",
-          "查看：" + row.label + " × " + col.label
-        );
-
-        var ck = cellKey(row.id, col.id);
-        var cellObj =
-          m.cells[ck] || {
-            summary: "",
-            detailHtml:
-              '<p class="placeholder-note">在 JSON <code>cells["' +
-              ck +
-              '"]</code> 填写 <code>summary</code> 与 <code>detailHtml</code>（可含 &lt;img&gt;）。</p>',
-          };
-
-        td.innerHTML = cellObj.summary
-          ? cellObj.summary
-          : '<span class="cell-empty">—</span>';
-
-        td.addEventListener("click", function (ev) {
-          if (comparePick.active) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            flashCompareNope(td);
-            return;
-          }
-          openModal(row.label, col.label, cellObj.detailHtml);
-        });
-        td.addEventListener("keydown", function (ev) {
-          if (comparePick.active) {
-            if (ev.key === "Enter" || ev.key === " ") ev.preventDefault();
-            return;
-          }
-          if (ev.key === "Enter" || ev.key === " ") {
-            ev.preventDefault();
-            openModal(row.label, col.label, cellObj.detailHtml);
-          }
-        });
-
-        tr.appendChild(td);
+        var th = document.createElement("th");
+        th.scope = "col";
+        th.dataset.colId = col.id;
+        th.textContent = col.label;
+        trHead.appendChild(th);
       });
-      tbody.appendChild(tr);
-    });
+      thead.appendChild(trHead);
 
-    m.rows.forEach(function (row) {
-      var id = "row-filter-" + row.id;
-      var lab = document.createElement("label");
-      lab.className = "filter-chip";
-      var input = document.createElement("input");
-      input.type = "checkbox";
-      input.id = id;
-      input.checked = !row.hidden;
-      input.dataset.axisId = row.id;
-      input.dataset.axis = "row";
-      lab.appendChild(input);
-      var span = document.createElement("span");
-      span.textContent = row.label;
-      lab.appendChild(span);
-      filtersRow.appendChild(lab);
-    });
+      m.rows.forEach(function (row) {
+        var tr = document.createElement("tr");
+        tr.dataset.rowId = row.id;
+        var thRow = document.createElement("th");
+        thRow.scope = "row";
+        thRow.dataset.rowId = row.id;
+        thRow.textContent = row.label;
+        thRow.className = "matrix-row-head";
+        tr.appendChild(thRow);
 
-    m.columns.forEach(function (col) {
-      var id = "col-filter-" + col.id;
-      var lab = document.createElement("label");
-      lab.className = "filter-chip";
-      var input = document.createElement("input");
-      input.type = "checkbox";
-      input.id = id;
-      input.checked = !col.hidden;
-      input.dataset.axisId = col.id;
-      input.dataset.axis = "column";
-      lab.appendChild(input);
-      var span = document.createElement("span");
-      span.textContent = col.label;
-      lab.appendChild(span);
-      filtersCol.appendChild(lab);
+        m.columns.forEach(function (col) {
+          var td = document.createElement("td");
+          td.className = "matrix-cell";
+          td.dataset.rowId = row.id;
+          td.dataset.colId = col.id;
+          td.setAttribute("tabindex", "0");
+          td.setAttribute("role", "button");
+          td.setAttribute(
+            "aria-label",
+            "查看：" + row.label + " × " + col.label
+          );
+
+          var ck = cellKey(row.id, col.id);
+          var cellObj =
+            m.cells[ck] || {
+              summary: "",
+              detailHtml:
+                '<p class="placeholder-note">在 JSON <code>cells["' +
+                ck +
+                '"]</code> 填写 <code>summary</code> 与 <code>detailHtml</code>（可含 &lt;img&gt;）。</p>',
+            };
+
+          td.innerHTML = cellObj.summary
+            ? cellObj.summary
+            : '<span class="cell-empty">—</span>';
+
+          td.addEventListener("click", function (ev) {
+            if (comparePick.active) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              flashCompareNope(td);
+              return;
+            }
+            openModal(row.label, col.label, cellObj.detailHtml);
+          });
+          td.addEventListener("keydown", function (ev) {
+            if (comparePick.active) {
+              if (ev.key === "Enter" || ev.key === " ") ev.preventDefault();
+              return;
+            }
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              openModal(row.label, col.label, cellObj.detailHtml);
+            }
+          });
+
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      m.rows.forEach(function (row) {
+        var id = cfg.rf + row.id;
+        var lab = document.createElement("label");
+        lab.className = "filter-chip";
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.id = id;
+        input.checked = !row.hidden;
+        input.dataset.axisId = row.id;
+        input.dataset.axis = "row";
+        lab.appendChild(input);
+        var span = document.createElement("span");
+        span.textContent = row.label;
+        lab.appendChild(span);
+        filtersRow.appendChild(lab);
+      });
+
+      m.columns.forEach(function (col) {
+        var id = cfg.cf + col.id;
+        var lab = document.createElement("label");
+        lab.className = "filter-chip";
+        var input = document.createElement("input");
+        input.type = "checkbox";
+        input.id = id;
+        input.checked = !col.hidden;
+        input.dataset.axisId = col.id;
+        input.dataset.axis = "column";
+        lab.appendChild(input);
+        var span = document.createElement("span");
+        span.textContent = col.label;
+        lab.appendChild(span);
+        filtersCol.appendChild(lab);
+      });
     });
 
     applyFilters();
@@ -301,7 +309,7 @@
     if (!deck) return;
     var m = deck.matrix;
 
-    $all("#matrix-tbody tr").forEach(function (tr) {
+    $all("#matrix-tbody tr, #matrix-tbody-sub tr").forEach(function (tr) {
       var rowId = tr.dataset.rowId;
       var row = m.rows.find(function (r) {
         return r.id === rowId;
@@ -314,16 +322,15 @@
       hideCol[col.id] = !!col.hidden;
     });
 
-    var theadEl = $("#matrix-thead");
-    if (theadEl) {
-      var ths = $all("th", theadEl);
+    $all("#matrix-thead, #matrix-thead-sub").forEach(function (thead) {
+      var ths = $all("th", thead);
       m.columns.forEach(function (col, j) {
         var th = ths[j + 1];
         if (th) th.hidden = !!col.hidden;
       });
-    }
+    });
 
-    $all("#matrix-tbody .matrix-cell").forEach(function (td) {
+    $all("#matrix-tbody .matrix-cell, #matrix-tbody-sub .matrix-cell").forEach(function (td) {
       var cid = td.dataset.colId;
       td.hidden = !!hideCol[cid];
       td.setAttribute("aria-hidden", hideCol[cid] ? "true" : "false");
@@ -511,14 +518,14 @@
 
   function syncComparePickUI() {
     pruneCompareSelection();
-    var tbl = $("#comparison-table");
-    if (tbl) {
+    $all("#comparison-table, #comparison-table-sub").forEach(function (tbl) {
+      if (!tbl) return;
       tbl.classList.toggle("compare-picking", comparePick.active);
       tbl.classList.toggle(
         "compare-pick-cols-live",
         comparePick.active && countCompareRowsSel() >= 1
       );
-    }
+    });
 
     $all(".matrix-row-head").forEach(function (th) {
       th.classList.remove("is-cp-target", "is-cp-selected", "is-cp-muted");
@@ -536,7 +543,7 @@
       }
     });
 
-    $all("#matrix-thead th").forEach(function (th) {
+    $all("#matrix-thead th, #matrix-thead-sub th").forEach(function (th) {
       th.classList.remove(
         "is-cp-corner",
         "is-cp-target",
@@ -609,41 +616,42 @@
   }
 
   function bindMatrixPickDelegation() {
-    var tbl = $("#comparison-table");
-    if (!tbl || tbl.dataset.pickDeleg === "1") return;
-    tbl.dataset.pickDeleg = "1";
-    tbl.addEventListener("click", function (ev) {
-      if (!comparePick.active) return;
+    $all("#comparison-table, #comparison-table-sub").forEach(function (tbl) {
+      if (!tbl || tbl.dataset.pickDeleg === "1") return;
+      tbl.dataset.pickDeleg = "1";
+      tbl.addEventListener("click", function (ev) {
+        if (!comparePick.active) return;
 
-      var trh = ev.target.closest("tbody .matrix-row-head");
-      if (trh && tbl.contains(trh) && !ev.target.closest("thead")) {
-        ev.preventDefault();
-        var rid = trh.dataset.rowId;
-        if (!rid || isRowAxisHidden(rid)) return;
-        toggleCompareRow(rid);
-        syncComparePickUI();
-        return;
-      }
-
-      var thCol = ev.target.closest("thead th[data-col-id]");
-      if (thCol && tbl.contains(thCol) && !thCol.hidden) {
-        ev.preventDefault();
-        if (countCompareRowsSel() < 1) {
-          flashCompareNope(thCol);
+        var trh = ev.target.closest("tbody .matrix-row-head");
+        if (trh && tbl.contains(trh) && !ev.target.closest("thead")) {
+          ev.preventDefault();
+          var rid = trh.dataset.rowId;
+          if (!rid || isRowAxisHidden(rid)) return;
+          toggleCompareRow(rid);
+          syncComparePickUI();
           return;
         }
-        var cid = thCol.dataset.colId;
-        if (!cid || isColAxisHidden(cid)) return;
-        toggleCompareCol(cid);
-        syncComparePickUI();
-        return;
-      }
 
-      var corner = ev.target.closest("thead .matrix-corner");
-      if (corner && tbl.contains(corner)) {
-        ev.preventDefault();
-        flashCompareNope(tbl);
-      }
+        var thCol = ev.target.closest("thead th[data-col-id]");
+        if (thCol && tbl.contains(thCol) && !thCol.hidden) {
+          ev.preventDefault();
+          if (countCompareRowsSel() < 1) {
+            flashCompareNope(thCol);
+            return;
+          }
+          var cid = thCol.dataset.colId;
+          if (!cid || isColAxisHidden(cid)) return;
+          toggleCompareCol(cid);
+          syncComparePickUI();
+          return;
+        }
+
+        var corner = ev.target.closest("thead .matrix-corner");
+        if (corner && tbl.contains(corner)) {
+          ev.preventDefault();
+          flashCompareNope(tbl);
+        }
+      });
     });
   }
 
@@ -868,6 +876,11 @@
     if (filterDeck && !filterDeck.dataset.bound) {
       filterDeck.addEventListener("change", onFilterChange);
       filterDeck.dataset.bound = "1";
+    }
+    var filterDeckSub = $("#filter-deck-sub");
+    if (filterDeckSub && !filterDeckSub.dataset.bound) {
+      filterDeckSub.addEventListener("change", onFilterChange);
+      filterDeckSub.dataset.bound = "1";
     }
     bindSlideNav();
     bindModal();

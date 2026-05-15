@@ -38,11 +38,12 @@ html[data-deck-theme="tech"] body {
   --cr-card-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
   --cr-chip-border: rgba(124, 77, 255, 0.35);
   --cr-sum-bg: rgba(124, 77, 255, 0.12);
-  --cr-card-border: rgba(0, 229, 255, 0.15);
-  --cr-card-bg: rgba(8, 20, 36, 0.85);
-  --cr-card-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
-  --cr-chip-border: rgba(124, 77, 255, 0.35);
-  --cr-sum-bg: rgba(124, 77, 255, 0.12);
+  --filter-chip-on-bg: rgba(0, 229, 255, 0.1);
+  --filter-chip-on-border: rgba(0, 234, 255, 0.5);
+  --filter-chip-on-glow:
+    0 0 0 2px rgba(0, 229, 255, 0.32),
+    0 0 26px rgba(0, 229, 255, 0.18);
+  --filter-chip-off-opacity: 0.45;
 }
 
 html[data-deck-theme="tech"] body.deck {

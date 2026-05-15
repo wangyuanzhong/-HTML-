@@ -20,14 +20,15 @@
 
 ---
 
-## 页面结构（四页讲演流）
+## 页面结构（五页讲演流）
 
 固定顺序（勿改 DOM id，聊天机器人只做数据替换更安全）：
 
 1. **Slide 0 — 封面**：`cover.*`（眉标、主标题、副标题可空）
 2. **Slide 1 — 概述**：`overview`（`overview.title` 可空则隐藏页内二级标题）
-3. **Slide 2 — 竞品对比矩阵**：`matrix.*` 驱动唯一表格；右下角「详细对比」FAB 在矩阵页内
-4. **Slide 3 — 结束页**：`ending`
+3. **Slide 2 — 竞品对比矩阵（客观）**：与 Slide 3 共用一份 `matrix.*` 数据；双表 DOM 同步
+4. **Slide 3 — 竞品对比矩阵（主观）**：同上
+5. **Slide 4 — 结束页**：`ending`；**客观/主观** 两页显示 `#compare-fab-host` 固定「详细对比」入口
 
 ---
 
@@ -41,7 +42,7 @@
 </script>
 ```
 
-根对象字段：`theme`，`cover`，`overview`，`matrix`，**`ending`**（结束页，对应 **Slide 3**）。`matrix.columns` 用于生成 **thead 表头行**（左上角 `cornerLabel` + 各型号 `th`）；**表头这一行不会从 DOM 消失**，只是当某型号列被勾选隐藏时，该行里对应的表头格与下方单元格一并折叠。`matrix.rows` 为对比维度，**每一条**都可勾选显示或隐藏；`matrix.columns` 同理。各项需含稳定 **`id`**，`cells` 键为 **`"行id::列id"`**。**单元格详情弹层**：`detailHtml` 在大尺寸浮层内展示；浮层后侧可见装饰性「纸张」叠边（`.modal-sheet-under`）。
+根对象字段：`theme`，`cover`，`overview`，`matrix`，**`ending`**（结束页，对应 **Slide 4**，索引 `4`）。`matrix.columns` 用于生成 **thead 表头行**（左上角 `cornerLabel` + 各型号 `th`）；**表头这一行不会从 DOM 消失**，只是当某型号列被勾选隐藏时，该行里对应的表头格与下方单元格一并折叠。`matrix.rows` 为对比维度，**每一条**都可勾选显示或隐藏；`matrix.columns` 同理。各项需含稳定 **`id`**，`cells` 键为 **`"行id::列id"`**。**单元格详情弹层**：`detailHtml` 在大尺寸浮层内展示；浮层后侧可见装饰性「纸张」叠边（`.modal-sheet-under`）。
 
 详见各 HTML 文件顶部注释与各字段说明：`summary` → 表格内；`detailHtml` → 弹层。
 
@@ -72,9 +73,9 @@
 工作目录：competitive-analysis-templates/
 目标文件：template-minimal.html（或 tech / macaron）
 优先只改：<script id="deck-data"> 内的 JSON
-避免改动：`#filter-deck` / `#matrix-thead` / `#matrix-tbody` / `#filter-rows` / `#filter-cols` / `#comparison-table` / `compare-fab-stack`（矩阵页内 FAB）/ `compare-launch-btn` / `#compare-report-modal*` 等 DOM id；`matrix-core.js` 文件名与路径
+避免改动：`#filter-deck` / `#filter-deck-sub` / `#matrix-*` / `#comparison-table` / `#comparison-table-sub` / `compare-fab-host` / `compare-launch-btn` / `#compare-report-modal*` 等 DOM id；`matrix-core.js` 文件名与路径
 新增对比行：matrix.rows.push(...)，并为每个 columns[].id 写 cells["rowId::colId"].summary 与 detailHtml
-结束页：顶层 `ending`: { "eyebrow","title","bodyHtml" }（对应第 4 页，索引 3）
+结束页：顶层 `ending`: { "eyebrow","title","bodyHtml" }（对应第 5 页，索引 4）
 调试：控制台执行 __matrixDeckReload()
 ```
 
@@ -85,8 +86,8 @@
 | 需求 | 实现位置 |
 |------|----------|
 | 多层嵌套内容 | `overview.sections[].bodyHtml`、`detailHtml` |
-| 四页幻灯（含结束页） | `[data-slide-index="0–3"]`、`ending` 字段、`renderEnding()` |
-| 可筛选行列 | `#filter-deck`、`hidden` |
+| 五页幻灯（含结束页） | `[data-slide-index="0–4"]`、`ending` 字段、`renderEnding()` |
+| 可筛选行列（胶囊高亮，无系统蓝勾） | `#filter-deck` / `#filter-deck-sub`、`hidden`、`layout.css` `.filter-chip:has()` |
 | 表头行常驻、行列可勾选 | thead 不参与筛选 UI；勾选控制 tbody 行与各产品列，`applyFilters` 同步表头格子 |
 | 大号叠纸详情弹层 | `.modal-page-stack`、`.modal-sheet-under` 叠影 + 加宽 `#modal-shell` |
 | 详细对比（表格多点选 · 大卡报告） | 右下角 FAB + `#compare-report-modal`；Esc 层级见上文 |
