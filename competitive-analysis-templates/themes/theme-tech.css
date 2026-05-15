@@ -1,0 +1,74 @@
+/* theme-tech.css — 深色科技霓虹 */
+
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+html[data-deck-theme="tech"],
+html[data-deck-theme="tech"] body {
+  --btn-radius: 4px;
+  --btn-bg: #0ae7ff;
+  --btn-fg: #031018;
+  --btn-ghost-fg: #9de9ff;
+  --btn-ghost-border: rgba(0, 234, 255, 0.45);
+  --table-radius: 4px;
+  --table-border: rgba(0, 234, 255, 0.18);
+  --cell-border: rgba(124, 77, 255, 0.12);
+  --thead-bg: rgba(6, 18, 32, 0.92);
+  --corner-bg: rgba(10, 24, 40, 0.98);
+  --rowhead-bg: rgba(8, 20, 36, 0.95);
+  --cell-bg: rgba(5, 16, 28, 0.55);
+  --cell-bg-hover: rgba(0, 229, 255, 0.08);
+  --cell-focus: #00e5ff;
+  --chip-border: rgba(0, 234, 255, 0.25);
+  --chip-bg: rgba(124, 77, 255, 0.12);
+  --modal-backdrop: rgba(2, 6, 12, 0.72);
+  --modal-bg: #0a1624;
+  --modal-fg: #e8fbff;
+  --modal-radius: 6px;
+  --modal-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 234, 255, 0.12);
+  --modal-sheet-border: rgba(0, 229, 255, 0.35);
+  --modal-sheet-under-bg: rgba(4, 14, 26, 0.9);
+  --modal-sheet-shadow: 0 20px 72px rgba(0, 0, 0, 0.55);
+  --modal-sheet-edge: rgba(0, 234, 255, 0.2);
+  --modal-sheet-b-opacity: 0.55;
+  --fab-armed-shadow:
+    0 0 22px rgba(0, 229, 255, 0.45), 0 0 0 1px rgba(0, 229, 255, 0.25);
+  --cr-card-radius: var(--table-radius);
+  --cr-card-border: rgba(0, 229, 255, 0.15);
+  --cr-card-bg: rgba(8, 20, 36, 0.85);
+  --cr-card-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
+  --cr-chip-border: rgba(124, 77, 255, 0.35);
+  --cr-sum-bg: rgba(124, 77, 255, 0.12);
+  --cr-card-border: rgba(0, 229, 255, 0.15);
+  --cr-card-bg: rgba(8, 20, 36, 0.85);
+  --cr-card-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
+  --cr-chip-border: rgba(124, 77, 255, 0.35);
+  --cr-sum-bg: rgba(124, 77, 255, 0.12);
+}
+
+html[data-deck-theme="tech"] body.deck {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(124, 77, 255, 0.25), transparent),
+    radial-gradient(900px 500px at 90% 20%, rgba(0, 229, 255, 0.18), transparent),
+    #030810;
+  color: #d7f6ff;
+}
+
+html[data-deck-theme="tech"] .cover-title,
+html[data-deck-theme="tech"] #ending-title,
+html[data-deck-theme="tech"] h2 {
+  font-family: "Exo 2", "IBM Plex Sans", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+html[data-deck-theme="tech"] [data-slide-dot] {
+  background: #00e5ff;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.55);
+}
+
+html[data-deck-theme="tech"] .btn {
+  box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
+}
+
+html[data-deck-theme="tech"] .table-scroll {
+  box-shadow: inset 0 0 0 1px rgba(124, 77, 255, 0.15);
+}

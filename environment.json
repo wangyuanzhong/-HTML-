@@ -1,0 +1,42 @@
+{
+  "project": "vibe-html",
+  "type": "static-html",
+  "languageStack": ["html5", "css3", "javascript-es5"],
+  "packageManagers": [],
+  "requiredRuntime": [
+    {
+      "name": "web-browser",
+      "reason": "ES5-compatible JS; no Node required to open templates"
+    }
+  ],
+  "optionalTools": [
+    {
+      "name": "apache-ant",
+      "minVersion": "1.10",
+      "reason": "build.xml targets: dist, clean, verify-layout",
+      "verifyCommand": "ant -version"
+    },
+    {
+      "name": "static-http-server",
+      "examples": ["npx serve", "python -m http.server", "any static host"],
+      "reason": "if file:// restrictions apply"
+    }
+  ],
+  "sourceRoots": ["competitive-analysis-templates"],
+  "entryPoints": [
+    "competitive-analysis-templates/template-tech.html",
+    "competitive-analysis-templates/template-macaron.html",
+    "competitive-analysis-templates/template-minimal.html"
+  ],
+  "build": {
+    "system": "apache-ant",
+    "file": "build.xml",
+    "artifactDirectory": "build/dist",
+    "defaultTarget": "info"
+  },
+  "encoding": "UTF-8",
+  "assumptions": [
+    "No npm install unless user adds a package.json later",
+    "Network optional; demo images may use external URLs"
+  ]
+}

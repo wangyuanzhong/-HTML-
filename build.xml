@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Apache Ant build for static HTML templates.
+  Requires: Apache Ant on PATH (https://ant.apache.org/)
+
+  Common commands:
+    ant           → default: show project info
+    ant dist      → copy competitive-analysis-templates → build/dist (for zip/deploy)
+    ant clean     → remove build/
+-->
+<project name="vibe-html" default="info" basedir=".">
+
+  <property name="src.dir" location="competitive-analysis-templates"/>
+  <property name="build.dir" location="build"/>
+  <property name="dist.dir" location="${build.dir}/dist"/>
+
+  <target name="info">
+    <echo message="Project: vibe-html"/>
+    <echo message="Source: ${src.dir} (static HTML/CSS/JS, no compile step)"/>
+    <echo message="Run: ant dist  →  ${dist.dir}"/>
+  </target>
+
+  <target name="clean" description="Remove build output">
+    <delete dir="${build.dir}" quiet="true"/>
+  </target>
+
+  <target name="dist" depends="clean" description="Copy templates to build/dist for packaging or upload">
+    <mkdir dir="${dist.dir}"/>
+    <copy todir="${dist.dir}" preservelastmodified="true">
+      <fileset dir="${src.dir}">
+        <include name="**/*"/>
+      </fileset>
+    </copy>
+    <echo message="Artifacts → ${dist.dir}"/>
+  </target>
+
+  <target name="verify-layout" description="Fail if main source folder is missing">
+    <available file="${src.dir}" type="dir" property="src.present"/>
+    <fail unless="src.present" message="Missing folder: ${src.dir}"/>
+    <echo message="OK: ${src.dir} exists"/>
+  </target>
+
+</project>

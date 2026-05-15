@@ -1,0 +1,25 @@
+---
+description: 修改剪贴板管理器后自动重新打包 exe
+globs: clipboard_manager/**/*.py
+alwaysApply: false
+---
+
+# 剪贴板管理器：改完代码即打包
+
+在 **修改** `clipboard_manager/` 下任意 `.py` 并完成本次任务后，**必须**在本机执行一次打包，生成最新 `dist/剪贴板管理器.exe`：
+
+**推荐（Windows）：** 在项目根目录或 `clipboard_manager` 目录执行：
+
+```bat
+clipboard_manager\build_exe.bat
+```
+
+**或** 在 `clipboard_manager` 目录下：
+
+```bat
+python -m PyInstaller --onefile --windowed --name "剪贴板管理器" --clean main.py
+```
+
+输出路径：`clipboard_manager/dist/剪贴板管理器.exe`。
+
+若仅改文档或未动 Python，不必打包。

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!--
+  template-tech.html — 科技风竞品分析演示
+  维护约定（给后续聊天机器人阅读）：
+  1) 不换文件名则相对路径保持不变：../assets/matrix-core.js、../themes/layout.css + theme-tech.css
+  2) 所有可填充内容只在 <script id="deck-data" type="application/json"> … </script> 内
+  3) 任意对比参数行、任意产品列都可通过勾选隐藏；**表头行（thead）**始终在 DOM，不参与整块勾选删除；JSON 可按需扩充列行
+  4) cells 键必须为 "行id::列id"，summary / detailHtml（详情层为大卡 + 叠纸边示意）
+  5) 矩阵页内「详细对比」FAB：先在表格左侧点对比项，再点表头型号列，生成 `#compare-report-modal`（大卡）；勿删 id
+  6) `ending` 驱动第四页结束语；幻灯圆点索引 0–3
+-->
+<html lang="zh-CN" data-deck-theme="tech">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>消费类导入产品横向对比 · 科技风模板</title>
+  <link rel="stylesheet" href="themes/layout.css" />
+  <link rel="stylesheet" href="themes/theme-tech.css" />
+</head>
+<body class="deck">
+  <a class="deck-skip" href="#deck-stage">跳到内容</a>
+
+  <nav id="slide-nav" aria-label="幻灯导航">
+    <button type="button" data-slide-dot="0" aria-label="封面" title="封面"></button>
+    <button type="button" data-slide-dot="1" aria-label="概述" title="概述"></button>
+    <button type="button" data-slide-dot="2" aria-label="矩阵" title="矩阵"></button>
+    <button type="button" data-slide-dot="3" aria-label="结束" title="结束"></button>
+  </nav>
+
+  <main id="deck-stage" class="deck-stage" aria-live="polite" tabindex="-1">
+  <!-- ===== 第 0 页：标题页 ===== -->
+  <section data-slide data-slide-index="0" aria-label="封面">
+    <div class="slide-inner">
+      <p class="cover-eyebrow" id="cover-eyebrow"></p>
+      <h1 class="cover-title" id="cover-title"></h1>
+      <div class="cover-subtitle" id="cover-subtitle"></div>
+      <div class="slide-actions">
+        <button type="button" class="btn" data-slide-go="1">进入概述 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第 1 页：概述（nested-block 可由 sections 数组自动生成，bodyHtml 内可继续嵌套） ===== -->
+  <section data-slide data-slide-index="1" aria-labelledby="overview-title" hidden>
+    <div class="slide-inner">
+      <h2 id="overview-title" hidden></h2>
+      <div id="overview-sections"></div>
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="0">← 封面</button>
+        <button type="button" class="btn" data-slide-go="2">打开矩阵 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第 2 页：竞品对比矩阵 ===== -->
+  <section data-slide data-slide-index="2" aria-label="竞品对比矩阵" hidden>
+    <div class="slide-inner">
+      <h2>竞品对比矩阵</h2>
+
+      <div id="filter-deck" class="matrix-toolbar">
+        <div>
+          <h3>显示参数行</h3>
+          <div id="filter-rows" class="filter-group" aria-label="筛选对比参数行"></div>
+        </div>
+        <div>
+          <h3>显示产品列</h3>
+          <div id="filter-cols" class="filter-group" aria-label="筛选对比产品列"></div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table id="comparison-table">
+          <thead id="matrix-thead"></thead>
+          <tbody id="matrix-tbody"></tbody>
+        </table>
+      </div>
+
+      <aside class="compare-fab-stack" aria-label="详细对比">
+        <p class="compare-fab__hint" id="compare-fab-hint" hidden aria-live="polite"></p>
+        <div class="compare-fab__row">
+          <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
+          <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
+        </div>
+      </aside>
+
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="1">← 概述</button>
+        <button type="button" class="btn" data-slide-go="3">结束页 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 第 3 页：结束页（JSON key: ending）===== -->
+  <section data-slide data-slide-index="3" aria-label="结束" hidden>
+    <div class="slide-inner">
+      <p class="cover-eyebrow" id="ending-eyebrow"></p>
+      <h1 class="cover-title" id="ending-title"></h1>
+      <div id="ending-body" class="ending-body"></div>
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="2">← 矩阵</button>
+        <button type="button" class="btn btn--ghost" data-slide-go="0">回封面</button>
+      </div>
+    </div>
+  </section>
+  </main>
+
+  <!-- 详情层：detailHtml 注入 #modal-body -->
+  <div id="cell-modal" hidden aria-hidden="true">
+    <div id="modal-backdrop"></div>
+    <div class="modal-page-stack">
+      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
+      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
+      <div id="modal-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="modal-meta" tabindex="-1">
+        <header>
+          <p id="modal-meta"></p>
+          <button type="button" id="modal-close" aria-label="关闭">×</button>
+        </header>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="compare-report-modal" hidden aria-hidden="true">
+    <div id="compare-report-backdrop"></div>
+    <div class="modal-page-stack">
+      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
+      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
+      <div id="compare-report-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="compare-report-meta" tabindex="-1">
+        <header>
+          <p id="compare-report-meta">对比报告</p>
+          <button type="button" id="compare-report-close" aria-label="关闭">×</button>
+        </header>
+        <div id="compare-report-body-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <script id="deck-data" type="application/json">
+{
+  "theme": "tech",
+  "cover": {
+    "eyebrow": "进口消费品 · 选型简报",
+    "title": "Phantom / Nova / Prism<br><span style=\"opacity:.72;font-size:.52em;display:block;margin-top:.2em;font-weight:500;\">横向对比矩阵（演示稿）</span>",
+    "subtitle": "<p>资源开发与供应清单对齐 · 型号 × 参数 · 点击单元格展开图文详情</p>"
+  },
+  "overview": {
+    "title": "概述",
+    "sections": [
+      {
+        "heading": "选型背景",
+        "bodyHtml": "<p>资源开发提供了耳机、音响、k歌宝共 <strong>x</strong> 款产品。以下以矩阵形式进行横向对比，并据此给出建议型号。</p>"
+      }
+    ]
+  },
+  "matrix": {
+    "cornerLabel": "对比项 \\ 型号",
+    "rows": [
+      { "id": "price", "label": "价格区间", "hidden": false },
+      { "id": "camera", "label": "主摄方案", "hidden": false },
+      { "id": "ai", "label": "端侧 AI", "hidden": false },
+      { "id": "eco", "label": "生态联动", "hidden": false }
+    ],
+    "columns": [
+      { "id": "p1", "label": "Phantom X2", "hidden": false },
+      { "id": "p2", "label": "Nova Air", "hidden": false },
+      { "id": "p3", "label": "Prism Lite", "hidden": false }
+    ],
+    "cells": {
+      "price::p1": {
+        "summary": "¥6499 起",
+        "detailHtml": "<p><strong>渠道价</strong>含标准套装；填入真实 SKU / 促销活动。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/techprice1/520/220\" alt=\"价格示意\"></figure>"
+      },
+      "price::p2": {
+        "summary": "¥5299 起",
+        "detailHtml": "<p>说明各存储梯度差价与捆绑服务。</p>"
+      },
+      "price::p3": {
+        "summary": "¥3999 起",
+        "detailHtml": "<p>强调入门定位与成本控制点。</p>"
+      },
+      "camera::p1": {
+        "summary": "1\" 云台主摄",
+        "detailHtml": "<p>记录传感器型号、防抖结构、实拍样张链接。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/techcam1/520/240\" alt=\"模组示意\"></figure>"
+      },
+      "camera::p2": {
+        "summary": "50MP 双层晶体管",
+        "detailHtml": "<p>弱光策略、算法供应商、与竞品的差异句。</p>"
+      },
+      "camera::p3": {
+        "summary": "64MP 主摄",
+        "detailHtml": "<p>成本取舍与目标用户匹配说明。</p>"
+      },
+      "ai::p1": {
+        "summary": "NPU 12TOPS",
+        "detailHtml": "<p>列本地模型、隐私策略、云端协同。</p>"
+      },
+      "ai::p2": {
+        "summary": "端云混合",
+        "detailHtml": "<p>写清响应时延、离线场景覆盖率。</p>"
+      },
+      "ai::p3": {
+        "summary": "基础场景",
+        "detailHtml": "<p>列已上线功能清单与 roadmap。</p>"
+      },
+      "eco::p1": {
+        "summary": "全场景互联",
+        "detailHtml": "<p>手表 / 耳机 / 车机协议支持列表。</p>"
+      },
+      "eco::p2": {
+        "summary": "办公协同",
+        "detailHtml": "<p>跨屏剪贴板、会议套件等。</p>"
+      },
+      "eco::p3": {
+        "summary": "轻量周边",
+        "detailHtml": "<p>说明开放接口与第三方生态。</p>"
+      }
+    }
+  },
+  "ending": {
+    "eyebrow": "Session Closing",
+    "title": "收束<br><span style=\"opacity:.7;font-size:.48em;display:block;margin-top:.45em;font-weight:500;\">问题与对齐时间</span>",
+    "bodyHtml": "<p>本页内容由 <code>ending</code> 驱动：<strong>eyebrow</strong> / <strong>title</strong> / <strong>bodyHtml</strong>（可多级 HTML）。下方矩阵讲演页仍隐约可见边框叠影，示意当前为叠在上层的「大卡」视图。</p><p style=\"opacity:.85\">填入下一步 owner、时间节点与风险提示。</p>"
+  }
+}
+  </script>
+  <script src="assets/matrix-core.js"></script>
+</body>
+</html>

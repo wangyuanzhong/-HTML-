@@ -1,0 +1,68 @@
+/* theme-minimal.css — 留白、克制、单强调色 */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600&family=Source+Sans+3:wght@400;500;600&display=swap");
+
+html[data-deck-theme="minimal"],
+html[data-deck-theme="minimal"] body {
+  --btn-radius: 2px;
+  --btn-bg: #111;
+  --btn-fg: #fafafa;
+  --btn-ghost-fg: #111;
+  --btn-ghost-border: #111;
+  --table-radius: 0;
+  --table-border: #e0e0e0;
+  --cell-border: #ececec;
+  --thead-bg: #f7f7f5;
+  --corner-bg: #f3f3f0;
+  --rowhead-bg: #fafaf8;
+  --cell-bg: #fff;
+  --cell-bg-hover: #f4f4f1;
+  --cell-focus: #111;
+  --chip-border: #ccc;
+  --chip-bg: #fff;
+  --modal-backdrop: rgba(20, 20, 20, 0.4);
+  --modal-bg: #fff;
+  --modal-fg: #1a1a1a;
+  --modal-radius: 2px;
+  --modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  --modal-sheet-border: #cbcbc5;
+  --modal-sheet-under-bg: #eaeae6;
+  --modal-sheet-shadow: 0 14px 50px rgba(0, 0, 0, 0.1);
+  --modal-sheet-edge: #111111;
+  --modal-sheet-b-opacity: 0.72;
+  --fab-armed-shadow: 0 0 0 2px currentColor;
+  --cr-card-shadow: none;
+}
+
+html[data-deck-theme="minimal"] body.deck {
+  font-family: "Source Sans 3", system-ui, sans-serif;
+  background: #fdfdfa;
+  color: #1a1a1a;
+}
+
+html[data-deck-theme="minimal"] .cover-title,
+html[data-deck-theme="minimal"] #ending-title,
+html[data-deck-theme="minimal"] h2 {
+  font-family: "Fraunces", "Source Sans 3", serif;
+  font-weight: 600;
+}
+
+html[data-deck-theme="minimal"] [data-slide-dot] {
+  background: #111;
+  border-radius: 0;
+}
+
+html[data-deck-theme="minimal"] .slide-inner {
+  border-left: 3px solid #111;
+  padding-left: 1.5rem;
+}
+
+html[data-deck-theme="minimal"] .matrix-toolbar h3 {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.95rem;
+}
+
+html[data-deck-theme="minimal"] .compare-fab__cancel {
+  background: #fdfdfa;
+}

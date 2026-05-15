@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<!--
+  template-minimal.html — 简约大气（留白 + 衬线标题）
+  内容填充方式同 template-tech.html。
+-->
+<html lang="zh-CN" data-deck-theme="minimal">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>消费类导入产品横向对比 · 简约模板</title>
+  <link rel="stylesheet" href="themes/layout.css" />
+  <link rel="stylesheet" href="themes/theme-minimal.css" />
+</head>
+<body class="deck">
+  <a class="deck-skip" href="#deck-stage">跳到内容</a>
+
+  <nav id="slide-nav" aria-label="幻灯导航">
+    <button type="button" data-slide-dot="0" aria-label="封面"></button>
+    <button type="button" data-slide-dot="1" aria-label="概述"></button>
+    <button type="button" data-slide-dot="2" aria-label="矩阵"></button>
+    <button type="button" data-slide-dot="3" aria-label="结束"></button>
+  </nav>
+
+  <main id="deck-stage" class="deck-stage" aria-live="polite" tabindex="-1">
+  <section data-slide data-slide-index="0" aria-label="封面">
+    <div class="slide-inner">
+      <p class="cover-eyebrow" id="cover-eyebrow"></p>
+      <h1 class="cover-title" id="cover-title"></h1>
+      <div class="cover-subtitle" id="cover-subtitle"></div>
+      <div class="slide-actions">
+        <button type="button" class="btn" data-slide-go="1">概述</button>
+      </div>
+    </div>
+  </section>
+
+  <section data-slide data-slide-index="1" aria-labelledby="overview-title" hidden>
+    <div class="slide-inner">
+      <h2 id="overview-title" hidden></h2>
+      <div id="overview-sections"></div>
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="0">返回</button>
+        <button type="button" class="btn" data-slide-go="2">矩阵</button>
+      </div>
+    </div>
+  </section>
+
+  <section data-slide data-slide-index="2" aria-label="竞品对比矩阵" hidden>
+    <div class="slide-inner">
+      <h2>竞品对比矩阵</h2>
+
+      <div id="filter-deck" class="matrix-toolbar">
+        <div>
+          <h3>参数行</h3>
+          <div id="filter-rows" class="filter-group"></div>
+        </div>
+        <div>
+          <h3>产品列</h3>
+          <div id="filter-cols" class="filter-group"></div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table id="comparison-table">
+          <thead id="matrix-thead"></thead>
+          <tbody id="matrix-tbody"></tbody>
+        </table>
+      </div>
+
+      <aside class="compare-fab-stack" aria-label="详细对比">
+        <p class="compare-fab__hint" id="compare-fab-hint" hidden aria-live="polite"></p>
+        <div class="compare-fab__row">
+          <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
+          <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
+        </div>
+      </aside>
+
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="1">返回概述</button>
+        <button type="button" class="btn" data-slide-go="3">结束</button>
+      </div>
+    </div>
+  </section>
+
+  <section data-slide data-slide-index="3" aria-label="结束" hidden>
+    <div class="slide-inner">
+      <p class="cover-eyebrow" id="ending-eyebrow"></p>
+      <h1 class="cover-title" id="ending-title"></h1>
+      <div id="ending-body" class="ending-body"></div>
+      <div class="slide-actions">
+        <button type="button" class="btn btn--ghost" data-slide-go="2">矩阵</button>
+        <button type="button" class="btn btn--ghost" data-slide-go="0">封面</button>
+      </div>
+    </div>
+  </section>
+  </main>
+
+  <div id="cell-modal" hidden aria-hidden="true">
+    <div id="modal-backdrop"></div>
+    <div class="modal-page-stack">
+      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
+      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
+      <div id="modal-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="modal-meta" tabindex="-1">
+        <header>
+          <p id="modal-meta"></p>
+          <button type="button" id="modal-close" aria-label="关闭">×</button>
+        </header>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="compare-report-modal" hidden aria-hidden="true">
+    <div id="compare-report-backdrop"></div>
+    <div class="modal-page-stack">
+      <div class="modal-sheet-under modal-sheet-under--b" aria-hidden="true"></div>
+      <div class="modal-sheet-under modal-sheet-under--a" aria-hidden="true"></div>
+      <div id="compare-report-shell" class="modal-sheet-front" role="dialog" aria-modal="true" aria-labelledby="compare-report-meta" tabindex="-1">
+        <header>
+          <p id="compare-report-meta">对比报告</p>
+          <button type="button" id="compare-report-close" aria-label="关闭">×</button>
+        </header>
+        <div id="compare-report-body-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <script id="deck-data" type="application/json">
+{
+  "theme": "minimal",
+  "cover": {
+    "eyebrow": "选型简报 · Minimal",
+    "title": "产品 A · B · C<br><span style=\"opacity:.65;font-size:.48em;letter-spacing:.12em;text-transform:uppercase;display:block;margin-top:.35em;\">Structured comparison</span>",
+    "subtitle": "<p>留白与衬线标题 · 行列可筛选 · 对比报告由矩阵生成</p>"
+  },
+  "overview": {
+    "title": "概述",
+    "sections": [
+      {
+        "heading": "背景与范围",
+        "bodyHtml": "<p>资源开发提供了耳机、音响、k歌宝共 <strong>x</strong> 款产品。下文以矩阵呈现差异，并收敛至建议路线。</p>"
+      }
+    ]
+  },
+  "matrix": {
+    "cornerLabel": "对比项 \\ 型号",
+    "rows": [
+      { "id": "positioning", "label": "定位", "hidden": false },
+      { "id": "pricing", "label": "计费模型", "hidden": false },
+      { "id": "security", "label": "合规认证", "hidden": false },
+      { "id": "api", "label": "开放接口", "hidden": false }
+    ],
+    "columns": [
+      { "id": "a", "label": "产品 A", "hidden": false },
+      { "id": "b", "label": "产品 B", "hidden": false },
+      { "id": "c", "label": "产品 C", "hidden": false }
+    ],
+    "cells": {
+      "positioning::a": {
+        "summary": "企业级套件",
+        "detailHtml": "<p>服务对象、行业案例、灯塔客户。</p>"
+      },
+      "positioning::b": {
+        "summary": "SMB 轻量化",
+        "detailHtml": "<p>获客策略、上手路径。</p>"
+      },
+      "positioning::c": {
+        "summary": "个人 / 小型团队",
+        "detailHtml": "<p>免费增值边界。</p>"
+      },
+      "pricing::a": {
+        "summary": "席位 / 年",
+        "detailHtml": "<p>梯度表粘贴处。</p>"
+      },
+      "pricing::b": {
+        "summary": "按项目计费",
+        "detailHtml": "<p>写明隐藏费用项。</p>"
+      },
+      "pricing::c": {
+        "summary": "Freemium",
+        "detailHtml": "<p>付费墙位置。</p>"
+      },
+      "security::a": {
+        "summary": "SOC 2 / ISO",
+        "detailHtml": "<p>附上证书编号与续约时间。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/minsec/520/200\" alt=\"合规清单截图占位\"></figure>"
+      },
+      "security::b": {
+        "summary": "区域可用区",
+        "detailHtml": "<p>数据中心分布图链接。</p>"
+      },
+      "security::c": {
+        "summary": "基础加密",
+        "detailHtml": "<p>密钥托管策略摘要。</p>"
+      },
+      "api::a": {
+        "summary": "GraphQL / Webhook",
+        "detailHtml": "<p>SLA、速率限制、SDK 成熟度。</p>"
+      },
+      "api::b": {
+        "summary": "REST 优先",
+        "detailHtml": "<p>OpenAPI 版本号。</p>"
+      },
+      "api::c": {
+        "summary": "精简 API",
+        "detailHtml": "<p>路线图引用。</p>"
+      }
+    }
+  },
+  "ending": {
+    "eyebrow": "会议结束",
+    "title": "谢谢",
+    "bodyHtml": "<p>在 <code>ending.bodyHtml</code> 写<strong>决策摘要与待办</strong>。详情弹层已加宽，并以页缘叠影提示「压在讲演页之上」。</p>"
+  }
+}
+  </script>
+  <script src="assets/matrix-core.js"></script>
+</body>
+</html>

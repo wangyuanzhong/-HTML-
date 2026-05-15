@@ -1,0 +1,65 @@
+/* theme-macaron.css — 马卡龙可爱圆角 */
+
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Varela+Round&display=swap");
+
+html[data-deck-theme="macaron"],
+html[data-deck-theme="macaron"] body {
+  --btn-radius: 999px;
+  --btn-bg: #ff8fb7;
+  --btn-fg: #fff7fb;
+  --btn-ghost-fg: #6b4b6a;
+  --btn-ghost-border: rgba(107, 75, 106, 0.25);
+  --table-radius: 20px;
+  --table-border: rgba(255, 182, 209, 0.65);
+  --cell-border: rgba(186, 156, 255, 0.28);
+  --thead-bg: rgba(255, 248, 252, 0.95);
+  --corner-bg: #fff5f9;
+  --rowhead-bg: #fff0f6;
+  --cell-bg: #fffafd;
+  --cell-bg-hover: rgba(255, 188, 220, 0.35);
+  --cell-focus: #ba9cff;
+  --chip-border: rgba(186, 156, 255, 0.45);
+  --chip-bg: rgba(255, 214, 232, 0.55);
+  --modal-backdrop: rgba(86, 62, 96, 0.35);
+  --modal-bg: #fff7fb;
+  --modal-fg: #4a3550;
+  --modal-radius: 22px;
+  --modal-shadow: 0 18px 50px rgba(186, 156, 255, 0.28);
+  --modal-sheet-border: rgba(186, 156, 255, 0.55);
+  --modal-sheet-under-bg: rgba(255, 246, 252, 0.97);
+  --modal-sheet-shadow: 0 16px 42px rgba(255, 143, 183, 0.22);
+  --modal-sheet-edge: rgba(255, 182, 209, 0.55);
+  --modal-sheet-b-opacity: 0.68;
+  --fab-armed-shadow: 0 0 0 2px rgba(186, 156, 255, 0.55), 0 10px 32px rgba(255, 143, 183, 0.3);
+  --cr-card-bg: rgba(255, 255, 255, 0.95);
+  --cr-sum-bg: rgba(255, 214, 232, 0.45);
+}
+
+html[data-deck-theme="macaron"] body.deck {
+  font-family: "Varela Round", system-ui, sans-serif;
+  background: linear-gradient(145deg, #ffeef6 0%, #e8f4ff 45%, #f5f0ff 100%);
+  color: #4a3550;
+}
+
+html[data-deck-theme="macaron"] .cover-title,
+html[data-deck-theme="macaron"] #ending-title,
+html[data-deck-theme="macaron"] h2,
+html[data-deck-theme="macaron"] .nested-heading {
+  font-family: "Fredoka", "Varela Round", sans-serif;
+}
+
+html[data-deck-theme="macaron"] [data-slide-dot] {
+  background: #ba9cff;
+}
+
+html[data-deck-theme="macaron"] .nested-block {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 182, 209, 0.45);
+}
+
+html[data-deck-theme="macaron"] .compare-fab__cancel {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(186, 156, 255, 0.45);
+}

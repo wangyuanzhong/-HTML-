@@ -1,0 +1,18 @@
+---
+description: >-
+  Distinctive UI/visual design (frontend-design). Use when the user wants
+  interface polish, layout, typography, color, motion, or mentions frontend-design.
+  For full detail open .cursor/skills/frontend-design/SKILL.md.
+globs:
+alwaysApply: false
+---
+
+# Frontend design (project)
+
+Apply the **full** design workflow and aesthetics from:
+
+`.cursor/skills/frontend-design/SKILL.md`
+
+**JUCE / desktop / native plugins:** use the same *principles* (tone, hierarchy, color, spacing). Implement only with **C++ / JUCE** (`Component`, `LookAndFeel`, `paint`), not HTML/CSS/React.
+
+**If Agent chat does not list the skill:** type **`/frontend-design`** in **Agent** (not Composer), or attach the file **`SKILL.md`** via `@` → Files → `.cursor/skills/frontend-design/SKILL.md`.
