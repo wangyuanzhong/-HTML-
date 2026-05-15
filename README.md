@@ -31,7 +31,7 @@
 | 能力 | 说明 |
 |------|------|
 | **白盒** | 合并进 `main` 的 PR 与 `main` 本仓库会跑 **GitHub Actions**（`.github/workflows/ci.yml`）：**Playwright** 打开三套模板，校验 DOM、无未捕获 `pageerror`，并走「封面 → 概述 → 客观矩阵」导航。本地：`npm ci` 后 `npm run test:e2e`。 |
-| **黑盒** | **GitHub Pages**（`.github/workflows/pages.yml`，Actions 里显示为 **「Publish GitHub Pages」**）：每次推送到 `main`（或手动运行该 workflow）会把 `competitive-analysis-templates/` 发布到站点根目录。在仓库 **Settings → Pages** 将 **Source** 设为 **GitHub Actions** 后，用浏览器打开站点即可手动操作（矩阵、弹层、编辑模式等）。公开仓库下该 URL 通常对互联网可读；若需非公开预览，请改用带访问控制的静态托管或内网部署。 |
+| **黑盒** | **GitHub Pages**（`.github/workflows/pages.yml`，Actions 里显示为 **「Publish GitHub Pages」**）：每次推送到 `main`（或手动运行该 workflow）会把 `competitive-analysis-templates/` 发布到站点根目录。根路径提供 **`index.html`**（入口列表）；三套模板仍可直链 **`…/template-tech.html`** 等。在仓库 **Settings → Pages** 将 **Source** 设为 **GitHub Actions** 后，用浏览器打开站点即可手动操作（矩阵、弹层、编辑模式等）。公开仓库下该 URL 通常对互联网可读；若需非公开预览，请改用带访问控制的静态托管或内网部署。 |
 
 **黑盒：站点地址去哪找（没有叫「Deploy Pages」的菜单是正常的）**
 
