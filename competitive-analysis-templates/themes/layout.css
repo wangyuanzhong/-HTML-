@@ -1199,3 +1199,162 @@ html[data-deck-theme="minimal"] .matrix-sync-bar .btn.btn--ghost {
   --btn-ghost-fg: inherit;
   --btn-ghost-border: rgba(110, 80, 95, 0.22);
 }
+
+/* =====================================================================
+ * Virtual-stage proportional scaling (PPT 风格)
+ * ---------------------------------------------------------------------
+ * 目标：浏览器尺寸变化 / 缩放时，整页内的所有尺寸 & 位置关系恒定地
+ *      按一个统一比例缩放；幻灯内部使用「设计像素」(默认 1440×900)
+ *      作为参考坐标系，由 JS 写入的 --deck-scale 完成实际渲染缩放。
+ *
+ * 与之前 clamp(vw/vh) 的流式版面不同：
+ *   - 文档结构高度恒为 --deck-base-h，幻灯之间互相覆盖（绝对定位）
+ *   - 矩阵页表格不再产生内部滚动条，行 / 列字号与内边距由
+ *     assets/deck-stage-fit.js 根据可见行 × 列数动态写入 CSS 变量
+ *
+ * 旧版属性（min-height:100vh、clamp 的 padding、表格 vw 字号、…）
+ * 都被本节中更具体或位于文件尾部的规则覆盖。
+ * ===================================================================== */
+
+html[data-deck-fit-disabled="true"] {
+  /* 转义出口：把 data-deck-fit-disabled="true" 写到 <html> 即可关闭整个等比缩放体系，回退老布局 */
+}
+
+html:not([data-deck-fit-disabled="true"]) body.deck {
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 缩放比例：纯 CSS 计算，浏览器对窗口大小变化同步生效（不依赖 JS resize 回调） */
+html:not([data-deck-fit-disabled="true"]) {
+  --deck-base-w: 1440px;
+  --deck-base-h: 900px;
+  /* <length>/<length> 在 CSS Values 4 中产生 <number>；现代浏览器（Chromium/Firefox/Safari 当前主版本）已支持 */
+  --deck-scale-w: calc(100vw / var(--deck-base-w));
+  --deck-scale-h: calc(100vh / var(--deck-base-h));
+  --deck-scale: min(var(--deck-scale-w), var(--deck-scale-h));
+}
+
+html:not([data-deck-fit-disabled="true"]) .deck-stage {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--deck-base-w);
+  height: var(--deck-base-h);
+  min-height: 0;
+  overflow: hidden;
+  transform: scale(var(--deck-scale));
+  transform-origin: center center;
+  background: var(--deck-stage-bg, transparent);
+}
+
+/* 所有幻灯互相覆盖填满 stage；保持原 hidden 行为（[hidden] !important 规则已在前文定义） */
+html:not([data-deck-fit-disabled="true"]) [data-slide] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 48px 64px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 矩阵页：禁止内部滚动，由 JS 算出贴合的字号 / 内边距 */
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"],
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] {
+  display: block;
+  height: 100%;
+  padding: 28px 56px 24px;
+  overflow: hidden;
+}
+
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .slide-inner,
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .slide-inner {
+  display: grid;
+  /* 标题 | 工具条 | 表格(填满剩余) | 底栏 */
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  row-gap: 14px;
+  height: 100%;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  min-height: 0;
+}
+
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .table-scroll,
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .table-scroll {
+  overflow: hidden;
+  /* table-scroll 自身的高度由 grid minmax(0,1fr) 决定，恒为剩余空间，不随表格内容长大 */
+}
+
+/* 矩阵表：固定布局 + 高度撑满，由 JS 写入字号 / padding；表格自身高度=滚动区高度，行平均分配剩余纵向空间 */
+html:not([data-deck-fit-disabled="true"]) #comparison-table,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub {
+  width: 100%;
+  height: 100%;
+  table-layout: fixed;
+  font-size: var(--matrix-cell-font, 14px);
+  line-height: var(--matrix-cell-line, 1.4);
+}
+
+html:not([data-deck-fit-disabled="true"]) #comparison-table th,
+html:not([data-deck-fit-disabled="true"]) #comparison-table td,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub th,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub td {
+  padding: var(--matrix-cell-pad-y, 8px) var(--matrix-cell-pad-x, 12px);
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: middle;
+}
+
+html:not([data-deck-fit-disabled="true"]) #comparison-table .matrix-corner,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub .matrix-corner,
+html:not([data-deck-fit-disabled="true"]) #comparison-table .matrix-row-head,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub .matrix-row-head {
+  /* table-layout:fixed 下 min/max-width 不再控制列宽，统一释放，避免与 JS 写入的列宽冲突 */
+  min-width: 0;
+  max-width: none;
+}
+
+html:not([data-deck-fit-disabled="true"]) #comparison-table .matrix-cell,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub .matrix-cell {
+  max-width: none;
+}
+
+/* 表头不再 sticky（无内滚动），但保留视觉前置 */
+html:not([data-deck-fit-disabled="true"]) #comparison-table thead th,
+html:not([data-deck-fit-disabled="true"]) #comparison-table-sub thead th {
+  position: relative;
+  top: auto;
+  z-index: 1;
+}
+
+html:not([data-deck-fit-disabled="true"]) .matrix-corner,
+html:not([data-deck-fit-disabled="true"]) .matrix-row-head {
+  position: relative;
+  left: auto;
+  top: auto;
+  z-index: auto;
+}
+
+/* 矩阵页的工具条 / 底栏使用「设计像素」节奏，确保不同窗口下版面一致 */
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .matrix-toolbar,
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .matrix-toolbar {
+  gap: 12px 28px;
+  margin-bottom: 0;
+}
+
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .matrix-slide-footer,
+html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .matrix-slide-footer {
+  margin-top: 0;
+}
+
+/* 在等比缩放体系下，sync-bar 在 stage 之外属于视口级浮层；缩小其字号以免遮挡幻灯 */
+html:not([data-deck-fit-disabled="true"]) .matrix-sync-bar {
+  font-size: 12px;
+}
