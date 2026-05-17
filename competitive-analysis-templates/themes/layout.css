@@ -285,28 +285,22 @@ section[data-slide-index="3"] {
 
 section[data-slide-index="2"] .table-scroll,
 section[data-slide-index="3"] .table-scroll {
-  --matrix-frame-ratio: 1.72;
-  --matrix-frame-max-height: min(56vh, 34rem);
-  --matrix-frame-max-width: 68rem;
-  flex: 0 0 auto;
-  align-self: center;
-  inline-size: min(
-    100%,
-    var(--matrix-frame-max-width),
-    calc(var(--matrix-frame-max-height) * var(--matrix-frame-ratio))
-  );
-  aspect-ratio: var(--matrix-frame-ratio);
-  block-size: auto;
-  max-block-size: var(--matrix-frame-max-height);
+  grid-row: 3;
+  min-height: 0;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  align-self: stretch;
 }
 
 section[data-slide-index="2"] .slide-inner,
 section[data-slide-index="3"] .slide-inner {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  row-gap: clamp(0.55rem, 1.35vw, 1rem);
+  flex: 1 1 100%;
   min-height: 0;
-  max-height: 100%;
+  height: 100%;
   width: 100%;
 }
 
@@ -314,13 +308,15 @@ section[data-slide-index="2"] .slide-matrix-title,
 section[data-slide-index="3"] .slide-matrix-title,
 section[data-slide-index="2"] .matrix-toolbar,
 section[data-slide-index="3"] .matrix-toolbar {
+  grid-row: auto;
   flex-shrink: 0;
 }
 
 section[data-slide-index="2"] .matrix-slide-footer,
 section[data-slide-index="3"] .matrix-slide-footer {
+  grid-row: 4;
   flex-shrink: 0;
-  margin-top: auto;
+  margin-top: 0;
 }
 
 #comparison-table,
