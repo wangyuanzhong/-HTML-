@@ -270,24 +270,25 @@ body.deck--editing .matrix-toolbar .matrix-structure-tools .btn {
   overflow: auto;
   border-radius: var(--table-radius, 12px);
   border: 1px solid var(--table-border, rgba(0, 0, 0, 0.08));
-  scrollbar-gutter: stable both-edges;
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 
 /** 矩阵页：筛选/结构与底栏占位固定；表格在长宽增长时仅在内部出现滚动条，不撑开整页 */
 section[data-slide-index="2"],
 section[data-slide-index="3"] {
-  max-height: 100vh;
-  max-height: 100dvh;
+  display: block;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  padding: clamp(1rem, 2.4vh, 1.8rem) clamp(1.25rem, 4vw, 3rem);
   overflow: hidden;
-  justify-content: flex-start;
 }
 
 section[data-slide-index="2"] .table-scroll,
 section[data-slide-index="3"] .table-scroll {
-  grid-row: 3;
+  grid-row: 3 / 4;
   min-height: 0;
-  max-height: none;
   width: 100%;
   height: 100%;
   align-self: stretch;
@@ -298,7 +299,9 @@ section[data-slide-index="3"] .slide-inner {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   row-gap: clamp(0.55rem, 1.35vw, 1rem);
-  flex: 1 1 100%;
+  align-content: stretch;
+  max-width: 1100px;
+  margin: 0 auto;
   min-height: 0;
   height: 100%;
   width: 100%;
@@ -319,10 +322,14 @@ section[data-slide-index="3"] .matrix-slide-footer {
   margin-top: 0;
 }
 
+section[data-slide-index="2"] .slide-matrix-title,
+section[data-slide-index="3"] .slide-matrix-title {
+  margin: 0;
+}
+
 #comparison-table,
 #comparison-table-sub {
-  width: max(100%, 48rem);
-  min-height: 100%;
+  width: max(100%, 50rem);
   border-collapse: separate;
   border-spacing: 0;
   font-size: clamp(0.72rem, 0.24vw + 0.68rem, 0.9rem);
