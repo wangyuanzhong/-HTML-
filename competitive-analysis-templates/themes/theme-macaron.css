@@ -130,3 +130,22 @@ html[data-deck-theme="macaron"] .compare-fab__cancel {
   border-color: rgba(232, 112, 168, 0.35);
   color: #6d4f72;
 }
+
+/** 顶部文稿工具带：浅色底，与粉彩页面对齐且保持低调 */
+html[data-deck-theme="macaron"] .deck-edit-bar--chrome {
+  background: rgba(255, 252, 254, 0.82);
+  border-bottom-color: rgba(200, 170, 210, 0.22);
+  color: rgba(92, 72, 98, 0.68);
+}
+
+html[data-deck-theme="macaron"] .deck-edit-bar--chrome .btn--ghost {
+  --btn-ghost-fg: rgba(100, 78, 108, 0.72);
+  --btn-ghost-border: rgba(160, 130, 175, 0.28);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+html[data-deck-theme="macaron"] .deck-edit-bar--chrome .btn--ghost:not([disabled]):hover,
+html[data-deck-theme="macaron"] .deck-edit-bar--chrome .btn--ghost:not([disabled]):focus-visible {
+  --btn-ghost-fg: #5c4862;
+  --btn-ghost-border: rgba(232, 112, 168, 0.45);
+}
