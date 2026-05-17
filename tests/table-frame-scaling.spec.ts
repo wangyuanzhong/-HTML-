@@ -45,6 +45,8 @@ test("matrix table aligns with page controls and footer stays in-frame", async (
   const medium = await readFrameMetric(page);
   await page.setViewportSize({ width: 980, height: 620 });
   const small = await readFrameMetric(page);
+  await page.setViewportSize({ width: 860, height: 540 });
+  const tiny = await readFrameMetric(page);
 
   expect(large.leftDelta).toBeLessThan(1.5);
   expect(medium.leftDelta).toBeLessThan(1.5);
@@ -56,15 +58,19 @@ test("matrix table aligns with page controls and footer stays in-frame", async (
   expect(large.footerInside).toBeTruthy();
   expect(medium.footerInside).toBeTruthy();
   expect(small.footerInside).toBeTruthy();
+  expect(tiny.footerInside).toBeTruthy();
   expect(large.slideOverflowing).toBeFalsy();
   expect(medium.slideOverflowing).toBeFalsy();
   expect(small.slideOverflowing).toBeFalsy();
+  expect(tiny.slideOverflowing).toBeFalsy();
 
   expect(large.slideWidth).toBeGreaterThanOrEqual(medium.slideWidth);
   expect(medium.slideWidth).toBeGreaterThanOrEqual(small.slideWidth);
+  expect(small.slideWidth).toBeGreaterThanOrEqual(tiny.slideWidth);
   expect(large.slideWidth).toBeGreaterThan(small.slideWidth);
   expect(large.width).toBeGreaterThanOrEqual(medium.width);
   expect(medium.width).toBeGreaterThanOrEqual(small.width);
+  expect(small.width).toBeGreaterThanOrEqual(tiny.width);
   expect(large.width).toBeGreaterThan(small.width);
   expect(large.height).toBeGreaterThan(medium.height);
   expect(medium.height).toBeGreaterThan(small.height);
