@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { revealDeckChrome } from "./deck-chrome";
 
 async function gotoSlide(page: Page, idx: 2 | 3) {
   await page.locator(`[data-slide-dot="${idx}"]`).click();
@@ -12,10 +13,12 @@ async function setEditMode(page: Page, enabled: boolean) {
   if (enabled && !isEditing) {
     await page.locator('[data-slide-dot="0"]').click();
     await expect(page.locator('[data-slide-index="0"]')).toBeVisible();
+    await revealDeckChrome(page);
     await page.locator("#deck-edit-enter").click();
   } else if (!enabled && isEditing) {
     await page.locator('[data-slide-dot="0"]').click();
     await expect(page.locator('[data-slide-index="0"]')).toBeVisible();
+    await revealDeckChrome(page);
     await page.locator("#deck-edit-exit").click();
   }
 }

@@ -19,78 +19,109 @@
 <body class="deck">
   <a class="deck-skip" href="#deck-stage">跳到内容</a>
 
-  <div
-    class="deck-edit-bar deck-edit-bar--chrome"
-    id="deck-edit-bar"
-    aria-label="文稿与数据（非讲演内容）"
-  >
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-export">导出 JSON</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-import-trigger">导入 JSON</button>
-    <input type="file" id="deck-portable-import-file" accept="application/json,.json,text/json" hidden aria-hidden="true" />
+  <div class="deck-chrome-hover-zone" id="deck-chrome-hover-zone">
+    <div class="deck-chrome-panel">
+      <div
+        class="deck-edit-bar deck-edit-bar--chrome"
+        id="deck-edit-bar"
+        aria-label="文稿与数据（非讲演内容）"
+      >
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-export">导出 JSON</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-import-trigger">导入 JSON</button>
+        <input type="file" id="deck-portable-import-file" accept="application/json,.json,text/json" hidden aria-hidden="true" />
+        <span class="deck-chrome-insert-label" aria-hidden="true">模板</span>
+        <label class="visually-hidden" for="deck-insert-template-select">新建页所用模板</label>
+        <select id="deck-insert-template-select" class="deck-chrome-template-select">
+          <option value="">请选择模板</option>
+          <option value="title">标题</option>
+          <option value="overview">概述</option>
+          <option value="matrix">表格</option>
+          <option value="ending">结尾</option>
+        </select>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-insert-new-slide" disabled>新建</button>
+      </div>
+      <div class="deck-chrome-substrate" aria-hidden="true"></div>
+    </div>
   </div>
 
-  <nav id="slide-nav" aria-label="幻灯导航">
-    <button type="button" data-slide-dot="0" aria-label="封面"></button>
-    <button type="button" data-slide-dot="1" aria-label="概述"></button>
-    <button type="button" data-slide-dot="2" aria-label="客观矩阵"></button>
-    <button type="button" data-slide-dot="3" aria-label="主观矩阵"></button>
-    <button type="button" data-slide-dot="4" aria-label="结束"></button>
-  </nav>
+  <nav id="slide-nav" aria-label="幻灯导航"></nav>
 
   <main id="deck-stage" class="deck-stage" aria-live="polite" tabindex="-1">
-  <section data-slide data-slide-index="0" aria-label="封面">
+  <section id="deck-slide-cover" data-slide data-slide-kind="cover" data-slide-index="0" aria-label="封面">
     <div class="slide-inner">
       <p class="cover-eyebrow" id="cover-eyebrow"></p>
       <h1 class="cover-title" id="cover-title"></h1>
       <div class="cover-subtitle" id="cover-subtitle"></div>
       <div class="slide-actions">
-        <button type="button" class="btn" data-slide-go="1">概述</button>
+        <button type="button" class="btn" data-slide-jump="overview">
+          <span class="deck-btn-label" data-deck-label-key="cover-to-overview">概述</span>
+        </button>
       </div>
     </div>
   </section>
 
-  <section data-slide data-slide-index="1" aria-labelledby="overview-title" hidden>
+  <section id="deck-slide-overview" data-slide data-slide-kind="overview" data-slide-index="1" aria-labelledby="overview-title" hidden>
     <div class="slide-inner">
       <h2 id="overview-title" hidden></h2>
       <div id="overview-sections"></div>
       <div class="slide-actions">
-        <button type="button" class="btn btn--ghost" data-slide-go="0">返回</button>
-        <button type="button" class="btn" data-slide-go="2">客观矩阵</button>
+        <button type="button" class="btn btn--ghost" data-slide-jump="cover">
+          <span class="deck-btn-label" data-deck-label-key="overview-back-cover">返回</span>
+        </button>
+        <button type="button" class="btn" data-slide-jump="matrixObjective">
+          <span class="deck-btn-label" data-deck-label-key="overview-to-matrix-obj">客观矩阵</span>
+        </button>
       </div>
     </div>
   </section>
 
-  <section data-slide data-slide-index="2" aria-label="竞品对比矩阵（客观）" hidden>
+  <section id="deck-slide-matrix-obj" data-slide data-slide-kind="matrixObjective" data-slide-index="2" aria-label="竞品对比矩阵（客观）" hidden>
     <div class="slide-inner">
       <h2 class="slide-matrix-title">竞品对比矩阵（客观）</h2>
 
       <div id="filter-deck" class="matrix-toolbar">
         <div>
           <h3>参数行</h3>
-          <div id="filter-rows" class="filter-group"></div>
+          <div id="filter-rows" class="filter-group" aria-label="参数行"></div>
         </div>
         <div>
           <h3>产品列</h3>
-          <div id="filter-cols" class="filter-group"></div>
+          <div id="filter-cols" class="filter-group" aria-label="产品列"></div>
         </div>
         <div class="matrix-structure-tools" aria-label="编辑表格结构">
           <span class="matrix-structure-tools__hint">结构</span>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-row">+行</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-row">−行</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-col">+列</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-col">−列</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">列←</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">列→</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">行↑</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">行↓</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-row">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-add-row">+行</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-row">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-remove-row">−行</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="add-col">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-add-col">+列</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="remove-col">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-remove-col">−列</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-col-left">列←</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-col-right">列→</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-row-up">行↑</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="obj" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">
+            <span class="deck-btn-label" data-deck-label-key="m-obj-row-down">行↓</span>
+          </button>
         </div>
       </div>
 
       <div class="table-scroll">
-        <table id="comparison-table">
+        <table id="comparison-table" class="matrix-comparison-table">
           <thead id="matrix-thead"></thead>
           <tbody id="matrix-tbody"></tbody>
         </table>
@@ -98,42 +129,62 @@
 
       <div class="matrix-slide-footer">
         <div class="slide-actions">
-          <button type="button" class="btn btn--ghost" data-slide-go="1">返回概述</button>
-          <button type="button" class="btn" data-slide-go="3">主观矩阵</button>
+          <button type="button" class="btn btn--ghost" data-slide-jump="overview">
+            <span class="deck-btn-label" data-deck-label-key="matrix-obj-back-overview">返回概述</span>
+          </button>
+          <button type="button" class="btn" data-slide-jump="matrixSubjective">
+            <span class="deck-btn-label" data-deck-label-key="matrix-obj-to-sub">主观矩阵</span>
+          </button>
         </div>
         <div class="compare-fab-anchor" id="compare-fab-anchor-objective" aria-hidden="true"></div>
       </div>
     </div>
   </section>
 
-  <section data-slide data-slide-index="3" aria-label="竞品对比矩阵（主观）" hidden>
+  <section id="deck-slide-matrix-sub" data-slide data-slide-kind="matrixSubjective" data-slide-index="3" aria-label="竞品对比矩阵（主观）" hidden>
     <div class="slide-inner">
       <h2 class="slide-matrix-title">竞品对比矩阵（主观）</h2>
 
       <div id="filter-deck-sub" class="matrix-toolbar">
         <div>
           <h3>参数行</h3>
-          <div id="filter-rows-sub" class="filter-group"></div>
+          <div id="filter-rows-sub" class="filter-group" aria-label="参数行"></div>
         </div>
         <div>
           <h3>产品列</h3>
-          <div id="filter-cols-sub" class="filter-group"></div>
+          <div id="filter-cols-sub" class="filter-group" aria-label="产品列"></div>
         </div>
         <div class="matrix-structure-tools" aria-label="编辑表格结构">
           <span class="matrix-structure-tools__hint">结构</span>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-row">+行</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-row">−行</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-col">+列</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-col">−列</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">列←</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">列→</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">行↑</button>
-          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">行↓</button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-row">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-add-row">+行</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-row">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-remove-row">−行</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="add-col">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-add-col">+列</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="remove-col">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-remove-col">−列</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-col-left">列←</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-col-right">列→</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-row-up">行↑</span>
+          </button>
+          <button type="button" class="btn btn--ghost" data-matrix-structure="sub" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行">
+            <span class="deck-btn-label" data-deck-label-key="m-sub-row-down">行↓</span>
+          </button>
         </div>
       </div>
 
       <div class="table-scroll">
-        <table id="comparison-table-sub">
+        <table id="comparison-table-sub" class="matrix-comparison-table">
           <thead id="matrix-thead-sub"></thead>
           <tbody id="matrix-tbody-sub"></tbody>
         </table>
@@ -141,22 +192,30 @@
 
       <div class="matrix-slide-footer">
         <div class="slide-actions">
-          <button type="button" class="btn btn--ghost" data-slide-go="2">客观矩阵</button>
-          <button type="button" class="btn" data-slide-go="4">结束</button>
+          <button type="button" class="btn btn--ghost" data-slide-jump="matrixObjective">
+            <span class="deck-btn-label" data-deck-label-key="matrix-sub-back-obj">客观矩阵</span>
+          </button>
+          <button type="button" class="btn" data-slide-jump="ending">
+            <span class="deck-btn-label" data-deck-label-key="matrix-sub-to-ending">结束</span>
+          </button>
         </div>
         <div class="compare-fab-anchor" id="compare-fab-anchor-subjective" aria-hidden="true"></div>
       </div>
     </div>
   </section>
 
-  <section data-slide data-slide-index="4" aria-label="结束" hidden>
+  <section id="deck-slide-ending" data-slide data-slide-kind="ending" data-slide-index="4" aria-label="结束" hidden>
     <div class="slide-inner">
       <p class="cover-eyebrow" id="ending-eyebrow"></p>
       <h1 class="cover-title" id="ending-title"></h1>
       <div id="ending-body" class="ending-body"></div>
       <div class="slide-actions">
-        <button type="button" class="btn btn--ghost" data-slide-go="3">主观矩阵</button>
-        <button type="button" class="btn btn--ghost" data-slide-go="0">封面</button>
+        <button type="button" class="btn btn--ghost" data-slide-jump="matrixSubjective">
+          <span class="deck-btn-label" data-deck-label-key="ending-back-sub">主观矩阵</span>
+        </button>
+        <button type="button" class="btn btn--ghost" data-slide-jump="cover">
+          <span class="deck-btn-label" data-deck-label-key="ending-to-cover">封面</span>
+        </button>
       </div>
     </div>
   </section>
@@ -165,8 +224,12 @@
   <div id="compare-fab-park" hidden aria-hidden="true">
     <div id="compare-fab-host" class="compare-fab-stack" aria-label="详细对比" hidden>
       <div class="compare-fab__row">
-        <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">✕</button>
-        <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">详细对比</button>
+        <button type="button" class="compare-fab__cancel" id="compare-fab-cancel" hidden aria-label="退出对比模式">
+          <span class="deck-btn-label" data-deck-label-key="compare-cancel">✕</span>
+        </button>
+        <button type="button" class="btn compare-fab__main" id="compare-launch-btn" aria-expanded="false">
+          <span class="deck-btn-label" data-deck-label-key="compare-launch">详细对比</span>
+        </button>
       </div>
     </div>
   </div>

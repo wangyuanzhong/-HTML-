@@ -25,11 +25,16 @@ for (const file of templates) {
       page,
     }) => {
       await page.goto(`/${file}`);
-      await page.locator('[data-slide-index="0"] [data-slide-go="1"]').click();
+      await page
+        .locator('[data-slide-index="0"] [data-slide-jump="overview"]')
+        .click();
       await expect(page.locator('[data-slide-index="1"]')).toBeVisible();
       await expect(page.locator("#overview-sections")).toBeVisible();
 
-      await page.locator('[data-slide-index="1"] [data-slide-go="2"]').first().click();
+      await page
+        .locator('[data-slide-index="1"] [data-slide-jump="matrixObjective"]')
+        .first()
+        .click();
       await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
       await expect(page.locator("#filter-deck")).toBeVisible();
     });

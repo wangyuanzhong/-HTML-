@@ -53,7 +53,14 @@
 
   function activeMatrixForComparePick() {
     if (!deck || !deck.matrix) return null;
-    return slideIndexNav === 3 ? subjectiveMatrixResolved() : deck.matrix;
+    var man = deck.slideManifest;
+    if (!man || slideIndexNav < 0 || slideIndexNav >= man.length) {
+      return slideIndexNav === 3 ? subjectiveMatrixResolved() : deck.matrix;
+    }
+    var ent = man[slideIndexNav];
+    if (ent.type === "matrixSubjective") return subjectiveMatrixResolved();
+    if (ent.type === "matrixObjective") return deck.matrix;
+    return null;
   }
 
   function compareSlideRoot() {
@@ -692,6 +699,536 @@
     return $all("[data-slide]").length;
   }
 
+  /** ---- 动态幻灯片清单（可选 deck.slideManifest）---- */
+  function ensureSlideManifest() {
+    if (!deck) return;
+    if (!deck.slideManifest || !Array.isArray(deck.slideManifest)) {
+      deck.slideManifest = [
+        { type: "cover" },
+        { type: "overview" },
+        { type: "matrixObjective" },
+        { type: "matrixSubjective" },
+        { type: "ending" },
+      ];
+    }
+    deck.insertMatrices = deck.insertMatrices || {};
+    deck.uiButtonLabels = deck.uiButtonLabels || {};
+  }
+
+  function genInsertId() {
+    return "ins_" + String(Date.now()) + "_" + String(Math.random()).slice(2, 7);
+  }
+
+  function slideJumpIndex(kind) {
+    var m = deck && deck.slideManifest;
+    if (!m || !kind) return -1;
+    for (var i = 0; i < m.length; i++) {
+      if (m[i].type === kind) return i;
+    }
+    return -1;
+  }
+
+  function emptyMatrixShell() {
+    var rid = "r_" + String(Date.now());
+    var cid = "c_" + String(Date.now() + 1);
+    return {
+      cornerLabel: "对比项 \\ 型号",
+      rows: [{ id: rid, label: "新参数", hidden: false }],
+      columns: [{ id: cid, label: "新型号", hidden: false }],
+      cells: {},
+    };
+  }
+
+  function defaultInsertData(template) {
+    if (template === "title") {
+      return {
+        eyebrow: "新幻灯",
+        title: "标题",
+        subtitle: "",
+      };
+    }
+    if (template === "overview") {
+      return {
+        title: "新概述",
+        sections: [{ heading: "", bodyHtml: "<p>在此输入概述正文。</p>" }],
+      };
+    }
+    if (template === "matrix") {
+      var mx = emptyMatrixShell();
+      var ck = mx.rows[0].id + "::" + mx.columns[0].id;
+      mx.cells[ck] = { summary: "", detailHtml: "<p>—</p>" };
+      return { slideTitle: "竞品对比矩阵", matrix: mx };
+    }
+    if (template === "ending") {
+      return {
+        eyebrow: "谢谢观看",
+        title: "结尾",
+        bodyHtml: "<p>在此输入结语。</p>",
+      };
+    }
+    return {};
+  }
+
+  function matrixInsertSectionHtml(insId) {
+    var suf = "-ins-" + insId;
+    return (
+      '<section id="deck-insert-' +
+      insId +
+      '" data-slide data-slide-inserted="1" data-slide-kind="insertMatrix" data-insert-id="' +
+      insId +
+      '" aria-label="插入页·表格" hidden>' +
+      '<div class="slide-inner">' +
+      '<h2 class="slide-matrix-title insert-matrix-title"></h2>' +
+      '<div id="filter-deck' +
+      suf +
+      '" class="matrix-toolbar">' +
+      '<div><h3>参数行</h3><div id="filter-rows' +
+      suf +
+      '" class="filter-group" aria-label="参数行"></div></div>' +
+      '<div><h3>产品列</h3><div id="filter-cols' +
+      suf +
+      '" class="filter-group" aria-label="产品列"></div></div>' +
+      '<div class="matrix-structure-tools" aria-label="编辑表格结构">' +
+      '<span class="matrix-structure-tools__hint">结构</span>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="add-row"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-add-row">+行</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="remove-row"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-remove-row">−行</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="add-col"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-add-col">+列</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="remove-col"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-remove-col">−列</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="col-move-left" title="编辑模式下先点一下列表头（会记住该列），再点此左移一列"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-col-left">列←</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="col-move-right" title="编辑模式下先点一下列表头（会记住该列），再点此右移一列"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-col-right">列→</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="row-move-up" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此上移一行"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-row-up">行↑</span></button>' +
+      '<button type="button" class="btn btn--ghost" data-matrix-structure="ins" data-matrix-insert-id="' +
+      insId +
+      '" data-matrix-action="row-move-down" title="编辑模式下先点一下左侧参数行标题（会记住该行），再点此下移一行"><span class="deck-btn-label" data-deck-label-key="m-ins-' +
+      insId +
+      '-row-down">行↓</span></button>' +
+      "</div></div>" +
+      '<div class="table-scroll"><table id="comparison-table-ins-' +
+      insId +
+      '" class="matrix-comparison-table"><thead id="matrix-thead' +
+      suf +
+      '"></thead><tbody id="matrix-tbody' +
+      suf +
+      '"></tbody></table></div>' +
+      '<div class="matrix-slide-footer">' +
+      '<div class="slide-actions">' +
+      '<button type="button" class="btn btn--ghost" data-slide-go-delta="-1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-prev">上一页</span></button>' +
+      '<button type="button" class="btn" data-slide-go-delta="1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-next">下一页</span></button>' +
+      "</div></div></div></section>"
+    );
+  }
+
+  function titleInsertSectionHtml(insId) {
+    return (
+      '<section id="deck-insert-' +
+      insId +
+      '" data-slide data-slide-inserted="1" data-slide-kind="insertTitle" data-insert-id="' +
+      insId +
+      '" aria-label="插入页·标题" hidden>' +
+      '<div class="slide-inner">' +
+      '<p class="cover-eyebrow insert-cover-eyebrow"></p>' +
+      '<h1 class="cover-title insert-cover-title"></h1>' +
+      '<div class="cover-subtitle insert-cover-subtitle"></div>' +
+      '<div class="slide-actions">' +
+      '<button type="button" class="btn btn--ghost" data-slide-go-delta="-1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-prev">上一页</span></button>' +
+      '<button type="button" class="btn" data-slide-go-delta="1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-next">下一页</span></button>' +
+      "</div></div></section>"
+    );
+  }
+
+  function overviewInsertSectionHtml(insId) {
+    return (
+      '<section id="deck-insert-' +
+      insId +
+      '" data-slide data-slide-inserted="1" data-slide-kind="insertOverview" data-insert-id="' +
+      insId +
+      '" aria-label="插入页·概述" hidden>' +
+      '<div class="slide-inner">' +
+      '<h2 class="insert-overview-title"></h2>' +
+      '<div class="insert-overview-sections"></div>' +
+      '<div class="slide-actions">' +
+      '<button type="button" class="btn btn--ghost" data-slide-go-delta="-1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-prev">上一页</span></button>' +
+      '<button type="button" class="btn" data-slide-go-delta="1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-next">下一页</span></button>' +
+      "</div></div></section>"
+    );
+  }
+
+  function endingInsertSectionHtml(insId) {
+    return (
+      '<section id="deck-insert-' +
+      insId +
+      '" data-slide data-slide-inserted="1" data-slide-kind="insertEnding" data-insert-id="' +
+      insId +
+      '" aria-label="插入页·结尾" hidden>' +
+      '<div class="slide-inner">' +
+      '<p class="cover-eyebrow insert-ending-eyebrow"></p>' +
+      '<h1 class="cover-title insert-ending-title"></h1>' +
+      '<div class="ending-body insert-ending-body"></div>' +
+      '<div class="slide-actions">' +
+      '<button type="button" class="btn btn--ghost" data-slide-go-delta="-1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-prev">上一页</span></button>' +
+      '<button type="button" class="btn" data-slide-go-delta="1"><span class="deck-btn-label" data-deck-label-key="ins-' +
+      insId +
+      '-next">下一页</span></button>' +
+      "</div></div></section>"
+    );
+  }
+
+  function createInsertSectionElement(entry) {
+    var wrap = document.createElement("div");
+    if (entry.template === "title") wrap.innerHTML = titleInsertSectionHtml(entry.id);
+    else if (entry.template === "overview")
+      wrap.innerHTML = overviewInsertSectionHtml(entry.id);
+    else if (entry.template === "ending")
+      wrap.innerHTML = endingInsertSectionHtml(entry.id);
+    else if (entry.template === "matrix")
+      wrap.innerHTML = matrixInsertSectionHtml(entry.id);
+    else wrap.innerHTML = titleInsertSectionHtml(entry.id);
+    return wrap.firstElementChild;
+  }
+
+  function applyInsertSlideDataToDom(entry) {
+    var root = $("#deck-insert-" + entry.id);
+    if (!root || !entry.data) return;
+    var d = entry.data;
+    if (entry.template === "title") {
+      var e1 = $(".insert-cover-eyebrow", root);
+      var t1 = $(".insert-cover-title", root);
+      var s1 = $(".insert-cover-subtitle", root);
+      if (e1) e1.textContent = d.eyebrow != null ? d.eyebrow : "";
+      if (t1) t1.innerHTML = d.title != null ? d.title : "";
+      if (s1) {
+        s1.innerHTML = d.subtitle != null ? d.subtitle : "";
+        if (!String(d.subtitle || "").replace(/<[^>]*>/g, "").trim())
+          s1.setAttribute("hidden", "");
+        else s1.removeAttribute("hidden");
+      }
+    } else if (entry.template === "overview") {
+      var ot = $(".insert-overview-title", root);
+      var box = $(".insert-overview-sections", root);
+      if (ot) {
+        if (d.title != null && String(d.title).trim() !== "") {
+          ot.textContent = d.title;
+          ot.removeAttribute("hidden");
+        } else {
+          ot.textContent = "";
+          ot.setAttribute("hidden", "");
+        }
+      }
+      if (box) {
+        box.innerHTML = "";
+        (d.sections || []).forEach(function (sec) {
+          var article = document.createElement("article");
+          article.className = "nested-block";
+          if (sec.heading && String(sec.heading).trim() !== "") {
+            var h = document.createElement("h3");
+            h.className = "nested-heading";
+            h.innerHTML = sec.heading;
+            article.appendChild(h);
+          }
+          var w = document.createElement("div");
+          w.className = "nested-body";
+          w.innerHTML = sec.bodyHtml || "";
+          article.appendChild(w);
+          box.appendChild(article);
+        });
+      }
+    } else if (entry.template === "ending") {
+      var eb = $(".insert-ending-eyebrow", root);
+      var tt = $(".insert-ending-title", root);
+      var bd = $(".insert-ending-body", root);
+      if (eb) eb.textContent = d.eyebrow != null ? d.eyebrow : "";
+      if (tt) tt.innerHTML = d.title != null ? d.title : "";
+      if (bd) bd.innerHTML = d.bodyHtml != null ? d.bodyHtml : "<p>—</p>";
+    } else if (entry.template === "matrix") {
+      var h2 = $(".insert-matrix-title", root);
+      if (h2) h2.textContent = d.slideTitle != null ? d.slideTitle : "竞品对比矩阵";
+    }
+  }
+
+  function collectInsertSlidesFromDom() {
+    if (!deck || !deck.slideManifest) return;
+    deck.slideManifest.forEach(function (ent) {
+      if (ent.type !== "insert") return;
+      var root = $("#deck-insert-" + ent.id);
+      if (!root) return;
+      if (ent.template === "title") {
+        var e1 = $(".insert-cover-eyebrow", root);
+        var t1 = $(".insert-cover-title", root);
+        var s1 = $(".insert-cover-subtitle", root);
+        ent.data = ent.data || {};
+        if (e1) ent.data.eyebrow = String(e1.innerText || "").trim();
+        if (t1) ent.data.title = String(t1.innerHTML || "").trim();
+        if (s1) ent.data.subtitle = String(s1.innerHTML || "").trim();
+      } else if (ent.template === "overview") {
+        ent.data = ent.data || {};
+        var ot = $(".insert-overview-title", root);
+        if (ot && !ot.hasAttribute("hidden"))
+          ent.data.title = String(ot.innerText || "").trim();
+        var secs = [];
+        $all(".insert-overview-sections article.nested-block", root).forEach(function (art) {
+          var hh = $(".nested-heading", art);
+          var bd = $(".nested-body", art);
+          secs.push({
+            heading: hh ? String(hh.innerHTML || "").trim() : "",
+            bodyHtml: bd ? String(bd.innerHTML || "").trim() : "",
+          });
+        });
+        if (secs.length) ent.data.sections = secs;
+      } else if (ent.template === "ending") {
+        ent.data = ent.data || {};
+        var eb = $(".insert-ending-eyebrow", root);
+        var tt = $(".insert-ending-title", root);
+        var bd = $(".insert-ending-body", root);
+        if (eb) ent.data.eyebrow = String(eb.innerText || "").trim();
+        if (tt) ent.data.title = String(tt.innerHTML || "").trim();
+        if (bd) ent.data.bodyHtml = String(bd.innerHTML || "").trim();
+      } else if (ent.template === "matrix") {
+        var h2 = $(".insert-matrix-title", root);
+        if (h2) ent.data.slideTitle = String(h2.innerText || "").trim();
+        collectMatrixFromTable("#comparison-table-ins-" + ent.id, deck.insertMatrices[ent.id]);
+      }
+    });
+  }
+
+  function syncSlideIndicesAndNav() {
+    var stage = $("#deck-stage");
+    if (!stage) return;
+    var secs = $all(":scope > section[data-slide]", stage);
+    secs.forEach(function (s, i) {
+      s.setAttribute("data-slide-index", String(i));
+    });
+    rebuildSlideNavDots(secs.length);
+  }
+
+  function rebuildSlideNavDots(n) {
+    var nav = $("#slide-nav");
+    if (!nav) return;
+    var labels = [
+      "幻灯 " + String(1),
+      "幻灯 " + String(2),
+      "幻灯 " + String(3),
+      "幻灯 " + String(4),
+      "幻灯 " + String(5),
+    ];
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < n; i++) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("data-slide-dot", String(i));
+      b.setAttribute("aria-label", labels[i] || "幻灯 " + String(i + 1));
+      b.title = labels[i] || "幻灯 " + String(i + 1);
+      frag.appendChild(b);
+    }
+    nav.innerHTML = "";
+    nav.appendChild(frag);
+    wireSlideNavDotsDelegated();
+  }
+
+  function wireSlideNavDotsDelegated() {
+    var nav = $("#slide-nav");
+    if (!nav || nav.dataset.dotDeleg === "1") return;
+    nav.dataset.dotDeleg = "1";
+    nav.addEventListener("click", function (ev) {
+      var dot = ev.target && ev.target.closest("[data-slide-dot]");
+      if (!dot || !nav.contains(dot)) return;
+      goSlide(readSlideDomIndex(dot, "data-slide-dot"));
+    });
+  }
+
+  function poolBuiltinSection(kind) {
+    return document.getElementById(
+      kind === "cover"
+        ? "deck-slide-cover"
+        : kind === "overview"
+          ? "deck-slide-overview"
+          : kind === "matrixObjective"
+            ? "deck-slide-matrix-obj"
+            : kind === "matrixSubjective"
+              ? "deck-slide-matrix-sub"
+              : kind === "ending"
+                ? "deck-slide-ending"
+                : ""
+    );
+  }
+
+  function rebuildSlidesFromManifest() {
+    ensureSlideManifest();
+    var stage = $("#deck-stage");
+    if (!stage) return;
+    var pool = {};
+    ["cover", "overview", "matrixObjective", "matrixSubjective", "ending"].forEach(function (k) {
+      var el = poolBuiltinSection(k);
+      if (el) pool[k] = el;
+    });
+    deck.slideManifest.forEach(function (entry) {
+      if (entry.type === "insert") {
+        var ex = $("#deck-insert-" + entry.id);
+        if (!ex) {
+          ex = createInsertSectionElement(entry);
+          if (deck.insertMatrices && entry.template === "matrix") {
+            deck.insertMatrices[entry.id] =
+              entry.data && entry.data.matrix
+                ? deepCloneMatrix(entry.data.matrix)
+                : emptyMatrixShell();
+          }
+        } else if (entry.template === "matrix") {
+          if (!deck.insertMatrices[entry.id] && entry.data && entry.data.matrix)
+            deck.insertMatrices[entry.id] = deepCloneMatrix(entry.data.matrix);
+        }
+        if (ex) {
+          stage.appendChild(ex);
+          applyInsertSlideDataToDom(entry);
+        }
+      } else {
+        var el = pool[entry.type];
+        if (el) stage.appendChild(el);
+      }
+    });
+    syncSlideIndicesAndNav();
+  }
+
+  function insertSlideAfterCurrent(template) {
+    if (!deck) return;
+    ensureSlideManifest();
+    collectDOMIntoDeck();
+    var id = genInsertId();
+    var data = defaultInsertData(template);
+    var newEntry = { type: "insert", id: id, template: template, data: data };
+    if (template === "matrix") {
+      deck.insertMatrices[id] = data.matrix;
+    }
+    deck.slideManifest.splice(slideIndexNav + 1, 0, newEntry);
+    rebuildSlidesFromManifest();
+    renderMatrix();
+    renderCover();
+    renderOverview();
+    renderEnding();
+    if (deckEditActive) {
+      setDeckContentEditable(true);
+      applyUiButtonLabelsFromDeck();
+    } else applyUiButtonLabelsFromDeck();
+    goSlide(slideIndexNav + 1);
+    try {
+      if (window.requestAnimationFrame)
+        window.requestAnimationFrame(function () {
+          if (typeof window.__deckStageFitSchedule === "function")
+            window.__deckStageFitSchedule();
+        });
+    } catch (_) {}
+  }
+
+  function applyUiButtonLabelsFromDeck() {
+    if (!deck || !deck.uiButtonLabels) return;
+    $all("[data-deck-label-key]").forEach(function (node) {
+      var k = node.getAttribute("data-deck-label-key");
+      if (!k || deck.uiButtonLabels[k] == null) return;
+      var v = String(deck.uiButtonLabels[k]);
+      node.textContent = v;
+    });
+  }
+
+  function collectUiButtonLabelsIntoDeck() {
+    if (!deck) return;
+    deck.uiButtonLabels = deck.uiButtonLabels || {};
+    $all("#deck-stage [data-deck-label-key], #compare-fab-host [data-deck-label-key]").forEach(
+      function (node) {
+        var k = node.getAttribute("data-deck-label-key");
+        if (!k) return;
+        deck.uiButtonLabels[k] = String(node.innerText || node.textContent || "").trim();
+      }
+    );
+  }
+
+  function bindInsertChromeControls() {
+    var sel = $("#deck-insert-template-select");
+    var btn = $("#deck-insert-new-slide");
+    if (!sel || !btn || document.documentElement.dataset.insertChromeBound === "1") return;
+    document.documentElement.dataset.insertChromeBound = "1";
+    function sync() {
+      var ok = String(sel.value || "").trim() !== "";
+      if (ok) btn.removeAttribute("disabled");
+      else btn.setAttribute("disabled", "disabled");
+    }
+    sel.addEventListener("change", sync);
+    sync();
+    btn.addEventListener("click", function () {
+      var t = String(sel.value || "").trim();
+      if (!t) return;
+      insertSlideAfterCurrent(t);
+      sel.value = "";
+      sync();
+    });
+  }
+
+  function bindSlideJumpAndDeltaNav() {
+    if (document.documentElement.dataset.slideJumpBound === "1") return;
+    document.documentElement.dataset.slideJumpBound = "1";
+    document.addEventListener(
+      "click",
+      function (ev) {
+        var t = ev.target;
+        if (!(t instanceof Element)) return;
+        if (deckEditActive && t.closest(".deck-btn-label[contenteditable]")) return;
+        var dj = t.closest("[data-slide-jump]");
+        if (dj) {
+          var kind = dj.getAttribute("data-slide-jump");
+          var idx = slideJumpIndex(kind);
+          if (idx >= 0) goSlide(idx);
+          return;
+        }
+        var dd = t.closest("[data-slide-go-delta]");
+        if (dd) {
+          var d = parseInt(String(dd.getAttribute("data-slide-go-delta") || "0"), 10);
+          if (!isNaN(d)) goSlide(slideIndexNav + d);
+        }
+      },
+      false
+    );
+  }
+
+
   /** HTML 写成 data-slide-index；部分环境仅用 getAttribute 最稳 */
   function readSlideDomIndex(btn, attrName) {
     var raw = btn.getAttribute(attrName);
@@ -712,6 +1249,20 @@
     return isNaN(n) ? NaN : n;
   }
 
+  function slideKindAtIndex(i) {
+    var m = deck && deck.slideManifest;
+    if (!m || i < 0 || i >= m.length) return "";
+    var ent = m[i];
+    if (!ent) return "";
+    if (ent.type === "insert") return "insert:" + String(ent.template || "");
+    return String(ent.type || "");
+  }
+
+  function isBuiltinMatrixSlideKindAt(i) {
+    var k = slideKindAtIndex(i);
+    return k === "matrixObjective" || k === "matrixSubjective";
+  }
+
   function repositionCompareFabHost(idx) {
     var host = $("#compare-fab-host");
     var park = $("#compare-fab-park");
@@ -722,11 +1273,11 @@
       if (aObj) aObj.setAttribute("aria-hidden", hasObj ? "false" : "true");
       if (aSub) aSub.setAttribute("aria-hidden", hasSub ? "false" : "true");
     }
-    if (idx === 2 && aObj) {
+    if (slideKindAtIndex(idx) === "matrixObjective" && aObj) {
       aObj.appendChild(host);
       host.removeAttribute("hidden");
       markAnchors(true, false);
-    } else if (idx === 3 && aSub) {
+    } else if (slideKindAtIndex(idx) === "matrixSubjective" && aSub) {
       aSub.appendChild(host);
       host.removeAttribute("hidden");
       markAnchors(false, true);
@@ -740,11 +1291,11 @@
   function goSlide(idx) {
     idx = clampSlideIdx(idx);
     var prevSlide = slideIndexNav;
-    if (idx !== 2 && idx !== 3) exitComparePickQuiet();
+    if (!isBuiltinMatrixSlideKindAt(idx)) exitComparePickQuiet();
     else if (
       prevSlide !== idx &&
-      (prevSlide === 2 || prevSlide === 3) &&
-      (idx === 2 || idx === 3)
+      isBuiltinMatrixSlideKindAt(prevSlide) &&
+      isBuiltinMatrixSlideKindAt(idx)
     ) {
       exitComparePickQuiet();
     }
@@ -770,16 +1321,6 @@
   }
 
   function bindSlideNav() {
-    $all("[data-slide-go]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        goSlide(readSlideDomIndex(btn, "data-slide-go"));
-      });
-    });
-    $all("[data-slide-dot]").forEach(function (dot) {
-      dot.addEventListener("click", function () {
-        goSlide(readSlideDomIndex(dot, "data-slide-dot"));
-      });
-    });
     window.addEventListener("hashchange", function () {
       var m = location.hash.match(/^#slide-(\d+)/);
       if (m) goSlide(Number(m[1]));
@@ -826,7 +1367,9 @@
   var MEM_UPLOAD_FALLBACK = {};
   var uploadStoreIdbOk = true;
 
-  function uploadPersistKeyForCell(isSubjective, rowId, colId) {
+  function uploadPersistKeyForCell(isSubjective, rowId, colId, insertId) {
+    if (insertId != null && String(insertId).trim() !== "")
+      return "v1|ins|" + String(insertId) + "|" + String(rowId) + "|" + String(colId);
     return (
       "v1|" +
       (isSubjective ? "sub" : "obj") +
@@ -1087,9 +1630,11 @@
     m.cells = m.cells || {};
   }
 
-  function addMatrixRow(isSubjective) {
+  function addMatrixRow(isSubjective, insertId) {
     syncDeckFromEditableDomBeforeMatrixRebuild();
-    var m = matrixForStructureEdit(isSubjective);
+    var m = insertId
+      ? deck.insertMatrices && deck.insertMatrices[insertId]
+      : matrixForStructureEdit(isSubjective);
     if (!m || !m.rows || !m.columns) return;
     if (m.rows.length >= 80 || m.columns.length >= 40) return;
     mutateMatrixEnsureCells(m);
@@ -1104,9 +1649,11 @@
     afterMatrixStructureRender();
   }
 
-  function removeLastMatrixRow(isSubjective) {
+  function removeLastMatrixRow(isSubjective, insertId) {
     syncDeckFromEditableDomBeforeMatrixRebuild();
-    var m = matrixForStructureEdit(isSubjective);
+    var m = insertId
+      ? deck.insertMatrices && deck.insertMatrices[insertId]
+      : matrixForStructureEdit(isSubjective);
     if (!m || !m.rows || !m.columns || m.rows.length <= 1) return;
     mutateMatrixEnsureCells(m);
     var row = m.rows.pop();
@@ -1117,9 +1664,11 @@
     afterMatrixStructureRender();
   }
 
-  function addMatrixColumn(isSubjective) {
+  function addMatrixColumn(isSubjective, insertId) {
     syncDeckFromEditableDomBeforeMatrixRebuild();
-    var m = matrixForStructureEdit(isSubjective);
+    var m = insertId
+      ? deck.insertMatrices && deck.insertMatrices[insertId]
+      : matrixForStructureEdit(isSubjective);
     if (!m || !m.rows || !m.columns) return;
     if (m.rows.length >= 80 || m.columns.length >= 40) return;
     mutateMatrixEnsureCells(m);
@@ -1134,9 +1683,11 @@
     afterMatrixStructureRender();
   }
 
-  function removeLastMatrixColumn(isSubjective) {
+  function removeLastMatrixColumn(isSubjective, insertId) {
     syncDeckFromEditableDomBeforeMatrixRebuild();
-    var m = matrixForStructureEdit(isSubjective);
+    var m = insertId
+      ? deck.insertMatrices && deck.insertMatrices[insertId]
+      : matrixForStructureEdit(isSubjective);
     if (!m || !m.rows || !m.columns || m.columns.length <= 1) return;
     mutateMatrixEnsureCells(m);
     var col = m.columns.pop();
@@ -1303,23 +1854,32 @@
       var structure = btn.getAttribute("data-matrix-structure");
       var action = btn.getAttribute("data-matrix-action");
       if (!action) return;
-      var isSub = structure === "sub";
-      if (action === "add-row") addMatrixRow(isSub);
-      else if (action === "remove-row") removeLastMatrixRow(isSub);
-      else if (action === "add-col") addMatrixColumn(isSub);
-      else if (action === "remove-col") removeLastMatrixColumn(isSub);
-      else if (action === "col-move-left") {
-        var cidL = getColumnMoveTargetColId(isSub);
-        if (cidL) swapMatrixColumnWithNeighbor(isSub, cidL, -1);
-      } else if (action === "col-move-right") {
-        var cidR = getColumnMoveTargetColId(isSub);
-        if (cidR) swapMatrixColumnWithNeighbor(isSub, cidR, 1);
-      } else if (action === "row-move-up") {
-        var ridU = getRowMoveTargetRowId(isSub);
-        if (ridU) swapMatrixRowWithNeighbor(isSub, ridU, -1);
-      } else if (action === "row-move-down") {
-        var ridD = getRowMoveTargetRowId(isSub);
-        if (ridD) swapMatrixRowWithNeighbor(isSub, ridD, 1);
+      var insId = btn.getAttribute("data-matrix-insert-id");
+      if (structure === "ins" && insId) {
+        if (action === "add-row") addMatrixRow(false, insId);
+        else if (action === "remove-row") removeLastMatrixRow(false, insId);
+        else if (action === "add-col") addMatrixColumn(false, insId);
+        else if (action === "remove-col") removeLastMatrixColumn(false, insId);
+        else return;
+      } else {
+        var isSub = structure === "sub";
+        if (action === "add-row") addMatrixRow(isSub);
+        else if (action === "remove-row") removeLastMatrixRow(isSub);
+        else if (action === "add-col") addMatrixColumn(isSub);
+        else if (action === "remove-col") removeLastMatrixColumn(isSub);
+        else if (action === "col-move-left") {
+          var cidL = getColumnMoveTargetColId(isSub);
+          if (cidL) swapMatrixColumnWithNeighbor(isSub, cidL, -1);
+        } else if (action === "col-move-right") {
+          var cidR = getColumnMoveTargetColId(isSub);
+          if (cidR) swapMatrixColumnWithNeighbor(isSub, cidR, 1);
+        } else if (action === "row-move-up") {
+          var ridU = getRowMoveTargetRowId(isSub);
+          if (ridU) swapMatrixRowWithNeighbor(isSub, ridU, -1);
+        } else if (action === "row-move-down") {
+          var ridD = getRowMoveTargetRowId(isSub);
+          if (ridD) swapMatrixRowWithNeighbor(isSub, ridD, 1);
+        }
       }
       ev.preventDefault();
       ev.stopPropagation();
@@ -1334,14 +1894,28 @@
         matrix: deck.matrix,
         rf: "row-filter-",
         cf: "col-filter-",
+        insertId: "",
       },
       {
         tsuf: "-sub",
         matrix: subjectiveMatrixResolved(),
         rf: "row-filter-sub-",
         cf: "col-filter-sub-",
+        insertId: "",
       },
     ];
+    Object.keys(deck.insertMatrices || {}).forEach(function (iid) {
+      var mx = deck.insertMatrices[iid];
+      if (!mx) return;
+      var suf = "-ins-" + iid;
+      setups.push({
+        tsuf: suf,
+        matrix: mx,
+        rf: "row-filter" + suf + "-",
+        cf: "col-filter" + suf + "-",
+        insertId: iid,
+      });
+    });
 
     setups.forEach(function (cfg) {
       var m = cfg.matrix;
@@ -1416,7 +1990,8 @@
             return uploadPersistKeyForCell(
               cfg.tsuf === "-sub",
               row.id,
-              col.id
+              col.id,
+              cfg.insertId || ""
             );
           }
 
@@ -1512,10 +2087,15 @@
     var t = ev.target;
     if (!t || t.tagName !== "INPUT" || t.type !== "checkbox") return;
     if (!deck || !deck.matrix) return;
-    var inSubjective = !!(t.closest && t.closest("#filter-deck-sub"));
-    var targetMx = inSubjective
-      ? subjectiveMatrixResolved()
-      : deck.matrix;
+    var fd = t.closest && t.closest('[id^="filter-deck"]');
+    if (!fd || !fd.id) return;
+    var targetMx = null;
+    if (fd.id === "filter-deck") targetMx = deck.matrix;
+    else if (fd.id === "filter-deck-sub") targetMx = subjectiveMatrixResolved();
+    else {
+      var m = /^filter-deck-ins-(.+)$/.exec(fd.id);
+      if (m && deck.insertMatrices) targetMx = deck.insertMatrices[m[1]];
+    }
     if (!targetMx) return;
     var id = t.dataset.axisId;
     if (t.dataset.axis === "row") {
@@ -1539,6 +2119,12 @@
     if (sub && sub !== deck.matrix) {
       applyFiltersForTable(sub, "#matrix-tbody-sub", "#matrix-thead-sub");
     }
+    Object.keys(deck.insertMatrices || {}).forEach(function (iid) {
+      var mx = deck.insertMatrices[iid];
+      if (!mx) return;
+      var suf = "-ins-" + iid;
+      applyFiltersForTable(mx, "#matrix-tbody" + suf, "#matrix-thead" + suf);
+    });
     if (comparePick.active) syncComparePickUI();
   }
 
@@ -1778,7 +2364,13 @@
   }
 
   function rowTrHiddenDom(rowId) {
-    var prefix = slideIndexNav === 3 ? "#matrix-tbody-sub" : "#matrix-tbody";
+    var prefix =
+      slideKindAtIndex(slideIndexNav) === "matrixSubjective"
+        ? "#matrix-tbody-sub"
+        : slideKindAtIndex(slideIndexNav) === "matrixObjective"
+          ? "#matrix-tbody"
+          : null;
+    if (!prefix) return true;
     var tr = document.querySelector(
       prefix +
         ' tr[data-row-id="' +
@@ -1789,7 +2381,13 @@
   }
 
   function colThHiddenDom(colId) {
-    var prefix = slideIndexNav === 3 ? "#matrix-thead-sub" : "#matrix-thead";
+    var prefix =
+      slideKindAtIndex(slideIndexNav) === "matrixSubjective"
+        ? "#matrix-thead-sub"
+        : slideKindAtIndex(slideIndexNav) === "matrixObjective"
+          ? "#matrix-thead"
+          : null;
+    if (!prefix) return true;
     var th = document.querySelector(
       prefix +
         ' th[data-col-id="' +
@@ -1839,12 +2437,13 @@
 
   function syncComparePickUI() {
     pruneCompareSelection();
-    ["#comparison-table", "#comparison-table-sub"].forEach(function (tid) {
-      var tbl = $(tid);
+    var oix = slideJumpIndex("matrixObjective");
+    var six = slideJumpIndex("matrixSubjective");
+    $all("#deck-stage table.matrix-comparison-table").forEach(function (tbl) {
       if (!tbl) return;
-      var activeHere =
-        (slideIndexNav === 2 && tid === "#comparison-table") ||
-        (slideIndexNav === 3 && tid === "#comparison-table-sub");
+      var activeHere = false;
+      if (tbl.id === "comparison-table") activeHere = slideIndexNav === oix;
+      else if (tbl.id === "comparison-table-sub") activeHere = slideIndexNav === six;
       tbl.classList.toggle("compare-picking", comparePick.active && !!activeHere);
       tbl.classList.toggle(
         "compare-pick-cols-live",
@@ -1903,12 +2502,17 @@
     var main = $("#compare-launch-btn");
     var cx = $("#compare-fab-cancel");
     if (main) {
+      var labM = main.querySelector('[data-deck-label-key="compare-launch"]');
       if (!comparePick.active) {
-        main.textContent = "详细对比";
+        if (labM) {
+          if (deck && deck.uiButtonLabels && deck.uiButtonLabels["compare-launch"] != null)
+            labM.textContent = String(deck.uiButtonLabels["compare-launch"]);
+          else labM.textContent = "详细对比";
+        }
         main.classList.remove("compare-fab__main--armed");
         main.removeAttribute("aria-label");
       } else {
-        main.textContent = "生成对比报告";
+        if (labM) labM.textContent = "生成对比报告";
         main.classList.toggle("compare-fab__main--armed", compareSelectionValid());
         main.setAttribute("aria-expanded", "true");
       }
@@ -1923,42 +2527,43 @@
   }
 
   function bindMatrixPickDelegation() {
-    $all("#comparison-table, #comparison-table-sub").forEach(function (tbl) {
-      if (!tbl || tbl.dataset.pickDeleg === "1") return;
-      tbl.dataset.pickDeleg = "1";
-      tbl.addEventListener("click", function (ev) {
-        if (!comparePick.active) return;
+    var stage = $("#deck-stage");
+    if (!stage || stage.dataset.pickDeleg === "1") return;
+    stage.dataset.pickDeleg = "1";
+    stage.addEventListener("click", function (ev) {
+      if (!comparePick.active) return;
+      var tbl = ev.target && ev.target.closest("table.matrix-comparison-table");
+      if (!tbl || !stage.contains(tbl)) return;
 
-        var trh = ev.target.closest("tbody .matrix-row-head");
-        if (trh && tbl.contains(trh) && !ev.target.closest("thead")) {
-          ev.preventDefault();
-          var rid = trh.dataset.rowId;
-          if (!rid || isRowAxisHidden(rid)) return;
-          toggleCompareRow(rid);
-          syncComparePickUI();
+      var trh = ev.target.closest("tbody .matrix-row-head");
+      if (trh && tbl.contains(trh) && !ev.target.closest("thead")) {
+        ev.preventDefault();
+        var rid = trh.dataset.rowId;
+        if (!rid || isRowAxisHidden(rid)) return;
+        toggleCompareRow(rid);
+        syncComparePickUI();
+        return;
+      }
+
+      var thCol = ev.target.closest("thead th[data-col-id]");
+      if (thCol && tbl.contains(thCol) && !thCol.hidden) {
+        ev.preventDefault();
+        if (countCompareRowsSel() < 1) {
+          flashCompareNope(thCol);
           return;
         }
+        var cid = thCol.dataset.colId;
+        if (!cid || isColAxisHidden(cid)) return;
+        toggleCompareCol(cid);
+        syncComparePickUI();
+        return;
+      }
 
-        var thCol = ev.target.closest("thead th[data-col-id]");
-        if (thCol && tbl.contains(thCol) && !thCol.hidden) {
-          ev.preventDefault();
-          if (countCompareRowsSel() < 1) {
-            flashCompareNope(thCol);
-            return;
-          }
-          var cid = thCol.dataset.colId;
-          if (!cid || isColAxisHidden(cid)) return;
-          toggleCompareCol(cid);
-          syncComparePickUI();
-          return;
-        }
-
-        var corner = ev.target.closest("thead .matrix-corner");
-        if (corner && tbl.contains(corner)) {
-          ev.preventDefault();
-          flashCompareNope(tbl);
-        }
-      });
+      var corner = ev.target.closest("thead .matrix-corner");
+      if (corner && tbl.contains(corner)) {
+        ev.preventDefault();
+        flashCompareNope(tbl);
+      }
     });
   }
 
@@ -2154,6 +2759,14 @@
   function parsePersistUploadKey(pk) {
     var p = String(pk || "").split("|");
     if (p.length < 4 || p[0] !== "v1") return null;
+    if (p[1] === "ins" && p.length >= 5) {
+      return {
+        insertId: p[2],
+        rowId: p[3],
+        colId: p[4],
+        subjective: false,
+      };
+    }
     return {
       subjective: p[1] === "sub",
       rowId: p[2],
@@ -2275,6 +2888,19 @@
         }
         applyMatrixPatchSnap(deck.matrixSubjective, patch.matrixSubjective);
       }
+      if (Array.isArray(patch.slideManifest) && patch.slideManifest.length) {
+        deck.slideManifest = JSON.parse(JSON.stringify(patch.slideManifest));
+      }
+      if (patch.insertMatrices && typeof patch.insertMatrices === "object") {
+        deck.insertMatrices = JSON.parse(JSON.stringify(patch.insertMatrices));
+      }
+      if (patch.uiButtonLabels && typeof patch.uiButtonLabels === "object") {
+        deck.uiButtonLabels = Object.assign(
+          {},
+          deck.uiButtonLabels || {},
+          patch.uiButtonLabels
+        );
+      }
       applySlideTitlesFromStored(patch.slideTitles);
     } catch (err2) {
       console.warn("[matrix-core] 合并本地快照失败：", err2);
@@ -2286,6 +2912,9 @@
     return {
       v: 1,
       slideTitles: gatherSlideTitlesFromDom(),
+      slideManifest: JSON.parse(JSON.stringify(deck.slideManifest || [])),
+      insertMatrices: JSON.parse(JSON.stringify(deck.insertMatrices || {})),
+      uiButtonLabels: JSON.parse(JSON.stringify(deck.uiButtonLabels || {})),
       cover: JSON.parse(JSON.stringify(deck.cover || {})),
       overview: JSON.parse(JSON.stringify(deck.overview || {})),
       ending: JSON.parse(JSON.stringify(deck.ending || {})),
@@ -2295,8 +2924,16 @@
   }
 
   function gatherSlideTitlesFromDom() {
-    var ao = $("section[data-slide-index='2'] .slide-matrix-title");
-    var as = $("section[data-slide-index='3'] .slide-matrix-title");
+    var oi = slideJumpIndex("matrixObjective");
+    var si = slideJumpIndex("matrixSubjective");
+    var ao =
+      oi >= 0
+        ? $("section[data-slide-index='" + String(oi) + "'] .slide-matrix-title")
+        : null;
+    var as =
+      si >= 0
+        ? $("section[data-slide-index='" + String(si) + "'] .slide-matrix-title")
+        : null;
     return {
       objective: ao ? String(ao.innerText || ao.textContent || "").trim() : "",
       subjective: as ? String(as.innerText || as.textContent || "").trim() : "",
@@ -2305,8 +2942,16 @@
 
   function applySlideTitlesFromStored(st) {
     if (!st) return;
-    var ao = $("section[data-slide-index='2'] .slide-matrix-title");
-    var bs = $("section[data-slide-index='3'] .slide-matrix-title");
+    var oi = slideJumpIndex("matrixObjective");
+    var si = slideJumpIndex("matrixSubjective");
+    var ao =
+      oi >= 0
+        ? $("section[data-slide-index='" + String(oi) + "'] .slide-matrix-title")
+        : null;
+    var bs =
+      si >= 0
+        ? $("section[data-slide-index='" + String(si) + "'] .slide-matrix-title")
+        : null;
     if (ao && st.objective != null && st.objective !== "")
       ao.textContent = st.objective;
     if (bs && st.subjective != null && st.subjective !== "")
@@ -2398,6 +3043,11 @@
       "#comparison-table-sub",
       subjectiveMatrixResolved()
     );
+    Object.keys(deck.insertMatrices || {}).forEach(function (iid) {
+      collectMatrixFromTable("#comparison-table-ins-" + iid, deck.insertMatrices[iid]);
+    });
+    collectInsertSlidesFromDom();
+    collectUiButtonLabelsIntoDeck();
   }
 
   function cloneBodyStripFigureRemoveUi(body) {
@@ -2416,7 +3066,9 @@
     if (!pk || !body) return;
     var p = parsePersistUploadKey(pk);
     if (!p) return;
-    var mx = p.subjective ? subjectiveMatrixResolved() : deck.matrix;
+    var mx = null;
+    if (p.insertId) mx = deck.insertMatrices && deck.insertMatrices[p.insertId];
+    else mx = p.subjective ? subjectiveMatrixResolved() : deck.matrix;
     if (!mx || !mx.cells) return;
     var ck = cellKey(p.rowId, p.colId);
     var co = mx.cells[ck] || { summary: "", detailHtml: "<p>—</p>" };
@@ -2467,8 +3119,16 @@
       var ct = $("#cover-title");
       var cs = $("#cover-subtitle");
       var ot = $("#overview-title");
-      var h2o = $("section[data-slide-index='2'] .slide-matrix-title");
-      var h2s = $("section[data-slide-index='3'] .slide-matrix-title");
+      var oi = slideJumpIndex("matrixObjective");
+      var si = slideJumpIndex("matrixSubjective");
+      var h2o =
+        oi >= 0
+          ? $("section[data-slide-index='" + String(oi) + "'] .slide-matrix-title")
+          : null;
+      var h2s =
+        si >= 0
+          ? $("section[data-slide-index='" + String(si) + "'] .slide-matrix-title")
+          : null;
       if (eb) eb.contentEditable = plc;
       if (ct) ct.contentEditable = "true";
       if (cs) cs.contentEditable = "true";
@@ -2481,6 +3141,31 @@
       $all("#overview-sections .nested-body").forEach(function (b) {
         b.contentEditable = "true";
       });
+      $all('[data-slide-kind="insertOverview"] .nested-heading').forEach(function (h2) {
+        h2.contentEditable = "true";
+      });
+      $all('[data-slide-kind="insertOverview"] .nested-body').forEach(function (b2) {
+        b2.contentEditable = "true";
+      });
+      $all('[data-slide-kind="insertOverview"] .insert-overview-title').forEach(function (h3) {
+        if (!h3.hasAttribute("hidden")) h3.contentEditable = plc;
+      });
+      $all(
+        '[data-slide-kind="insertTitle"] .insert-cover-eyebrow, [data-slide-kind="insertTitle"] .insert-cover-title, [data-slide-kind="insertTitle"] .insert-cover-subtitle'
+      ).forEach(function (elx) {
+        if (elx.classList.contains("insert-cover-title")) elx.contentEditable = "true";
+        else elx.contentEditable = plc;
+      });
+      $all(
+        '[data-slide-kind="insertEnding"] .insert-ending-eyebrow, [data-slide-kind="insertEnding"] .insert-ending-title, [data-slide-kind="insertEnding"] .insert-ending-body'
+      ).forEach(function (elz) {
+        if (elz.classList.contains("insert-ending-title")) elz.contentEditable = "true";
+        else if (elz.classList.contains("insert-ending-body")) elz.contentEditable = "true";
+        else elz.contentEditable = plc;
+      });
+      $all('[data-slide-kind="insertMatrix"] .insert-matrix-title').forEach(function (mt) {
+        mt.contentEditable = plc;
+      });
       if (ee) ee.contentEditable = plc;
       if (eti) eti.contentEditable = "true";
       if (ebodd) ebodd.contentEditable = "true";
@@ -2490,14 +3175,29 @@
       if (mbody && cmod && !cmod.hasAttribute("hidden")) {
         mbody.contentEditable = "true";
       }
+      $all("#deck-stage .deck-btn-label, #compare-fab-host .deck-btn-label").forEach(function (
+        lab
+      ) {
+        lab.contentEditable = plc;
+      });
     } else {
+      var oix = slideJumpIndex("matrixObjective");
+      var six = slideJumpIndex("matrixSubjective");
+      var h2ox =
+        oix >= 0
+          ? $("section[data-slide-index='" + String(oix) + "'] .slide-matrix-title")
+          : null;
+      var h2sx =
+        six >= 0
+          ? $("section[data-slide-index='" + String(six) + "'] .slide-matrix-title")
+          : null;
       [
         $("#cover-eyebrow"),
         $("#cover-title"),
         $("#cover-subtitle"),
         $("#overview-title"),
-        $("section[data-slide-index='2'] .slide-matrix-title"),
-        $("section[data-slide-index='3'] .slide-matrix-title"),
+        h2ox,
+        h2sx,
         $("#ending-eyebrow"),
         $("#ending-title"),
         $("#ending-body"),
@@ -2505,11 +3205,26 @@
       ].forEach(function (elz) {
         if (elz) elz.removeAttribute("contenteditable");
       });
+      $all(
+        "[data-slide-kind] .slide-matrix-title, [data-slide-kind] .insert-cover-eyebrow, [data-slide-kind] .insert-cover-title, [data-slide-kind] .insert-cover-subtitle, [data-slide-kind] .insert-overview-title, [data-slide-kind] .insert-ending-eyebrow, [data-slide-kind] .insert-ending-title, [data-slide-kind] .insert-ending-body, [data-slide-kind] .insert-matrix-title"
+      ).forEach(function (nx) {
+        if (nx) nx.removeAttribute("contenteditable");
+      });
       $all("#overview-sections .nested-heading, #overview-sections .nested-body").forEach(
         function (n) {
           n.removeAttribute("contenteditable");
         }
       );
+      $all(
+        '[data-slide-kind="insertOverview"] .nested-heading, [data-slide-kind="insertOverview"] .nested-body, [data-slide-kind="insertOverview"] .insert-overview-title'
+      ).forEach(function (n) {
+        n.removeAttribute("contenteditable");
+      });
+      $all("#deck-stage .deck-btn-label, #compare-fab-host .deck-btn-label").forEach(function (
+        lab
+      ) {
+        lab.removeAttribute("contenteditable");
+      });
       $all(
         ".matrix-corner, thead th, .matrix-row-head, .matrix-cell"
       ).forEach(function (n2) {
@@ -2552,6 +3267,8 @@
       } catch (eParse2) {}
     }
     deckEditBaselineJSON = "";
+    ensureSlideManifest();
+    rebuildSlidesFromManifest();
     setDeckContentEditable(false);
     var saveBtn2 = $("#deck-edit-save");
     var exitBtn2 = $("#deck-edit-exit");
@@ -2564,6 +3281,11 @@
     renderEnding();
     renderMatrix();
     hydrateTitle();
+    applyUiButtonLabelsFromDeck();
+    repositionCompareFabHost(slideIndexNav);
+    goSlide(slideIndexNav);
+    if (typeof window.__deckStageFitSchedule === "function")
+      window.__deckStageFitSchedule();
   }
 
   function saveDeckPersistAll() {
@@ -2708,11 +3430,16 @@
     exitComparePickQuiet();
     deckEditBaselineJSON = "";
     deck = nextDeck;
+    ensureSlideManifest();
+    rebuildSlidesFromManifest();
     renderCover();
     renderOverview();
     renderEnding();
     renderMatrix();
     hydrateTitle();
+    applyUiButtonLabelsFromDeck();
+    repositionCompareFabHost(slideIndexNav);
+    goSlide(slideIndexNav);
     if (deck.theme != null && String(deck.theme).trim() !== "") {
       document.documentElement.dataset.deckTheme = String(deck.theme).trim();
     } else {
@@ -2721,6 +3448,8 @@
       } catch (eDm) {}
     }
     return saveDeckPersistAll().then(function () {
+      if (typeof window.__deckStageFitSchedule === "function")
+        window.__deckStageFitSchedule();
       if (wasEditing) enterDeckEditMode();
     });
   }
@@ -2861,15 +3590,9 @@
   function init() {
     deck = parseDeck();
     if (!deck) return;
-    var filterDeck = $("#filter-deck");
-    if (filterDeck && !filterDeck.dataset.bound) {
-      filterDeck.addEventListener("change", onFilterChange);
-      filterDeck.dataset.bound = "1";
-    }
-    var filterDeckSub = $("#filter-deck-sub");
-    if (filterDeckSub && !filterDeckSub.dataset.bound) {
-      filterDeckSub.addEventListener("change", onFilterChange);
-      filterDeckSub.dataset.bound = "1";
+    if (!document.documentElement.dataset.matrixFilterBound) {
+      document.documentElement.dataset.matrixFilterBound = "1";
+      document.addEventListener("change", onFilterChange);
     }
     bindModal();
     bindEscapeStack();
@@ -2884,11 +3607,18 @@
         renderCover();
         renderOverview();
         renderEnding();
+        ensureSlideManifest();
+        rebuildSlidesFromManifest();
         renderMatrix();
         bindCompareFab();
         bindCompareReportModal();
         hydrateTitle();
+        bindInsertChromeControls();
+        bindSlideJumpAndDeltaNav();
+        applyUiButtonLabelsFromDeck();
         bindSlideNav();
+        if (typeof window.__deckStageFitSchedule === "function")
+          window.__deckStageFitSchedule();
         if (deck.theme != null && String(deck.theme).trim() !== "") {
           document.documentElement.dataset.deckTheme =
             String(deck.theme).trim();
@@ -2916,11 +3646,17 @@
         renderCover();
         renderOverview();
         renderEnding();
+        ensureSlideManifest();
+        rebuildSlidesFromManifest();
         renderMatrix();
         repositionCompareFabHost(slideIndexNav);
+        goSlide(slideIndexNav);
         bindCompareFab();
         bindCompareReportModal();
         hydrateTitle();
+        applyUiButtonLabelsFromDeck();
+        if (typeof window.__deckStageFitSchedule === "function")
+          window.__deckStageFitSchedule();
       });
   };
 })();

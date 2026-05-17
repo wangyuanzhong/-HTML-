@@ -43,7 +43,41 @@
   // 2) 矩阵表格内容自适应
   // ---------------------------------------------------------------------------
 
-  var TABLE_IDS = ["comparison-table", "comparison-table-sub"];
+  var TABLE_IDS_BASE = ["comparison-table", "comparison-table-sub"];
+
+  function matrixTableIds() {
+    var out = TABLE_IDS_BASE.slice();
+    document
+      .querySelectorAll('table.matrix-comparison-table[id^="comparison-table-ins-"]')
+      .forEach(function (t) {
+        if (t.id && out.indexOf(t.id) < 0) out.push(t.id);
+      });
+    return out;
+  }
+
+  function readDeckScaleFromStageTransform() {
+    var el = document.getElementById("deck-stage");
+    if (!el) return 1;
+    var tr = getComputedStyle(el).transform;
+    if (!tr || tr === "none") return 1;
+    var m = tr.match(/matrix\(([^)]+)\)/);
+    if (!m) return 1;
+    var parts = m[1].split(",").map(function (x) {
+      return parseFloat(String(x).trim());
+    });
+    if (!parts.length || isNaN(parts[0]) || parts[0] === 0) return 1;
+    return parts[0];
+  }
+
+  /** 虚拟舞台 scale 大（大屏）时矩阵字偏大；scale 小时略偏小 — 在此做整体补偿 */
+  function fontScaleForDeckScale(scale) {
+    if (scale >= 0.8) {
+      var t = Math.min(1.9, scale);
+      return Math.min(1, Math.max(0.78, 1 - (t - 0.8) * 0.24));
+    }
+    var u = Math.max(0.32, scale);
+    return Math.min(1.12, Math.max(1, 1 + (0.8 - u) * 0.14));
+  }
 
   // 字号下限：低于这个值哪怕牺牲「完全无滚动」也不再继续缩小（继续缩小可读性极差）
   var MIN_FONT_PX = 8;
@@ -130,6 +164,8 @@
     var cellH = availH / nRow;
 
     var fontPx = Math.min(cellW * W_FACTOR, cellH * H_FACTOR);
+    fontPx =
+      fontPx * fontScaleForDeckScale(readDeckScaleFromStageTransform());
     fontPx = clamp(fontPx, MIN_FONT_PX, MAX_FONT_PX);
 
     function write(px) {
@@ -157,10 +193,10 @@
   }
 
   function fitAllTables() {
-    for (var i = 0; i < TABLE_IDS.length; i++) {
-      var t = document.getElementById(TABLE_IDS[i]);
+    matrixTableIds().forEach(function (tid) {
+      var t = document.getElementById(tid);
       if (t) fitTable(t);
-    }
+    });
   }
 
   var fitRaf = 0;
@@ -178,7 +214,7 @@
 
   // 监听：表格自身大小变化（如 slide 切换、工具条多行收纳） + 表格 DOM 结构 / hidden 变化 + 筛选 chip 切换
   function bindObservers() {
-    TABLE_IDS.forEach(function (id) {
+    matrixTableIds().forEach(function (id) {
       var table = document.getElementById(id);
       if (!table) return;
       var scroll = tableScrollAreaFor(table);
@@ -204,7 +240,7 @@
     document.addEventListener("change", function (ev) {
       var t = ev.target;
       if (!t || t.tagName !== "INPUT" || t.type !== "checkbox") return;
-      if (t.closest && (t.closest("#filter-deck") || t.closest("#filter-deck-sub"))) {
+      if (t.closest && t.closest('[id^="filter-deck"]')) {
         scheduleFitAllTables();
       }
     });
@@ -213,7 +249,7 @@
     document.addEventListener("click", function (ev) {
       var t = ev.target;
       if (!t) return;
-      if (t.matches && t.matches("[data-slide-dot], [data-slide-go]")) {
+      if (t.matches && t.matches("[data-slide-dot], [data-slide-jump]")) {
         setTimeout(scheduleFitAllTables, 50);
       }
     });
@@ -221,6 +257,11 @@
 
   function init() {
     bindObservers();
+    var stageMo = document.getElementById("deck-stage");
+    if (stageMo && window.MutationObserver) {
+      var moStage = new MutationObserver(scheduleFitAllTables);
+      moStage.observe(stageMo, { childList: true, subtree: true });
+    }
     // 等待 matrix-core 完成首次渲染（大约一拍）再补算一次
     setTimeout(scheduleFitAllTables, 0);
     setTimeout(scheduleFitAllTables, 150);
@@ -231,4 +272,7 @@
   } else {
     init();
   }
+
+  /** matrix-core 插入新页后触发矩阵字号重算（脚本顺序：matrix-core 先于本文件时由本行赋值） */
+  window.__deckStageFitSchedule = scheduleFitAllTables;
 })();

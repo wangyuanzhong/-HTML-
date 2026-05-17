@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { revealDeckChrome } from "./deck-chrome";
 
 /**
  * 回归这次重构的三条核心要求（用户反馈）：
@@ -92,6 +93,7 @@ test("矩阵表外框：行/列再多也不会顶穿底栏；表外框尺寸不�
   await page.goto("/template-tech.html");
 
   // 进入编辑模式 → 跳到客观矩阵
+  await revealDeckChrome(page);
   await page.locator("#deck-edit-enter").click();
   await page.locator('[data-slide-dot="2"]').click();
   await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
@@ -146,6 +148,7 @@ test("表格内字号随可见行/列数动态变化：行少字大，行多字�
   await page.locator('#filter-deck label.filter-chip:has-text("端侧 AI")').click();
   await page.locator('#filter-deck label.filter-chip:has-text("生态联动")').click();
   await page.locator('[data-slide-dot="0"]').click();
+  await revealDeckChrome(page);
   await page.locator("#deck-edit-enter").click();
   await page.locator('[data-slide-dot="2"]').click();
   await page.waitForTimeout(120);
