@@ -275,8 +275,7 @@ body.deck--editing .matrix-toolbar .matrix-structure-tools .btn {
 }
 
 /** 矩阵页：筛选/结构与底栏占位固定；表格在长宽增长时仅在内部出现滚动条，不撑开整页 */
-section[data-slide-index="2"],
-section[data-slide-index="3"] {
+section[data-page-type="table"] {
   display: block;
   height: 100%;
   min-height: 0;
@@ -285,8 +284,7 @@ section[data-slide-index="3"] {
   overflow: hidden;
 }
 
-section[data-slide-index="2"] .table-scroll,
-section[data-slide-index="3"] .table-scroll {
+section[data-page-type="table"] .table-scroll {
   grid-row: 3 / 4;
   min-height: 0;
   width: 100%;
@@ -294,8 +292,7 @@ section[data-slide-index="3"] .table-scroll {
   align-self: stretch;
 }
 
-section[data-slide-index="2"] .slide-inner,
-section[data-slide-index="3"] .slide-inner {
+section[data-page-type="table"] .slide-inner {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   row-gap: clamp(0.55rem, 1.35vw, 1rem);
@@ -307,38 +304,31 @@ section[data-slide-index="3"] .slide-inner {
   width: 100%;
 }
 
-section[data-slide-index="2"] .slide-matrix-title,
-section[data-slide-index="3"] .slide-matrix-title,
-section[data-slide-index="2"] .matrix-toolbar,
-section[data-slide-index="3"] .matrix-toolbar {
+section[data-page-type="table"] .slide-matrix-title,
+section[data-page-type="table"] .matrix-toolbar {
   grid-row: auto;
   flex-shrink: 0;
 }
 
-section[data-slide-index="2"] .matrix-slide-footer,
-section[data-slide-index="3"] .matrix-slide-footer {
+section[data-page-type="table"] .matrix-slide-footer {
   grid-row: 4;
   flex-shrink: 0;
   margin-top: 0;
 }
 
-section[data-slide-index="2"] .slide-matrix-title,
-section[data-slide-index="3"] .slide-matrix-title {
+section[data-page-type="table"] .slide-matrix-title {
   margin: 0;
 }
 
-#comparison-table,
-#comparison-table-sub {
+table[id^="comparison-table"] {
   width: max(100%, 50rem);
   border-collapse: separate;
   border-spacing: 0;
   font-size: clamp(0.72rem, 0.24vw + 0.68rem, 0.9rem);
 }
 
-#comparison-table th,
-#comparison-table td,
-#comparison-table-sub th,
-#comparison-table-sub td {
+table[id^="comparison-table"] th,
+table[id^="comparison-table"] td {
   padding: clamp(0.46rem, 0.75vw, 0.66rem) clamp(0.5rem, 0.9vw, 0.78rem);
   vertical-align: top;
   overflow-wrap: anywhere;
@@ -347,8 +337,7 @@ section[data-slide-index="3"] .slide-matrix-title {
   border-right: 1px solid var(--cell-border, rgba(0, 0, 0, 0.06));
 }
 
-#comparison-table thead th,
-#comparison-table-sub thead th {
+table[id^="comparison-table"] thead th {
   position: sticky;
   top: 0;
   z-index: 3;
@@ -676,6 +665,46 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
   cursor: not-allowed;
 }
 
+.deck-edit-bar__divider {
+  display: inline-block;
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.18rem;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.deck-edit-bar__group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.22rem 0.32rem;
+}
+
+.deck-edit-bar__hint {
+  font-size: 0.72em;
+  letter-spacing: 0.04em;
+  opacity: 0.72;
+  margin: 0 0.18rem 0 0.05rem;
+  text-transform: none;
+}
+
+/* 页面工具仅在编辑模式下显示 */
+body:not(.deck--editing) [data-edit-only="1"] {
+  display: none !important;
+}
+
+/* overview-title 与其他页面一致地使用 cover-eyebrow / cover-title 同体系，
+ * 这里只保证页头标题间距与默认 h2 风格一致；旧版 #overview-title 仅在第一张概述页存在。 */
+.overview-title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  line-height: 1.18;
+}
+
+.overview-sections {
+  display: block;
+}
+
 .deck--editing [contenteditable="true"]:focus {
   outline: 2px solid var(--cell-focus, rgba(0, 229, 255, 0.45));
   outline-offset: 2px;
@@ -809,8 +838,7 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
     0 14px 40px rgba(0, 0, 0, 0.22);
 }
 
-#comparison-table.compare-picking thead th.matrix-corner.is-cp-muted,
-#comparison-table-sub.compare-picking thead th.matrix-corner.is-cp-muted {
+table[id^="comparison-table"].compare-picking thead th.matrix-corner.is-cp-muted {
   opacity: 0.35 !important;
   cursor: not-allowed !important;
 }
@@ -819,21 +847,17 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
  * sticky 左上角角格 z-index 高于行头：滚动后会挡住首列行标题的点击，
  * 非编辑模式下无法点到行头触发对比切换；对比进行中让穿透到下方行头单元格。
  */
-#comparison-table.compare-picking thead th.matrix-corner,
-#comparison-table-sub.compare-picking thead th.matrix-corner {
+table[id^="comparison-table"].compare-picking thead th.matrix-corner {
   pointer-events: none;
 }
 
-#comparison-table.compare-picking .matrix-cell,
-#comparison-table-sub.compare-picking .matrix-cell {
+table[id^="comparison-table"].compare-picking .matrix-cell {
   cursor: not-allowed;
   filter: saturate(0.74);
 }
 
-#comparison-table.compare-picking .matrix-cell:hover,
-#comparison-table.compare-picking .matrix-cell:focus-visible,
-#comparison-table-sub.compare-picking .matrix-cell:hover,
-#comparison-table-sub.compare-picking .matrix-cell:focus-visible {
+table[id^="comparison-table"].compare-picking .matrix-cell:hover,
+table[id^="comparison-table"].compare-picking .matrix-cell:focus-visible {
   outline: none;
   background: var(--cell-bg);
 }
@@ -852,8 +876,7 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
   }
 }
 
-#comparison-table tbody th.matrix-row-head.is-cp-target,
-#comparison-table-sub tbody th.matrix-row-head.is-cp-target {
+table[id^="comparison-table"] tbody th.matrix-row-head.is-cp-target {
   cursor: pointer;
   animation: cp-pulse-glow 2.35s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   outline: 2px dashed color-mix(in srgb, var(--cell-focus) 55%, transparent);
@@ -866,50 +889,41 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
  * sticky 列表头（非角格）z-index=3 会压住左侧行头外露区域，
  * 点选易被当成「点列」。对比中选行阶段抬升行标题命中层级。
  */
-#comparison-table.compare-picking tbody th.matrix-row-head.is-cp-target,
-#comparison-table.compare-picking tbody th.matrix-row-head.is-cp-selected,
-#comparison-table-sub.compare-picking tbody th.matrix-row-head.is-cp-target,
-#comparison-table-sub.compare-picking tbody th.matrix-row-head.is-cp-selected {
+table[id^="comparison-table"].compare-picking tbody th.matrix-row-head.is-cp-target,
+table[id^="comparison-table"].compare-picking tbody th.matrix-row-head.is-cp-selected {
   z-index: 4;
 }
 
-#comparison-table tbody th.matrix-row-head.is-cp-target:hover,
-#comparison-table-sub tbody th.matrix-row-head.is-cp-target:hover {
+table[id^="comparison-table"] tbody th.matrix-row-head.is-cp-target:hover {
   background: var(--cell-bg-hover);
 }
 
-#comparison-table tbody th.matrix-row-head.is-cp-selected,
-#comparison-table-sub tbody th.matrix-row-head.is-cp-selected {
+table[id^="comparison-table"] tbody th.matrix-row-head.is-cp-selected {
   animation: none;
   outline: 2px solid var(--cell-focus);
   outline-offset: -5px;
   background: color-mix(in srgb, var(--cell-bg-hover) 70%, transparent);
 }
 
-#comparison-table tbody th.matrix-row-head.is-cp-muted,
-#comparison-table thead th[data-col-id].is-cp-muted,
-#comparison-table-sub tbody th.matrix-row-head.is-cp-muted,
-#comparison-table-sub thead th[data-col-id].is-cp-muted {
+table[id^="comparison-table"] tbody th.matrix-row-head.is-cp-muted,
+table[id^="comparison-table"] thead th[data-col-id].is-cp-muted {
   opacity: 0.32 !important;
   cursor: not-allowed !important;
 }
 
-#comparison-table.compare-picking thead th[data-col-id].is-cp-locked,
-#comparison-table-sub.compare-picking thead th[data-col-id].is-cp-locked {
+table[id^="comparison-table"].compare-picking thead th[data-col-id].is-cp-locked {
   opacity: 0.45 !important;
   cursor: not-allowed !important;
 }
 
-#comparison-table.compare-picking.compare-pick-cols-live thead th[data-col-id].is-cp-target,
-#comparison-table-sub.compare-picking.compare-pick-cols-live thead th[data-col-id].is-cp-target {
+table[id^="comparison-table"].compare-picking.compare-pick-cols-live thead th[data-col-id].is-cp-target {
   cursor: pointer;
   animation: cp-pulse-glow 2.05s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   outline: 2px dashed color-mix(in srgb, var(--cell-focus) 52%, transparent);
   outline-offset: -5px;
 }
 
-#comparison-table.compare-picking.compare-pick-cols-live thead th[data-col-id].is-cp-selected,
-#comparison-table-sub.compare-picking.compare-pick-cols-live thead th[data-col-id].is-cp-selected {
+table[id^="comparison-table"].compare-picking.compare-pick-cols-live thead th[data-col-id].is-cp-selected {
   animation: none;
   outline: 2px solid var(--cell-focus);
   outline-offset: -5px;
@@ -932,8 +946,7 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
   }
 }
 
-#comparison-table.cp-flash-nope,
-#comparison-table-sub.cp-flash-nope,
+table[id^="comparison-table"].cp-flash-nope,
 .compare-fab__main.cp-flash-nope {
   animation: cp-nope-flash 0.38s cubic-bezier(0.36, 0, 0.66, 1);
 }
@@ -1301,16 +1314,14 @@ html:not([data-deck-fit-disabled="true"]) [data-slide] {
 }
 
 /* 矩阵页：禁止内部滚动，由 JS 算出贴合的字号 / 内边距 */
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"],
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] {
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] {
   display: block;
   height: 100%;
   padding: 28px 56px 24px;
   overflow: hidden;
 }
 
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .slide-inner,
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .slide-inner {
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .slide-inner {
   display: grid;
   /* 标题 | 工具条 | 表格(填满剩余) | 底栏 */
   grid-template-rows: auto auto minmax(0, 1fr) auto;
@@ -1322,15 +1333,13 @@ html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .slide-i
   min-height: 0;
 }
 
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .table-scroll,
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .table-scroll {
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .table-scroll {
   overflow: hidden;
   /* table-scroll 自身的高度由 grid minmax(0,1fr) 决定，恒为剩余空间，不随表格内容长大 */
 }
 
 /* 矩阵表：固定布局 + 高度撑满，由 JS 写入字号 / padding；表格自身高度=滚动区高度，行平均分配剩余纵向空间 */
-html:not([data-deck-fit-disabled="true"]) #comparison-table,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub {
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] {
   width: 100%;
   height: 100%;
   table-layout: fixed;
@@ -1338,33 +1347,27 @@ html:not([data-deck-fit-disabled="true"]) #comparison-table-sub {
   line-height: var(--matrix-cell-line, 1.4);
 }
 
-html:not([data-deck-fit-disabled="true"]) #comparison-table th,
-html:not([data-deck-fit-disabled="true"]) #comparison-table td,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub th,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub td {
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] th,
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] td {
   padding: var(--matrix-cell-pad-y, 8px) var(--matrix-cell-pad-x, 12px);
   font-size: inherit;
   line-height: inherit;
   vertical-align: middle;
 }
 
-html:not([data-deck-fit-disabled="true"]) #comparison-table .matrix-corner,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub .matrix-corner,
-html:not([data-deck-fit-disabled="true"]) #comparison-table .matrix-row-head,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub .matrix-row-head {
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] .matrix-corner,
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] .matrix-row-head {
   /* table-layout:fixed 下 min/max-width 不再控制列宽，统一释放，避免与 JS 写入的列宽冲突 */
   min-width: 0;
   max-width: none;
 }
 
-html:not([data-deck-fit-disabled="true"]) #comparison-table .matrix-cell,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub .matrix-cell {
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] .matrix-cell {
   max-width: none;
 }
 
 /* 表头不再 sticky（无内滚动），但保留视觉前置 */
-html:not([data-deck-fit-disabled="true"]) #comparison-table thead th,
-html:not([data-deck-fit-disabled="true"]) #comparison-table-sub thead th {
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] thead th {
   position: relative;
   top: auto;
   z-index: 1;
@@ -1379,14 +1382,12 @@ html:not([data-deck-fit-disabled="true"]) .matrix-row-head {
 }
 
 /* 矩阵页的工具条 / 底栏使用「设计像素」节奏，确保不同窗口下版面一致 */
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .matrix-toolbar,
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .matrix-toolbar {
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .matrix-toolbar {
   gap: 12px 28px;
   margin-bottom: 0;
 }
 
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="2"] .matrix-slide-footer,
-html:not([data-deck-fit-disabled="true"]) section[data-slide-index="3"] .matrix-slide-footer {
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .matrix-slide-footer {
   margin-top: 0;
 }
 
