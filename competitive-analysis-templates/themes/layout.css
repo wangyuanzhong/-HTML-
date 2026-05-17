@@ -624,19 +624,55 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
   margin-top: 0.85rem;
 }
 
-/** 封面编辑条与编辑态（纯前端改稿） */
-.deck-edit-bar {
+/**
+ * 文稿工具带：固定在视口顶端，在虚拟舞台 (#deck-stage) 之外，
+ * 与封面标题解耦，视觉权重低于讲演内容。
+ */
+.deck-edit-bar.deck-edit-bar--chrome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 0.75rem;
-  margin: 0 0 1.25rem;
-  padding-bottom: 0.85rem;
-  border-bottom: 1px solid var(--table-border, rgba(255, 255, 255, 0.12));
+  justify-content: flex-end;
+  gap: 0.25rem 0.4rem;
+  margin: 0;
+  padding: 0.26rem 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 12, 18, 0.52);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  font-size: clamp(0.62rem, 0.55vw + 0.52rem, 0.72rem);
+  line-height: 1.25;
+  color: rgba(240, 242, 247, 0.72);
+}
+
+.deck-edit-bar--chrome .deck-edit-bar__btn {
+  padding: 0.2rem 0.44rem;
+  border-radius: var(--btn-radius, 6px);
+  font-weight: 500;
+}
+
+.deck-edit-bar--chrome .btn--ghost {
+  --btn-ghost-fg: rgba(236, 240, 245, 0.66);
+  --btn-ghost-border: rgba(255, 255, 255, 0.12);
+}
+
+.deck-edit-bar--chrome .btn--ghost:not([disabled]):hover,
+.deck-edit-bar--chrome .btn--ghost:not([disabled]):focus-visible {
+  --btn-ghost-fg: rgba(255, 255, 255, 0.9);
+  --btn-ghost-border: rgba(255, 255, 255, 0.26);
+}
+
+.deck-edit-bar--chrome .btn:hover {
+  transform: none;
 }
 
 .deck-edit-bar__btn[disabled] {
-  opacity: 0.38;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
