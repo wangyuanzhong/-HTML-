@@ -28,7 +28,8 @@
  *     页面 ID 字符串。所有交互在 matrix-core 内部按页面 ID 区分。
  *
  * 添加 / 复制 / 删除页：
- *   - 顶部编辑栏含 `[data-page-add="<type>"]`、`[data-page-action="duplicate|delete"]`。
+ *   - 顶部编辑栏含 `[data-page-add="<type>"]`、`[data-page-action="duplicate|delete"]`、
+ *     `#deck-template-select`（切换 `template-*.html`）。
  *   - "添加" 默认插入到当前页的下一页位置；"复制本页" 把当前页深克隆插到下一页。
  *
  * 文稿编辑、IndexedDB 快照、对比报告、模态、xlsx 等沿用旧版功能；
@@ -76,6 +77,15 @@
   function deepClone(o) {
     return JSON.parse(JSON.stringify(o));
   }
+
+  /** 与 template-tech 演示稿第五页「收束」一致的新增结束页默认数据 */
+  var DEFAULT_ENDING_PAGE_DATA = {
+    eyebrow: "Session Closing",
+    title:
+      '收束<br><span style="opacity:.7;font-size:.48em;display:block;margin-top:.45em;font-weight:500;">问题与对齐时间</span>',
+    bodyHtml: "<p>感谢聆听。若需进一步对齐资源与排期，会后单独沟通。</p>",
+  };
+
   function cellKey(rowId, colId) {
     return rowId + "::" + colId;
   }
@@ -158,7 +168,7 @@
       pages.push({
         id: newPageId("ending"),
         type: "ending",
-        data: { eyebrow: "谢谢观看", title: "感谢聆听", bodyHtml: "<p>—</p>" },
+        data: deepClone(DEFAULT_ENDING_PAGE_DATA),
       });
     }
     d.pages = pages;
@@ -442,13 +452,9 @@
     },
 
     ending: {
-      label: "尾声",
+      label: "结束页",
       defaultData: function () {
-        return {
-          eyebrow: "结束",
-          title: "谢谢观看",
-          bodyHtml: "<p>—</p>",
-        };
+        return deepClone(DEFAULT_ENDING_PAGE_DATA);
       },
       render: function (section, page, ctx) {
         var data = page.data || {};
@@ -2173,6 +2179,34 @@
     });
   }
 
+  function bindDeckTemplateSelect() {
+    var sel = document.getElementById("deck-template-select");
+    if (!sel || String(sel.tagName || "").toLowerCase() !== "select") return;
+    if (document.documentElement.dataset.deckTemplateSelectBound === "1") return;
+    document.documentElement.dataset.deckTemplateSelectBound = "1";
+    var path = window.location.pathname || "";
+    var base = path.split("/").pop() || "";
+    var opts = sel.querySelectorAll("option");
+    for (var i = 0; i < opts.length; i++) {
+      if (String(opts[i].getAttribute("value") || "") === base) {
+        sel.selectedIndex = i;
+        break;
+      }
+    }
+    sel.addEventListener("change", function () {
+      var v = String(sel.value || "").trim();
+      if (!v) return;
+      try {
+        var url = new URL(v, window.location.href);
+        url.hash = window.location.hash;
+        url.search = window.location.search;
+        window.location.assign(url.toString());
+      } catch (err) {
+        window.location.href = v;
+      }
+    });
+  }
+
   /* ============================================================
    * 15. Paste plain-only
    * ============================================================ */
@@ -2313,6 +2347,7 @@
     bindCompareReportModal();
     bindDeckEditToolbar();
     bindDeckPortableTransfer();
+    bindDeckTemplateSelect();
     bindDeckPastePlainOnly();
     bindPageToolbar();
     bindMatrixAxisPickMemory();

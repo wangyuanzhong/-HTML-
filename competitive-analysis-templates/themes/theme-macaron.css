@@ -52,6 +52,11 @@ html[data-deck-theme="macaron"] body {
   --cr-card-bg: rgba(255, 255, 255, 0.94);
   --cr-sum-bg: rgba(255, 220, 236, 0.55);
   --cr-intro-rule: rgba(232, 112, 168, 0.22);
+  --deck-chrome-font: ui-rounded, "Avenir Next", "Nunito", system-ui, sans-serif;
+  --deck-select-bg: rgba(255, 252, 254, 0.92);
+  --deck-select-fg: rgba(72, 52, 82, 0.92);
+  --deck-select-border: rgba(200, 170, 210, 0.45);
+  --deck-select-border-hover: rgba(232, 112, 168, 0.65);
 }
 
 html[data-deck-theme="macaron"] body.deck {
@@ -129,6 +134,15 @@ html[data-deck-theme="macaron"] .compare-fab__cancel {
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(232, 112, 168, 0.35);
   color: #6d4f72;
+}
+
+html[data-deck-theme="macaron"] .deck-chrome-hover-target:hover,
+html[data-deck-theme="macaron"] .deck-chrome-hover-target:focus-visible {
+  background: linear-gradient(
+    180deg,
+    rgba(232, 112, 168, 0.22) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
 
 /** 顶部文稿工具带：浅色底，与粉彩页面对齐且保持低调 */

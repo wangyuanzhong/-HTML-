@@ -19,27 +19,51 @@
 <body class="deck">
   <a class="deck-skip" href="#deck-stage">跳到内容</a>
 
-  <div
-    class="deck-edit-bar deck-edit-bar--chrome"
-    id="deck-edit-bar"
-    aria-label="文稿与数据（非讲演内容）"
-  >
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-export">导出 JSON</button>
-    <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-import-trigger">导入 JSON</button>
-    <input type="file" id="deck-portable-import-file" accept="application/json,.json,text/json" hidden aria-hidden="true" />
-    <span class="deck-edit-bar__divider" aria-hidden="true"></span>
-    <span class="deck-edit-bar__group" id="deck-page-tools" data-edit-only="1">
-      <span class="deck-edit-bar__hint">当前页之后插入</span>
-      <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="cover">+ 封面</button>
-      <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="overview">+ 概述</button>
-      <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="table">+ 表格</button>
-      <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="ending">+ 尾声</button>
-      <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-action="duplicate" title="复制当前页">⎘ 复制本页</button>
-      <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-action="delete" title="删除当前页">✕ 删除本页</button>
-    </span>
+  <div class="deck-chrome-shell" id="deck-chrome-shell" aria-label="文稿与模板">
+    <button
+      type="button"
+      class="deck-chrome-hover-target"
+      id="deck-chrome-hover-target"
+      aria-label="展开文稿与数据工具栏（模板、导入导出 JSON）"
+      title="文稿工具"
+    ></button>
+    <div class="deck-chrome-inner">
+      <div
+        class="deck-edit-bar deck-edit-bar--chrome"
+        id="deck-edit-bar"
+        aria-label="文稿与数据（非讲演内容）"
+      >
+        <label class="deck-template-select-wrap" for="deck-template-select">
+          <span class="deck-template-select__label">模板</span>
+          <select
+            id="deck-template-select"
+            class="deck-template-select"
+            autocomplete="off"
+            aria-label="选择视觉模板（打开对应 HTML 文件）"
+          >
+            <option value="template-tech.html">科技霓虹</option>
+            <option value="template-macaron.html" selected>马卡龙</option>
+            <option value="template-minimal.html">极简衬线</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-export">导出 JSON</button>
+        <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-portable-import-trigger">导入 JSON</button>
+        <input type="file" id="deck-portable-import-file" accept="application/json,.json,text/json" hidden aria-hidden="true" />
+        <span class="deck-edit-bar__divider" aria-hidden="true"></span>
+        <span class="deck-edit-bar__group" id="deck-page-tools" data-edit-only="1">
+          <span class="deck-edit-bar__hint">当前页之后插入</span>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="cover">+ 封面</button>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="overview">+ 概述</button>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="table">+ 表格</button>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="ending">+ 结束页</button>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-action="duplicate" title="复制当前页">⎘ 复制本页</button>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-action="delete" title="删除当前页">✕ 删除本页</button>
+        </span>
+      </div>
+    </div>
   </div>
 
   <nav id="slide-nav" aria-label="幻灯导航"></nav>

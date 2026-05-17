@@ -134,38 +134,40 @@ body.deck {
 }
 
 .nested-block + .nested-block {
-  margin-top: 1.35rem;
+  margin-top: 1.55rem;
 }
 
 .nested-heading {
-  margin: 0 0 0.5rem;
-  font-size: 1.15rem;
+  margin: 0 0 0.55rem;
+  font-size: clamp(1.22rem, 2.1vw, 1.48rem);
+  letter-spacing: 0.02em;
 }
 
 .nested-body {
-  line-height: 1.65;
+  line-height: 1.68;
+  font-size: clamp(1.05rem, 2.15vw, 1.32rem);
 }
 
 .nested-body p {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.75rem;
 }
 
 .nested-body ul {
   margin: 0.25rem 0 0.75rem 1.1rem;
 }
 
-/** 概述页正文：流式字号，窄屏可读 */
+/** 概述页正文：流式字号，窄屏可读（整体偏大一号，避免版面发空） */
 .nested-body .ov-lead {
-  font-size: clamp(0.94rem, 2.35vw, 1.12rem);
-  line-height: 1.62;
-  margin: 0 0 0.75rem;
+  font-size: clamp(1.08rem, 2.5vw, 1.34rem);
+  line-height: 1.66;
+  margin: 0 0 0.85rem;
   max-width: min(52rem, 100%);
 }
 
 .nested-body .ov-note {
-  font-size: clamp(0.76rem, 2vw, 0.88rem);
-  line-height: 1.52;
-  opacity: 0.8;
+  font-size: clamp(0.92rem, 2.15vw, 1.05rem);
+  line-height: 1.58;
+  opacity: 0.82;
   margin: 0;
   max-width: min(48rem, 100%);
 }
@@ -614,15 +616,87 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
 }
 
 /**
- * 文稿工具带：固定在视口顶端，在虚拟舞台 (#deck-stage) 之外，
- * 与封面标题解耦，视觉权重低于讲演内容。
+ * 顶部文稿壳：非编辑时仅保留一条「感应带」，悬停 / 键盘聚焦后展开整栏。
+ * 编辑模式下整栏常驻，避免遮挡编辑流程。
  */
-.deck-edit-bar.deck-edit-bar--chrome {
+.deck-chrome-shell {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 70;
+  min-height: 14px;
+  pointer-events: none;
+}
+
+.deck-chrome-shell > * {
+  pointer-events: auto;
+}
+
+.deck-chrome-hover-target {
+  height: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  cursor: default;
+  opacity: 0.55;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.deck-chrome-hover-target:hover,
+.deck-chrome-hover-target:focus-visible {
+  opacity: 1;
+  outline: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 229, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+body.deck--editing .deck-chrome-hover-target {
+  display: none;
+}
+
+.deck-chrome-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+  will-change: transform, opacity;
+}
+
+body:not(.deck--editing) .deck-chrome-shell:hover .deck-chrome-inner,
+body:not(.deck--editing) .deck-chrome-shell:focus-within .deck-chrome-inner {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.deck--editing .deck-chrome-inner {
+  position: relative;
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/**
+ * 文稿工具带：在 deck-chrome-inner 内水平铺满；具体配色由各 theme-* 覆盖。
+ */
+.deck-edit-bar.deck-edit-bar--chrome {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -637,6 +711,58 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
   font-size: clamp(0.62rem, 0.55vw + 0.52rem, 0.72rem);
   line-height: 1.25;
   color: rgba(240, 242, 247, 0.72);
+}
+
+.deck-template-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: auto;
+  flex: 0 0 auto;
+}
+
+.deck-template-select__label {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  white-space: nowrap;
+}
+
+.deck-template-select {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(
+    --deck-chrome-font,
+    "IBM Plex Mono",
+    ui-monospace,
+    "Cascadia Code",
+    monospace
+  );
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.28rem 1.65rem 0.28rem 0.55rem;
+  border-radius: 7px;
+  border: 1px solid var(--deck-select-border, rgba(255, 255, 255, 0.16));
+  background: var(--deck-select-bg, rgba(6, 8, 14, 0.75))
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23b8c0d4' d='M1 1.5L6 6l5-4.5'/%3E%3C/svg%3E")
+    no-repeat right 0.45rem center / 10px 6px;
+  color: var(--deck-select-fg, rgba(236, 240, 245, 0.88));
+  cursor: pointer;
+  min-width: 7.5rem;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.22s ease,
+    background 0.18s ease;
+}
+
+.deck-template-select:hover,
+.deck-template-select:focus-visible {
+  border-color: var(--deck-select-border-hover, rgba(0, 229, 255, 0.45));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--deck-select-border-hover, #00e5ff) 22%, transparent);
+  outline: none;
 }
 
 .deck-edit-bar--chrome .deck-edit-bar__btn {
@@ -696,9 +822,10 @@ body:not(.deck--editing) [data-edit-only="1"] {
 /* overview-title 与其他页面一致地使用 cover-eyebrow / cover-title 同体系，
  * 这里只保证页头标题间距与默认 h2 风格一致；旧版 #overview-title 仅在第一张概述页存在。 */
 .overview-title {
-  margin: 0 0 0.65rem;
-  font-size: clamp(1.4rem, 2.4vw, 2rem);
-  line-height: 1.18;
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.65rem, 2.85vw, 2.35rem);
+  line-height: 1.16;
+  letter-spacing: 0.03em;
 }
 
 .overview-sections {
@@ -1166,7 +1293,8 @@ table[id^="comparison-table"].cp-flash-nope,
 
 .ending-body {
   max-width: 44rem;
-  line-height: 1.68;
+  line-height: 1.72;
+  font-size: clamp(1.02rem, 1.9vw, 1.22rem);
 }
 
 .ending-body p {

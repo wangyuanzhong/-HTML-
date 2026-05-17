@@ -12,6 +12,8 @@ async function setEditMode(page: Page, enabled: boolean) {
   if (enabled && !isEditing) {
     await page.locator('[data-slide-dot="0"]').click();
     await expect(page.locator('[data-slide-index="0"]')).toBeVisible();
+    await page.locator("#deck-chrome-hover-target").hover();
+    await page.waitForTimeout(60);
     await page.locator("#deck-edit-enter").click();
   } else if (!enabled && isEditing) {
     await page.locator('[data-slide-dot="0"]').click();

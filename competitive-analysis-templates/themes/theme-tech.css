@@ -51,6 +51,11 @@ html[data-deck-theme="tech"] body {
     0 0 26px rgba(0, 229, 255, 0.18);
   --filter-chip-off-opacity: 0.45;
   --cr-intro-rule: rgba(0, 229, 255, 0.12);
+  --deck-chrome-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --deck-select-bg: rgba(6, 14, 26, 0.9);
+  --deck-select-fg: rgba(228, 250, 255, 0.94);
+  --deck-select-border: rgba(0, 229, 255, 0.22);
+  --deck-select-border-hover: rgba(0, 229, 255, 0.55);
 }
 
 html[data-deck-theme="tech"] body.deck {
@@ -79,4 +84,13 @@ html[data-deck-theme="tech"] .btn {
 
 html[data-deck-theme="tech"] .table-scroll {
   box-shadow: inset 0 0 0 1px rgba(124, 77, 255, 0.15);
+}
+
+html[data-deck-theme="tech"] .deck-chrome-hover-target:hover,
+html[data-deck-theme="tech"] .deck-chrome-hover-target:focus-visible {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 229, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
