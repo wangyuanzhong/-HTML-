@@ -1386,8 +1386,8 @@ html[data-deck-theme="minimal"] .matrix-sync-bar .btn.btn--ghost {
  *
  * 与之前 clamp(vw/vh) 的流式版面不同：
  *   - 文档结构高度恒为 --deck-base-h，幻灯之间互相覆盖（绝对定位）
- *   - 矩阵页表格不再产生内部滚动条，行 / 列字号与内边距由
- *     assets/deck-stage-fit.js 根据可见行 × 列数动态写入 CSS 变量
+ *   - 矩阵页在 ≤7 数据行、≤5 产品列内由 deck-stage-fit.js 缩小字号以塞满视口；
+ *     超出后改为 .table-scroll--overflow 内滚动，字号按上限网格锁定
  *
  * 旧版属性（min-height:100vh、clamp 的 padding、表格 vw 字号、…）
  * 都被本节中更具体或位于文件尾部的规则覆盖。
@@ -1466,6 +1466,34 @@ html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .table
   /* table-scroll 自身的高度由 grid minmax(0,1fr) 决定，恒为剩余空间，不随表格内容长大 */
 }
 
+/** 行列超过 7×5 上限：字号锁定为上限网格尺寸，表体在容器内滚动 */
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .table-scroll--overflow {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--cell-focus, #888) 42%, transparent)
+    transparent;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  section[data-page-type="table"]
+  .table-scroll--overflow::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  section[data-page-type="table"]
+  .table-scroll--overflow::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cell-focus, #888) 38%, transparent);
+}
+
+html:not([data-deck-fit-disabled="true"])
+  section[data-page-type="table"]
+  .table-scroll--overflow::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* 矩阵表：固定布局 + 高度撑满，由 JS 写入字号 / padding；表格自身高度=滚动区高度，行平均分配剩余纵向空间 */
 html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] {
   width: 100%;
@@ -1473,6 +1501,46 @@ html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] {
   table-layout: fixed;
   font-size: var(--matrix-cell-font, 14px);
   line-height: var(--matrix-cell-line, 1.4);
+}
+
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode {
+  table-layout: fixed;
+  max-height: none;
+}
+
+/** 仅超行：表宽仍铺满视口，列宽与 ≤7 行时一致 */
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-rows:not(
+    .comparison-table--scroll-cols
+  ) {
+  width: 100% !important;
+  min-width: 0;
+  max-width: 100%;
+  height: auto !important;
+}
+
+/** 超列：列宽锁定为 5 列基准，表横向加宽并滚动 */
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-cols {
+  width: var(--matrix-table-w, max-content) !important;
+  min-width: 100%;
+  max-width: none;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-cols:not(
+    .comparison-table--scroll-rows
+  ) {
+  height: 100% !important;
+}
+
+/** 行列均超限 */
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-rows.comparison-table--scroll-cols {
+  width: max-content;
+  min-width: 100%;
+  height: auto !important;
 }
 
 html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] th,
@@ -1494,6 +1562,37 @@ html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] .matrix-
   max-width: none;
 }
 
+/* 表头 / 数据行分开控制高度：表头不随数据行数均分变矮 */
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] thead th {
+  height: var(--matrix-thead-h, auto);
+  min-height: var(--matrix-thead-h, auto);
+  max-height: var(--matrix-thead-h, none);
+  box-sizing: border-box;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] tbody th,
+html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] tbody td {
+  height: var(--matrix-body-row-h, auto);
+  min-height: var(--matrix-body-row-h, auto);
+  max-height: var(--matrix-body-row-h, none);
+  box-sizing: border-box;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-rows
+  tbody
+  th,
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-rows
+  tbody
+  td {
+  overflow: hidden;
+}
+
 /* 表头不再 sticky（无内滚动），但保留视觉前置 */
 html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] thead th {
   position: relative;
@@ -1507,6 +1606,32 @@ html:not([data-deck-fit-disabled="true"]) .matrix-row-head {
   left: auto;
   top: auto;
   z-index: auto;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode
+  thead
+  th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode
+  .matrix-corner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 5;
+}
+
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode
+  .matrix-row-head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
 }
 
 /* 矩阵页的工具条 / 底栏使用「设计像素」节奏，确保不同窗口下版面一致 */

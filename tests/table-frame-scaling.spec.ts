@@ -76,6 +76,89 @@ test("matrix table aligns with page controls and footer stays in-frame", async (
   expect(medium.height).toBeGreaterThan(small.height);
 });
 
+async function openMatrixSlide(page: Page) {
+  await page.goto("/template-tech.html");
+  await page.locator('[data-slide-dot="2"]').click();
+  await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
+}
+
+async function enterMatrixEdit(page: Page) {
+  await page.locator("#deck-edit-enter").click();
+  await expect(page.locator("body.deck--editing")).toBeVisible();
+}
+
+test("matrix uses scroll mode when data rows exceed 7", async ({ page }) => {
+  await openMatrixSlide(page);
+  await enterMatrixEdit(page);
+  const addRow = page.locator('[data-matrix-action="add-row"]').first();
+  for (let i = 0; i < 5; i += 1) {
+    await addRow.click();
+  }
+  const scroll = page.locator('[data-slide-index="2"] .table-scroll--overflow');
+  await expect(scroll).toBeVisible({ timeout: 5000 });
+  await expect(
+    page.locator('[data-slide-index="2"] #comparison-table.comparison-table--scroll-mode')
+  ).toBeVisible();
+  await expect
+    .poll(async () =>
+      scroll.evaluate((el) => el.scrollHeight > el.clientHeight + 2)
+    )
+    .toBeTruthy();
+  await expect
+    .poll(async () =>
+      page.locator('[data-slide-index="2"] #comparison-table tbody tr').first().evaluate((tr) => {
+        const h = tr.getBoundingClientRect().height;
+        return h > 20;
+      })
+    )
+    .toBeTruthy();
+});
+
+test("matrix uses scroll mode when product columns exceed 5", async ({ page }) => {
+  await openMatrixSlide(page);
+  await enterMatrixEdit(page);
+  const addCol = page.locator('[data-matrix-action="add-col"]').first();
+  for (let i = 0; i < 3; i += 1) {
+    await addCol.click();
+  }
+  const scroll = page.locator('[data-slide-index="2"] .table-scroll--overflow');
+  await expect(scroll).toBeVisible({ timeout: 5000 });
+  await expect(
+    page.locator('[data-slide-index="2"] #comparison-table.comparison-table--scroll-cols')
+  ).toBeVisible();
+  await expect
+    .poll(async () =>
+      scroll.evaluate((el) => el.scrollWidth > el.clientWidth + 2)
+    )
+    .toBeTruthy();
+});
+
+test("row overflow keeps table viewport width stable", async ({ page }) => {
+  await openMatrixSlide(page);
+  const scroll = page.locator('[data-slide-index="2"] .table-scroll');
+  const widthBefore = await scroll.evaluate((el) => el.clientWidth);
+  await enterMatrixEdit(page);
+  const addRow = page.locator('[data-matrix-action="add-row"]').first();
+  for (let i = 0; i < 5; i += 1) {
+    await addRow.click();
+  }
+  await expect(
+    page.locator('[data-slide-index="2"] .comparison-table--scroll-rows')
+  ).toBeVisible({ timeout: 5000 });
+  await expect
+    .poll(async () =>
+      scroll.evaluate((el) => Math.abs(el.clientWidth - widthBefore) < 2)
+    )
+    .toBeTruthy();
+});
+
+test("matrix stays in fit mode within 7 rows and 5 columns", async ({ page }) => {
+  await openMatrixSlide(page);
+  await expect(
+    page.locator('[data-slide-index="2"] .table-scroll--overflow')
+  ).toHaveCount(0);
+});
+
 test("minimal theme table appears on background without framed underlay", async ({
   page,
 }) => {

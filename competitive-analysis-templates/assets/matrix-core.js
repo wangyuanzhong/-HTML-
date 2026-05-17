@@ -816,6 +816,9 @@
     bindCellInteractions(page);
     bindMatrixPickDelegationFor(page);
     syncComparePickUI();
+    if (typeof window.__scheduleMatrixTableFit === "function") {
+      window.__scheduleMatrixTableFit();
+    }
   }
 
   function bindCellInteractions(page) {
@@ -2077,7 +2080,18 @@
   function applySnapshot(snap) {
     if (!snap || snap.v !== 2 || !Array.isArray(snap.pages)) return;
     deck.pages = snap.pages;
-    if (snap.theme != null) deck.theme = snap.theme;
+    /* theme 不随快照恢复：每个 template-*.html 只链一份 theme-*.css */
+  }
+
+  /** 以当前 HTML 的 data-deck-theme 为准，避免 IndexedDB 里旧 theme 与 CSS 不匹配 */
+  function syncDeckThemeFromHtml() {
+    if (!deck) return;
+    var bound = String(
+      document.documentElement.getAttribute("data-deck-theme") || ""
+    ).trim();
+    if (!bound) return;
+    deck.theme = bound;
+    document.documentElement.dataset.deckTheme = bound;
   }
 
   function buildSnapshot() {
@@ -2130,9 +2144,16 @@
     if (wasEditing) applyEditableToDOM(false);
     closeModal();
     exitComparePickQuiet();
+    var importedTheme = next.theme != null ? String(next.theme).trim() : "";
     deck = next;
-    if (deck.theme != null) {
-      document.documentElement.dataset.deckTheme = String(deck.theme);
+    syncDeckThemeFromHtml();
+    if (importedTheme && deck.theme && importedTheme !== deck.theme) {
+      console.info(
+        "[matrix-core] 导入 JSON 主题为",
+        importedTheme,
+        "，已按当前页面保留",
+        deck.theme
+      );
     }
     slideIndexNav = 0;
     renderAllSlides();
@@ -2359,9 +2380,7 @@
       })
       .catch(Boolean)
       .finally(function () {
-        if (deck.theme != null && String(deck.theme).trim() !== "") {
-          document.documentElement.dataset.deckTheme = String(deck.theme).trim();
-        }
+        syncDeckThemeFromHtml();
         renderAllSlides();
         bindCompareFab();
       });
@@ -2378,9 +2397,7 @@
     var raw = parseDeck();
     if (!raw) return;
     deck = migrateDeckIfNeeded(raw);
-    if (deck.theme != null && String(deck.theme).trim() !== "") {
-      document.documentElement.dataset.deckTheme = String(deck.theme).trim();
-    }
+    syncDeckThemeFromHtml();
     renderAllSlides();
     bindCompareFab();
   };
