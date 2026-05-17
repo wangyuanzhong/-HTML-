@@ -68,6 +68,9 @@ html[data-deck-theme="minimal"] body {
   --deck-select-fg: rgba(244, 246, 253, 0.94);
   --deck-select-border: rgba(230, 237, 255, 0.28);
   --deck-select-border-hover: rgba(245, 248, 255, 0.55);
+  --deck-version-fg: rgba(169, 176, 200, 0.62);
+  --deck-version-bg: rgba(255, 255, 255, 0.05);
+  --deck-version-border: rgba(230, 237, 255, 0.2);
 }
 
 html[data-deck-theme="minimal"] body.deck {

@@ -56,6 +56,9 @@ html[data-deck-theme="tech"] body {
   --deck-select-fg: rgba(228, 250, 255, 0.94);
   --deck-select-border: rgba(0, 229, 255, 0.22);
   --deck-select-border-hover: rgba(0, 229, 255, 0.55);
+  --deck-version-fg: rgba(170, 220, 238, 0.52);
+  --deck-version-bg: rgba(0, 229, 255, 0.06);
+  --deck-version-border: rgba(0, 229, 255, 0.14);
 }
 
 html[data-deck-theme="tech"] body.deck {

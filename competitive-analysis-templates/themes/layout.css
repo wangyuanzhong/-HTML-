@@ -721,6 +721,28 @@ body.deck--editing .deck-chrome-inner {
   flex: 0 0 auto;
 }
 
+.deck-version {
+  flex: 0 0 auto;
+  margin: 0 0.55rem 0 0;
+  padding: 0.12rem 0.38rem;
+  border-radius: 4px;
+  font-family: var(
+    --deck-chrome-font,
+    ui-monospace,
+    "Cascadia Code",
+    monospace
+  );
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  color: var(--deck-version-fg, rgba(236, 240, 245, 0.45));
+  background: var(--deck-version-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--deck-version-border, rgba(255, 255, 255, 0.08));
+  user-select: none;
+  white-space: nowrap;
+}
+
 .deck-template-select__label {
   font-size: 0.68rem;
   letter-spacing: 0.14em;

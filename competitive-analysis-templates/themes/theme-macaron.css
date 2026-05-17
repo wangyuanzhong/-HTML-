@@ -57,6 +57,9 @@ html[data-deck-theme="macaron"] body {
   --deck-select-fg: rgba(72, 52, 82, 0.92);
   --deck-select-border: rgba(200, 170, 210, 0.45);
   --deck-select-border-hover: rgba(232, 112, 168, 0.65);
+  --deck-version-fg: rgba(92, 72, 98, 0.48);
+  --deck-version-bg: rgba(255, 255, 255, 0.52);
+  --deck-version-border: rgba(200, 170, 210, 0.38);
 }
 
 html[data-deck-theme="macaron"] body.deck {
