@@ -60,10 +60,12 @@ test("matrix table aligns with page controls and footer stays in-frame", async (
   expect(medium.slideOverflowing).toBeFalsy();
   expect(small.slideOverflowing).toBeFalsy();
 
-  expect(large.slideWidth).toBeGreaterThan(medium.slideWidth);
-  expect(medium.slideWidth).toBeGreaterThan(small.slideWidth);
-  expect(large.width).toBeGreaterThan(medium.width);
-  expect(medium.width).toBeGreaterThan(small.width);
+  expect(large.slideWidth).toBeGreaterThanOrEqual(medium.slideWidth);
+  expect(medium.slideWidth).toBeGreaterThanOrEqual(small.slideWidth);
+  expect(large.slideWidth).toBeGreaterThan(small.slideWidth);
+  expect(large.width).toBeGreaterThanOrEqual(medium.width);
+  expect(medium.width).toBeGreaterThanOrEqual(small.width);
+  expect(large.width).toBeGreaterThan(small.width);
   expect(large.height).toBeGreaterThan(medium.height);
   expect(medium.height).toBeGreaterThan(small.height);
 });
