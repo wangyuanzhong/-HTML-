@@ -268,9 +268,10 @@ body.deck--editing .matrix-toolbar .matrix-structure-tools .btn {
 
 .table-scroll {
   overflow: auto;
-  max-height: min(70vh, 640px);
   border-radius: var(--table-radius, 12px);
   border: 1px solid var(--table-border, rgba(0, 0, 0, 0.08));
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
 }
 
 /** 矩阵页：筛选/结构与底栏占位固定；表格在长宽增长时仅在内部出现滚动条，不撑开整页 */
@@ -284,10 +285,19 @@ section[data-slide-index="3"] {
 
 section[data-slide-index="2"] .table-scroll,
 section[data-slide-index="3"] .table-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overscroll-behavior: contain;
+  --matrix-frame-ratio: 1.72;
+  --matrix-frame-max-height: min(56vh, 34rem);
+  --matrix-frame-max-width: 68rem;
+  flex: 0 0 auto;
+  align-self: center;
+  inline-size: min(
+    100%,
+    var(--matrix-frame-max-width),
+    calc(var(--matrix-frame-max-height) * var(--matrix-frame-ratio))
+  );
+  aspect-ratio: var(--matrix-frame-ratio);
+  block-size: auto;
+  max-block-size: var(--matrix-frame-max-height);
 }
 
 section[data-slide-index="2"] .slide-inner,
@@ -315,18 +325,21 @@ section[data-slide-index="3"] .matrix-slide-footer {
 
 #comparison-table,
 #comparison-table-sub {
-  width: max(100%, 720px);
+  width: max(100%, 48rem);
+  min-height: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.88rem;
+  font-size: clamp(0.72rem, 0.24vw + 0.68rem, 0.9rem);
 }
 
 #comparison-table th,
 #comparison-table td,
 #comparison-table-sub th,
 #comparison-table-sub td {
-  padding: 0.65rem 0.75rem;
+  padding: clamp(0.46rem, 0.75vw, 0.66rem) clamp(0.5rem, 0.9vw, 0.78rem);
   vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   border-bottom: 1px solid var(--cell-border, rgba(0, 0, 0, 0.06));
   border-right: 1px solid var(--cell-border, rgba(0, 0, 0, 0.06));
 }
@@ -345,7 +358,7 @@ section[data-slide-index="3"] .matrix-slide-footer {
   left: 0;
   top: 0;
   z-index: 5;
-  min-width: 8rem;
+  min-width: clamp(7.2rem, 16vw, 10rem);
   background: var(--corner-bg);
 }
 
@@ -356,13 +369,16 @@ section[data-slide-index="3"] .matrix-slide-footer {
   text-align: left;
   background: var(--rowhead-bg);
   font-weight: 600;
-  min-width: 9rem;
+  min-width: clamp(8.2rem, 18vw, 12rem);
+  max-width: clamp(10rem, 22vw, 14rem);
 }
 
 .matrix-cell {
   cursor: pointer;
   transition: background 0.15s, outline 0.15s;
-  max-width: 14rem;
+  max-width: clamp(10rem, 17vw, 14rem);
+  white-space: normal;
+  line-height: 1.5;
   background: var(--cell-bg);
 }
 

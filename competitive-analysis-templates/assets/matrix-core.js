@@ -1356,8 +1356,6 @@
       tbody.innerHTML = "";
       filtersRow.innerHTML = "";
       filtersCol.innerHTML = "";
-      var tab = thead.closest("table");
-      if (tab) delete tab.dataset.pickDeleg;
 
       var trHead = document.createElement("tr");
       var corner = document.createElement("th");

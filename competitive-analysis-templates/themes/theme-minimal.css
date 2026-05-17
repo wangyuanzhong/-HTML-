@@ -1,77 +1,129 @@
-/* theme-minimal.css — 克制留白 + 暖灰与单点釉色（非纯黑白） */
+/* theme-minimal.css — 黑白质感 + 微光泽 */
 
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;500;600&display=swap");
 
 html[data-deck-theme="minimal"],
 html[data-deck-theme="minimal"] body {
-  /* 暖纸底、墨褐字、铁锈釉点缀 */
-  --accent: #b85c38;
-  --accent-soft: rgba(184, 92, 56, 0.14);
-  --ink: #2a2622;
-  --muted: #5c5650;
-  --paper: #f4f0e8;
-  --paper-deep: #e8e2d6;
-  --btn-radius: 3px;
-  --btn-bg: var(--ink);
-  --btn-fg: #faf7f0;
+  --accent: #eff3ff;
+  --accent-soft: rgba(239, 243, 255, 0.2);
+  --ink: #f4f6fd;
+  --muted: #a9b0c8;
+  --paper: #07090f;
+  --paper-deep: #030409;
+  --panel: rgba(13, 17, 27, 0.86);
+  --btn-radius: 4px;
+  --btn-bg: linear-gradient(180deg, #f9fbff 0%, #d9deeb 100%);
+  --btn-fg: #0c1019;
   --btn-ghost-fg: var(--ink);
-  --btn-ghost-border: rgba(42, 38, 34, 0.22);
-  --table-radius: 2px;
-  --table-border: rgba(42, 38, 34, 0.08);
-  --cell-border: rgba(42, 38, 34, 0.06);
-  --thead-bg: rgba(255, 252, 246, 0.92);
-  --corner-bg: #f0ebe3;
-  --rowhead-bg: #f6f2ea;
-  --cell-bg: #fdfcfa;
-  --cell-bg-hover: rgba(184, 92, 56, 0.07);
-  --cell-focus: var(--accent);
-  --chip-border: rgba(42, 38, 34, 0.14);
-  --chip-bg: rgba(255, 252, 246, 0.65);
-  --filter-chip-on-bg: #fffefb;
-  --filter-chip-on-border: rgba(184, 92, 56, 0.45);
+  --btn-ghost-border: rgba(239, 243, 255, 0.34);
+  --table-radius: 12px;
+  --table-border: rgba(239, 243, 255, 0.2);
+  --cell-border: rgba(222, 229, 244, 0.16);
+  --thead-bg: rgba(27, 33, 48, 0.92);
+  --corner-bg: rgba(35, 42, 60, 0.97);
+  --rowhead-bg: rgba(19, 24, 36, 0.97);
+  --cell-bg: rgba(12, 16, 24, 0.9);
+  --cell-bg-hover: rgba(238, 243, 255, 0.12);
+  --cell-focus: #f2f6ff;
+  --chip-border: rgba(232, 238, 255, 0.24);
+  --chip-bg: rgba(17, 22, 34, 0.76);
+  --filter-chip-on-bg: rgba(245, 248, 255, 0.18);
+  --filter-chip-on-border: rgba(245, 248, 255, 0.6);
   --filter-chip-on-glow:
-    0 0 0 2px rgba(184, 92, 56, 0.2),
-    0 6px 20px rgba(184, 92, 56, 0.1);
-  --filter-chip-off-opacity: 0.5;
-  --cr-intro-rule: rgba(42, 38, 34, 0.1);
-  --modal-backdrop: rgba(32, 28, 24, 0.42);
-  --modal-bg: #fdfcfa;
+    0 0 0 2px rgba(245, 248, 255, 0.25),
+    0 10px 26px rgba(13, 18, 31, 0.45);
+  --filter-chip-off-opacity: 0.56;
+  --cr-intro-rule: rgba(235, 241, 255, 0.22);
+  --modal-backdrop: rgba(6, 7, 12, 0.8);
+  --modal-bg: linear-gradient(
+      152deg,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0) 48%
+    ),
+    rgba(8, 11, 18, 0.95);
   --modal-fg: var(--ink);
-  --modal-radius: 3px;
-  --modal-shadow: 0 24px 70px rgba(42, 38, 34, 0.1);
-  --modal-sheet-border: rgba(42, 38, 34, 0.1);
-  --modal-sheet-under-bg: #ebe6dc;
-  --modal-sheet-shadow: 0 14px 48px rgba(42, 38, 34, 0.08);
-  --modal-sheet-edge: rgba(184, 92, 56, 0.35);
-  --modal-echo-bg: #e9e4da;
-  --modal-echo-border: rgba(42, 38, 34, 0.09);
+  --modal-radius: 14px;
+  --modal-shadow: 0 36px 90px rgba(0, 0, 0, 0.62);
+  --modal-sheet-border: rgba(230, 237, 255, 0.2);
+  --modal-sheet-under-bg: rgba(28, 35, 50, 0.62);
+  --modal-sheet-shadow: 0 24px 56px rgba(0, 0, 0, 0.48);
+  --modal-sheet-edge: rgba(255, 255, 255, 0.36);
+  --modal-echo-bg: rgba(33, 42, 61, 0.56);
+  --modal-echo-border: rgba(233, 239, 255, 0.15);
   --modal-echo-shadow: var(--modal-sheet-shadow);
-  --modal-echo-opacity: 0.62;
-  --modal-echo-shift-x: 5px;
-  --modal-echo-shift-y: 7px;
-  --modal-accent-hairline: rgba(184, 92, 56, 0.45);
-  --fab-armed-shadow: 0 0 0 2px rgba(184, 92, 56, 0.35);
-  --cr-card-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
-  --cr-card-border: rgba(42, 38, 34, 0.08);
-  --cr-card-bg: #fffefb;
+  --modal-echo-opacity: 0.76;
+  --modal-echo-shift-x: 8px;
+  --modal-echo-shift-y: 10px;
+  --modal-accent-hairline: rgba(255, 255, 255, 0.42);
+  --fab-armed-shadow:
+    0 0 0 2px rgba(244, 248, 255, 0.4),
+    0 18px 40px rgba(4, 6, 13, 0.65);
+  --cr-card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 34px rgba(5, 8, 15, 0.45);
+  --cr-card-border: rgba(231, 238, 255, 0.22);
+  --cr-card-bg: rgba(12, 16, 25, 0.88);
 }
 
 html[data-deck-theme="minimal"] body.deck {
-  font-family: "Literata", Georgia, serif;
+  position: relative;
+  font-family: "Source Serif 4", "Times New Roman", serif;
   font-weight: 400;
-  background: var(--paper);
-  background-image: radial-gradient(ellipse 900px 500px at 15% 0%, rgba(184, 92, 56, 0.06), transparent 55%),
-    radial-gradient(ellipse 700px 400px at 100% 30%, rgba(90, 120, 140, 0.05), transparent 50%),
-    linear-gradient(180deg, #faf6ef 0%, var(--paper) 35%, #ebe4d8 100%);
+  background:
+    radial-gradient(
+      70rem 42rem at -12% -18%,
+      rgba(255, 255, 255, 0.13),
+      transparent 58%
+    ),
+    radial-gradient(
+      58rem 30rem at 116% 8%,
+      rgba(138, 158, 214, 0.2),
+      transparent 62%
+    ),
+    linear-gradient(150deg, #101622 0%, #06080f 48%, #0c111b 100%);
   color: var(--ink);
+}
+
+html[data-deck-theme="minimal"] body.deck::before,
+html[data-deck-theme="minimal"] body.deck::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+html[data-deck-theme="minimal"] body.deck::before {
+  background:
+    repeating-linear-gradient(
+      105deg,
+      rgba(255, 255, 255, 0.022) 0 1px,
+      transparent 1px 4px
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0) 30%
+    );
+  mix-blend-mode: screen;
+  opacity: 0.44;
+}
+
+html[data-deck-theme="minimal"] body.deck::after {
+  background: radial-gradient(
+    32rem 15rem at 54% -8%,
+    rgba(255, 255, 255, 0.1),
+    transparent 70%
+  );
+  opacity: 0.6;
 }
 
 html[data-deck-theme="minimal"] .cover-title,
 html[data-deck-theme="minimal"] #ending-title,
 html[data-deck-theme="minimal"] h2 {
-  font-family: "Fraunces", "Literata", serif;
+  font-family: "Bodoni Moda", "Source Serif 4", serif;
   font-weight: 600;
   color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2), 0 16px 30px rgba(2, 4, 10, 0.5);
 }
 
 html[data-deck-theme="minimal"] .cover-eyebrow,
@@ -80,21 +132,35 @@ html[data-deck-theme="minimal"] .nested-heading {
 }
 
 html[data-deck-theme="minimal"] [data-slide-dot] {
-  background: rgba(42, 38, 34, 0.22);
-  border-radius: 50%;
+  background: rgba(245, 249, 255, 0.34);
 }
 
 html[data-deck-theme="minimal"] [data-slide-dot].is-active {
-  background: var(--accent);
-  box-shadow: 0 0 0 2px rgba(184, 92, 56, 0.25);
+  background: #f8fbff;
+  box-shadow:
+    0 0 0 2px rgba(245, 250, 255, 0.32),
+    0 0 24px rgba(208, 219, 255, 0.4);
 }
 
 html[data-deck-theme="minimal"] .slide-inner {
-  border-left: 3px solid var(--accent);
-  padding-left: 1.6rem;
+  border: 1px solid rgba(242, 247, 255, 0.16);
+  border-left: 2px solid rgba(250, 252, 255, 0.52);
+  border-radius: 16px;
+  padding: clamp(1.1rem, 2.5vw, 1.8rem);
+  background:
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.13) 0%,
+      rgba(255, 255, 255, 0.02) 28%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    var(--panel);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 26px 46px rgba(3, 5, 11, 0.48);
 }
 
-/* 概述「nested-block」与科技风一致：无浅底框，只靠 slide-inner 左侧釉线 */
 html[data-deck-theme="minimal"] .nested-block {
   background: transparent;
   border: none;
@@ -105,27 +171,39 @@ html[data-deck-theme="minimal"] .nested-block {
 
 html[data-deck-theme="minimal"] .matrix-toolbar h3 {
   text-transform: none;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   font-size: 0.82rem;
   color: var(--muted);
-  font-family: "Literata", serif;
+  font-family: "Source Serif 4", serif;
 }
 
 html[data-deck-theme="minimal"] .table-scroll {
-  background: rgba(255, 254, 251, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(42, 38, 34, 0.05);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0) 24%
+    ),
+    rgba(7, 11, 18, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 18px 36px rgba(3, 6, 12, 0.52);
 }
 
 html[data-deck-theme="minimal"] .btn {
-  font-family: "Literata", serif;
-  letter-spacing: 0.02em;
+  font-family: "Source Serif 4", serif;
+  letter-spacing: 0.025em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 8px 18px rgba(6, 8, 14, 0.45);
 }
 
 html[data-deck-theme="minimal"] .btn--ghost {
-  background: rgba(255, 254, 251, 0.6);
+  background: rgba(20, 25, 38, 0.68);
 }
 
 html[data-deck-theme="minimal"] .compare-fab__cancel {
-  background: #fdfaf6;
+  background: rgba(242, 247, 255, 0.24);
   color: var(--ink);
 }
