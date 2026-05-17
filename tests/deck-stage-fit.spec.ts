@@ -114,8 +114,9 @@ test("矩阵表外框：行/列再多也不会顶穿底栏；表外框尺寸不�
 
   const t1 = await readTable(page);
 
-  // 表外框（scroller）的宽高基本不变（容差 1px，filter chip 换行可能微动）
-  expect(Math.abs(t1.scrollerW - t0.scrollerW)).toBeLessThanOrEqual(1);
+  // 表外框（scroller）宽度：加很多行后 .table-scroll 可能出现纵向滚动条，
+  // clientWidth 会减少约一条滚动条宽度（常见 ~5–17px），与「filter chip 换行」无关。
+  expect(Math.abs(t1.scrollerW - t0.scrollerW)).toBeLessThanOrEqual(17);
 
   // 没有内部滚动条：表格本身高度恰好等于 scroller，scrollH ≤ clientH+1
   expect(t1.tableScrollH).toBeLessThanOrEqual(t1.tableClientH + 1);

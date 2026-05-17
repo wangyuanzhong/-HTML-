@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
+/** 与 deck-stage-fit 一致：顶栏收起时需先悬停感应带再点「进入编辑模式」 */
+async function revealDeckChrome(page: Page) {
+  await page.locator("#deck-chrome-hover-target").hover();
+  await page.waitForTimeout(60);
+}
+
 type FrameMetric = {
   slideWidth: number;
   width: number;
@@ -83,6 +89,7 @@ async function openMatrixSlide(page: Page) {
 }
 
 async function enterMatrixEdit(page: Page) {
+  await revealDeckChrome(page);
   await page.locator("#deck-edit-enter").click();
   await expect(page.locator("body.deck--editing")).toBeVisible();
 }
@@ -145,9 +152,13 @@ test("row overflow keeps table viewport width stable", async ({ page }) => {
   await expect(
     page.locator('[data-slide-index="2"] .comparison-table--scroll-rows')
   ).toBeVisible({ timeout: 5000 });
+  // 与 deck-stage-fit 一致：内层纵向滚动条出现时 clientWidth 可能减少 ~ scrollbar 宽度
   await expect
     .poll(async () =>
-      scroll.evaluate((el) => Math.abs(el.clientWidth - widthBefore) < 2)
+      scroll.evaluate(
+        (el, w) => Math.abs(el.clientWidth - Number(w)) <= 17,
+        widthBefore
+      )
     )
     .toBeTruthy();
 });
