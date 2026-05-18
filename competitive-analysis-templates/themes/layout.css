@@ -1561,7 +1561,9 @@ html:not([data-deck-fit-disabled="true"])
 /* 矩阵表：固定布局 + 高度撑满，由 JS 写入字号 / padding；表格自身高度=滚动区高度，行平均分配剩余纵向空间 */
 html:not([data-deck-fit-disabled="true"]) table[id^="comparison-table"] {
   width: 100%;
+  max-width: 100%;
   height: 100%;
+  box-sizing: border-box;
   table-layout: fixed;
   font-size: var(--matrix-cell-font, 14px);
   line-height: var(--matrix-cell-line, 1.4);

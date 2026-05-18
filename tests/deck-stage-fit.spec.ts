@@ -169,6 +169,47 @@ test("表格内字号随可见行/列数动态变化：行少字大，行多字�
   expect(tDense.fontPx).toBeGreaterThanOrEqual(8); // 下限
 });
 
+test("矩阵在行列未超上限时：表格不超出 .table-scroll，否则容器带内滚动", async ({
+  page,
+}) => {
+  await page.goto("/template-tech.html");
+  await page.locator('[data-slide-dot="2"]').click();
+  await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
+
+  const eps = 4;
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 900, height: 700 },
+    { width: 720, height: 540 },
+  ] as const) {
+    await page.setViewportSize(size);
+    await page.waitForTimeout(180);
+    const check = await page
+      .locator('[data-slide-index="2"] .table-scroll')
+      .evaluate((el, margin: number) => {
+        const scroll = el as HTMLElement;
+        const table = scroll.querySelector(
+          'table[id^="comparison-table"]'
+        ) as HTMLTableElement | null;
+        if (!table) return { ok: false as const, reason: "no table" };
+        const dx = table.scrollWidth - scroll.clientWidth;
+        const dy = table.scrollHeight - scroll.clientHeight;
+        const spills = dx > margin || dy > margin;
+        const hasOverflow = scroll.classList.contains("table-scroll--overflow");
+        return {
+          ok: !spills || hasOverflow,
+          spills,
+          hasOverflow,
+          dx,
+          dy,
+          clientW: scroll.clientWidth,
+          clientH: scroll.clientHeight,
+        };
+      }, eps);
+    expect(check.ok, JSON.stringify({ size, check })).toBe(true);
+  }
+});
+
 test("浏览器缩放不应该改变表格内字号（字号只对 rows×cols 响应）", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/template-tech.html");

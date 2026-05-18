@@ -10,6 +10,8 @@
  *      字号目标是「视觉中等」：默认 4×3 行列时 ~20px 设计像素，行列变多 / 内容变长
  *      时在 ≤7 数据行、≤5 产品列范围内迭代缩小直到不溢出 .table-scroll 矩形。
  *      超过上述上限后不再缩小，改为 .table-scroll--overflow 内滚动（slider）。
+ *      在「未超行列上限」时若布局后仍略超出容器（测量 scroll 尺寸），会再缩小字号；
+ *      缩到 MIN_FONT_PX 仍超出则打开内滚动，避免出现「不到一格」露在框外却无 slider。
  *      整页 transform scale 不会影响 fontPx 计算（clientWidth/Height 始终是设计像素）。
  *
  * 关掉整套体系：在 <html> 上加 data-deck-fit-disabled="true"。
@@ -53,6 +55,8 @@
   /** 超过后不再缩小字号，改由 .table-scroll 内滚动 */
   var MAX_FIT_DATA_ROWS = 7;
   var MAX_FIT_DATA_COLS = 5;
+  /** 与 scroll 区 client 尺寸比较时的容差（亚像素 / 边框累计） */
+  var LAYOUT_OVERFLOW_EPS_PX = 2;
 
   /** 在 ≤7 行且 ≤5 列时缓存一次 fit 结果，超限时冻结未超限侧尺寸 */
   var rowBaselineCache = new WeakMap();
@@ -422,13 +426,36 @@
       dataRows,
       colCapHeights.theadH
     );
-    fit.fontPx = colCapHeights.fontPx;
-    applyCellTypography(table, fit.fontPx);
+    /* 列上限字号与按当前行数+锁定表头算出的字号取小，避免一侧偏大导致裁切或表格外溢 */
+    var fontPx = Math.min(colCapHeights.fontPx, fit.fontPx);
+    applyCellTypography(table, fontPx);
     applyRowHeights(table, colCapHeights.theadH, fit.bodyRowH);
+
+    function measureTableOverflow() {
+      void table.offsetWidth;
+      return (
+        table.scrollWidth - scroll.clientWidth > LAYOUT_OVERFLOW_EPS_PX ||
+        table.scrollHeight - scroll.clientHeight > LAYOUT_OVERFLOW_EPS_PX
+      );
+    }
+    var shrinkIters = 0;
+    while (
+      measureTableOverflow() &&
+      fontPx > MIN_FONT_PX + 0.01 &&
+      shrinkIters < 28
+    ) {
+      fontPx = Math.max(MIN_FONT_PX, fontPx * 0.94);
+      applyCellTypography(table, fontPx);
+      shrinkIters++;
+    }
+    if (measureTableOverflow()) {
+      scroll.classList.add("table-scroll--overflow");
+      table.classList.add("comparison-table--scroll-mode");
+    }
 
     if (dataRows <= MAX_FIT_DATA_ROWS && productCols <= MAX_FIT_DATA_COLS) {
       saveRowBaseline(table, {
-        fontPx: colCapHeights.fontPx,
+        fontPx: fontPx,
         theadH: colCapHeights.theadH,
         bodyRowH:
           dataRows >= MAX_FIT_DATA_ROWS
