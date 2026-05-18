@@ -574,6 +574,17 @@
    * 5. 渲染 deck → 幻灯
    * ============================================================ */
 
+  /** #compare-fab-host 会挂进 deck-stage；清空 stage 前须移回 park，否则节点被一并销毁 */
+  function parkCompareFabHostBeforeStageClear() {
+    var host = $("#compare-fab-host");
+    var park = $("#compare-fab-park");
+    if (!host || !park) return;
+    if (host.closest("#deck-stage")) {
+      park.appendChild(host);
+      host.setAttribute("hidden", "");
+    }
+  }
+
   function renderAllSlides() {
     var stage = $("#deck-stage");
     var nav = $("#slide-nav");
@@ -583,6 +594,7 @@
       slideIndexNav = Math.max(0, deck.pages.length - 1);
     }
 
+    parkCompareFabHostBeforeStageClear();
     stage.innerHTML = "";
     nav.innerHTML = "";
 
