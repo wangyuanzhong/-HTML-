@@ -1065,23 +1065,21 @@
   function bindMatrixAxisLabelInputDelegation() {
     if (document.documentElement.dataset.matrixAxisLabelInputBound === "1") return;
     document.documentElement.dataset.matrixAxisLabelInputBound = "1";
-    document.addEventListener(
-      "input",
-      function (ev) {
-        if (!deckEditActive) return;
-        var t = ev.target;
-        if (!(t instanceof Element) || !t.isContentEditable) return;
-        var th = t.closest("thead th[data-col-id], tbody th.matrix-row-head, thead th.matrix-corner");
-        if (!th) return;
-        var tbl = th.closest("table");
-        if (!tbl) return;
-        var page = pageFromMatrixTableElement(tbl);
-        if (!page) return;
-        collectMatrixFromTable(page);
-        syncCellModalMetaFromMatrixIfOpen(page);
-      },
-      true
-    );
+    function onMatrixAxisLabelMutated(ev) {
+      if (!deckEditActive) return;
+      var t = ev.target;
+      if (!(t instanceof Element) || !t.isContentEditable) return;
+      var th = t.closest("thead th[data-col-id], tbody th.matrix-row-head, thead th.matrix-corner");
+      if (!th) return;
+      var tbl = th.closest("table");
+      if (!tbl) return;
+      var page = pageFromMatrixTableElement(tbl);
+      if (!page) return;
+      collectMatrixFromTable(page);
+      syncCellModalMetaFromMatrixIfOpen(page);
+    }
+    document.addEventListener("input", onMatrixAxisLabelMutated, true);
+    document.addEventListener("compositionend", onMatrixAxisLabelMutated, true);
   }
 
   /* ============================================================
@@ -2035,7 +2033,40 @@
         m.cells[ck] = cellObj;
       });
     });
+    syncMatrixFilterChipLabelsFromMatrix(page);
     syncCellModalMetaFromMatrixIfOpen(page);
+  }
+
+  function syncMatrixFilterChipLabelsFromMatrix(page) {
+    var m = page.data && page.data.matrix;
+    if (!m || !m.rows || !m.columns) return;
+    var ids = pageDomIds(page);
+    var fr = document.getElementById(ids.filterRowsId);
+    var fc = document.getElementById(ids.filterColsId);
+    if (fr) {
+      $all('input[data-axis="row"]', fr).forEach(function (inp) {
+        var rid = inp.dataset.axisId;
+        if (!rid) return;
+        var row = m.rows.find(function (r) {
+          return String(r.id) === String(rid);
+        });
+        if (!row) return;
+        var span = inp.nextElementSibling;
+        if (span && String(span.tagName || "").toLowerCase() === "span") span.textContent = row.label;
+      });
+    }
+    if (fc) {
+      $all('input[data-axis="column"]', fc).forEach(function (inp) {
+        var cid = inp.dataset.axisId;
+        if (!cid) return;
+        var col = m.columns.find(function (c) {
+          return String(c.id) === String(cid);
+        });
+        if (!col) return;
+        var span2 = inp.nextElementSibling;
+        if (span2 && String(span2.tagName || "").toLowerCase() === "span") span2.textContent = col.label;
+      });
+    }
   }
 
   function syncDeckFromEditableDomBeforeMatrixRebuild() {
