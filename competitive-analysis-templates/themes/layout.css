@@ -597,11 +597,33 @@ table[id^="comparison-table"] thead th {
   color: inherit;
 }
 
-#modal-body img,
-#compare-report-body-inner img,
-.detail-figure img {
+/* 单元格详情 / 对比报告：大图按容器与视口高度收缩，小图保持原始比例不拉伸 */
+#modal-shell #modal-body img {
   max-width: 100%;
+  width: auto;
   height: auto;
+  max-height: min(68vh, 720px);
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  margin-inline: auto;
+  border-radius: 8px;
+}
+
+#modal-shell #modal-body .detail-figure {
+  margin-top: 0.85rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+#compare-report-body-inner img {
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: min(62vh, 640px);
+  object-fit: contain;
+  object-position: center;
   display: block;
   border-radius: 8px;
 }
@@ -610,9 +632,9 @@ body:not(.deck--editing) #cell-modal .modal-photo-add {
   display: none;
 }
 
-#modal-shell .detail-figure,
 #compare-report-body-inner .detail-figure {
   margin-top: 0.85rem;
+  max-width: 100%;
 }
 
 /**
