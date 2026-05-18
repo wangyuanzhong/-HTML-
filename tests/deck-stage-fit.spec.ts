@@ -192,8 +192,8 @@ test("矩阵在行列未超上限时：表格不超出 .table-scroll，否则容
           'table[id^="comparison-table"]'
         ) as HTMLTableElement | null;
         if (!table) return { ok: false as const, reason: "no table" };
-        const dx = table.scrollWidth - scroll.clientWidth;
-        const dy = table.scrollHeight - scroll.clientHeight;
+        const dx = scroll.scrollWidth - scroll.clientWidth;
+        const dy = scroll.scrollHeight - scroll.clientHeight;
         const spills = dx > margin || dy > margin;
         const hasOverflow = scroll.classList.contains("table-scroll--overflow");
         return {

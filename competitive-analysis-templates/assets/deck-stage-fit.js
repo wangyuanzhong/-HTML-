@@ -447,15 +447,16 @@
     applyRowHeights(table, theadUse, bodyRowH);
     void table.offsetWidth;
 
-    function measureTableOverflow() {
-      void table.offsetWidth;
+    /** 以 .table-scroll 为准：<table> 的 scrollHeight/scrollWidth 在部分引擎不可靠 */
+    function measureScrollerOverflow() {
+      void scroll.offsetWidth;
       return (
-        table.scrollWidth - scroll.clientWidth > LAYOUT_OVERFLOW_EPS_PX ||
-        table.scrollHeight - scroll.clientHeight > LAYOUT_OVERFLOW_EPS_PX
+        scroll.scrollWidth - scroll.clientWidth > LAYOUT_OVERFLOW_EPS_PX ||
+        scroll.scrollHeight - scroll.clientHeight > LAYOUT_OVERFLOW_EPS_PX
       );
     }
 
-    var needsSlider = needsVScroll || measureTableOverflow();
+    var needsSlider = needsVScroll || measureScrollerOverflow();
     if (needsSlider) {
       scroll.classList.add("table-scroll--overflow");
       table.classList.add("comparison-table--scroll-mode");

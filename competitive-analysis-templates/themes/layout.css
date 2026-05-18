@@ -1505,6 +1505,16 @@ html:not([data-deck-fit-disabled="true"]) [data-slide] {
   overflow-x: hidden;
 }
 
+/*
+ * 矩阵页表区出现 .table-scroll--overflow 时，禁止外层 [data-slide] 再吃纵向滚轮，
+ * 否则内层滚动区 scrollHeight 未建立或链式滚动时，表现为滑块拖不动、底部内容看不到。
+ */
+html:not([data-deck-fit-disabled="true"])
+  [data-slide]:has(section[data-page-type="table"] .table-scroll--overflow) {
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
 /* 矩阵页：禁止内部滚动，由 JS 算出贴合的字号 / 内边距 */
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] {
   display: block;
@@ -1533,6 +1543,8 @@ html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .table
 /** 行列超过 7×5 上限：字号锁定为上限网格尺寸，表体在容器内滚动 */
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .table-scroll--overflow {
   overflow: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--cell-focus, #888) 42%, transparent)
     transparent;
