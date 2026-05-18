@@ -1506,11 +1506,12 @@ html:not([data-deck-fit-disabled="true"]) [data-slide] {
 }
 
 /*
- * 矩阵页表区出现 .table-scroll--overflow 时，禁止外层 [data-slide] 再吃纵向滚轮，
- * 否则内层滚动区 scrollHeight 未建立或链式滚动时，表现为滑块拖不动、底部内容看不到。
+ * 矩阵页表区出现 .table-scroll--overflow 时，禁止外层 [data-slide] 再吃纵向滚轮。
+ * 注意：幻灯本体就是 section[data-slide][data-page-type="table"]，内部没有嵌套的
+ * section[data-page-type="table"]，:has() 必须直接匹配 .table-scroll--overflow。
  */
 html:not([data-deck-fit-disabled="true"])
-  [data-slide]:has(section[data-page-type="table"] .table-scroll--overflow) {
+  [data-slide][data-page-type="table"]:has(.table-scroll--overflow) {
   overflow-y: hidden;
   overflow-x: hidden;
 }
