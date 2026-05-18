@@ -47,6 +47,8 @@
   var comparePick = { active: false, rows: {}, cols: {}, pageId: null };
   var deckEditActive = false;
   var deckEditBaselineJSON = "";
+  /** 详情弹层标题（行 × 列）是否在编辑中被用户改过；保存前据此决定是否写回 matrix / 表头 DOM */
+  var modalMetaDirty = false;
 
   /** 关闭 xlsx fetch / 拖入 / 底栏；改 true 可恢复 */
   var MATRIX_FEATURE_XLSX_ENABLED = false;
@@ -766,7 +768,7 @@
         td.dataset.pageId = page.id;
         td.setAttribute("tabindex", "0");
         td.setAttribute("role", "button");
-        td.setAttribute("aria-label", "查看：" + row.label + " × " + col.label);
+        td.setAttribute("aria-label", "查看：" + formatCellModalAxisTitle(row.label, col.label));
         var ck = cellKey(row.id, col.id);
         var cellObj = m.cells[ck] || { summary: "", detailHtml: "<p>—</p>" };
         td.innerHTML = cellObj.summary
@@ -924,6 +926,164 @@
     });
   }
 
+  function cellModalAxisSep() {
+    return " × ";
+  }
+
+  function formatCellModalAxisTitle(rowLabel, colLabel) {
+    return (
+      String(rowLabel == null ? "" : rowLabel).trim() +
+      cellModalAxisSep() +
+      String(colLabel == null ? "" : colLabel).trim()
+    );
+  }
+
+  function pageFromMatrixTableElement(tableEl) {
+    if (!tableEl || !tableEl.id) return null;
+    var tid = tableEl.id;
+    var found = null;
+    tablePages().forEach(function (p) {
+      if (pageDomIds(p).tableId === tid) found = p;
+    });
+    return found;
+  }
+
+  function syncCellModalMetaFromMatrixIfOpen(page) {
+    if (!page || !page.data || !page.data.matrix) return;
+    var modal = $("#cell-modal");
+    if (!modal || modal.hasAttribute("hidden")) return;
+    if (String(modal.dataset.uploadPageId || "") !== String(page.id)) return;
+    if (modalMetaDirty) return;
+    var rid = modal.dataset.uploadRowId;
+    var cid = modal.dataset.uploadColId;
+    var meta = $("#modal-meta");
+    if (!rid || !cid || !meta) return;
+    var m = page.data.matrix;
+    var row = m.rows.find(function (r) {
+      return String(r.id) === String(rid);
+    });
+    var col = m.columns.find(function (c) {
+      return String(c.id) === String(cid);
+    });
+    if (!row || !col) return;
+    var t = formatCellModalAxisTitle(row.label, col.label);
+    if (meta.textContent !== t) meta.textContent = t;
+  }
+
+  function parseModalMetaAxisLabels(metaEl) {
+    if (!metaEl) return null;
+    var raw = String(metaEl.innerText != null ? metaEl.innerText : metaEl.textContent || "").trim();
+    var sep = cellModalAxisSep();
+    var i = raw.indexOf(sep);
+    if (i < 0) return null;
+    var rowLab = raw.slice(0, i).trim();
+    var colLab = raw.slice(i + sep.length).trim();
+    if (!rowLab && !colLab) return null;
+    return { row: rowLab, col: colLab };
+  }
+
+  function refreshMatrixCellAriaForTable(page) {
+    var m = page.data && page.data.matrix;
+    if (!m || !m.rows || !m.columns) return;
+    var ids = pageDomIds(page);
+    var table = document.getElementById(ids.tableId);
+    if (!table) return;
+    $all("tbody .matrix-cell", table).forEach(function (td) {
+      var rid = td.dataset.rowId;
+      var cid = td.dataset.colId;
+      if (!rid || !cid) return;
+      var row = m.rows.find(function (r) {
+        return String(r.id) === String(rid);
+      });
+      var col = m.columns.find(function (c) {
+        return String(c.id) === String(cid);
+      });
+      if (!row || !col) return;
+      td.setAttribute("aria-label", "查看：" + formatCellModalAxisTitle(row.label, col.label));
+    });
+  }
+
+  function applyModalAxisLabelsFromMetaToMatrixAndDom(page, rowId, colId) {
+    var meta = $("#modal-meta");
+    if (!meta || !page || !page.data || !page.data.matrix) return;
+    var parsed = parseModalMetaAxisLabels(meta);
+    if (!parsed) return;
+    var m = page.data.matrix;
+    var row = m.rows.find(function (r) {
+      return String(r.id) === String(rowId);
+    });
+    var col = m.columns.find(function (c) {
+      return String(c.id) === String(colId);
+    });
+    if (!row || !col) return;
+    row.label = parsed.row;
+    col.label = parsed.col;
+    var ids = pageDomIds(page);
+    var table = document.getElementById(ids.tableId);
+    if (table) {
+      $all("thead th[data-col-id]", table).forEach(function (th) {
+        if (String(th.dataset.colId) === String(colId)) th.textContent = col.label;
+      });
+      $all("tbody tr", table).forEach(function (tr) {
+        if (String(tr.dataset.rowId) !== String(rowId)) return;
+        var rth = $(".matrix-row-head", tr);
+        if (rth) rth.textContent = row.label;
+      });
+    }
+    var fr = document.getElementById(ids.filterRowsId);
+    if (fr) {
+      $all("input[data-axis-id]", fr).forEach(function (inp) {
+        if (String(inp.dataset.axisId) === String(rowId)) {
+          var span = inp.nextElementSibling;
+          if (span && String(span.tagName || "").toLowerCase() === "span") span.textContent = row.label;
+        }
+      });
+    }
+    var fc = document.getElementById(ids.filterColsId);
+    if (fc) {
+      $all("input[data-axis-id]", fc).forEach(function (inp) {
+        if (String(inp.dataset.axisId) === String(colId)) {
+          var span2 = inp.nextElementSibling;
+          if (span2 && String(span2.tagName || "").toLowerCase() === "span") span2.textContent = col.label;
+        }
+      });
+    }
+    refreshMatrixCellAriaForTable(page);
+  }
+
+  function bindModalMetaAxisDirtyTracking() {
+    if (document.documentElement.dataset.modalMetaAxisDirtyBound === "1") return;
+    var meta = $("#modal-meta");
+    if (!meta) return;
+    document.documentElement.dataset.modalMetaAxisDirtyBound = "1";
+    meta.addEventListener("input", function () {
+      var modal = $("#cell-modal");
+      if (deckEditActive && modal && !modal.hasAttribute("hidden")) modalMetaDirty = true;
+    });
+  }
+
+  function bindMatrixAxisLabelInputDelegation() {
+    if (document.documentElement.dataset.matrixAxisLabelInputBound === "1") return;
+    document.documentElement.dataset.matrixAxisLabelInputBound = "1";
+    document.addEventListener(
+      "input",
+      function (ev) {
+        if (!deckEditActive) return;
+        var t = ev.target;
+        if (!(t instanceof Element) || !t.isContentEditable) return;
+        var th = t.closest("thead th[data-col-id], tbody th.matrix-row-head, thead th.matrix-corner");
+        if (!th) return;
+        var tbl = th.closest("table");
+        if (!tbl) return;
+        var page = pageFromMatrixTableElement(tbl);
+        if (!page) return;
+        collectMatrixFromTable(page);
+        syncCellModalMetaFromMatrixIfOpen(page);
+      },
+      true
+    );
+  }
+
   /* ============================================================
    * 7. 单元格 modal（详情）
    * ============================================================ */
@@ -946,7 +1106,12 @@
     var body = $("#modal-body");
     var shell = $("#modal-shell");
     var inp = $("#modal-image-input");
-    if (meta) meta.textContent = row.label + " × " + col.label;
+    modalMetaDirty = false;
+    if (meta) {
+      meta.textContent = formatCellModalAxisTitle(row.label, col.label);
+      if (deckEditActive) setCe(meta, bestPlainCe());
+      else setCe(meta, "inherit");
+    }
     modal.dataset.uploadPageId = page.id;
     modal.dataset.uploadRowId = rowId;
     modal.dataset.uploadColId = colId;
@@ -971,6 +1136,12 @@
     delete modal.dataset.uploadPageId;
     delete modal.dataset.uploadRowId;
     delete modal.dataset.uploadColId;
+    var meta = $("#modal-meta");
+    if (meta) {
+      setCe(meta, "inherit");
+      meta.textContent = "";
+    }
+    modalMetaDirty = false;
     if (body) {
       body.removeAttribute("contenteditable");
       body.innerHTML = "";
@@ -1021,6 +1192,7 @@
         appendUploadedDetailFigures(dt.files);
       });
     }
+    bindModalMetaAxisDirtyTracking();
   }
 
   function readFileAsDataItem(file) {
@@ -1124,6 +1296,24 @@
     var stripped = cloneBodyStripFigureRemoveUi(body);
     co.detailHtml = stripped !== "" ? stripped : "<p>—</p>";
     page.data.matrix.cells[ck] = co;
+
+    if (!deckEditActive) return;
+
+    var meta = $("#modal-meta");
+    if (modalMetaDirty && meta) {
+      applyModalAxisLabelsFromMetaToMatrixAndDom(page, rid, cid);
+      modalMetaDirty = false;
+      return;
+    }
+    if (meta) {
+      var row = page.data.matrix.rows.find(function (r) {
+        return String(r.id) === String(rid);
+      });
+      var col = page.data.matrix.columns.find(function (c) {
+        return String(c.id) === String(cid);
+      });
+      if (row && col) meta.textContent = formatCellModalAxisTitle(row.label, col.label);
+    }
   }
 
   /* ============================================================
@@ -1767,12 +1957,15 @@
       }
     });
     var mbody = $("#modal-body");
+    var mmeta = $("#modal-meta");
     var cmod = $("#cell-modal");
     if (on && mbody && cmod && !cmod.hasAttribute("hidden")) {
       mbody.contentEditable = "true";
+      if (mmeta) setCe(mmeta, plc);
       refreshFigureRemoveButtonsInModalBody();
     } else if (!on) {
       if (mbody) mbody.removeAttribute("contenteditable");
+      if (mmeta) setCe(mmeta, "inherit");
       $all("#modal-body .detail-upload-remove").forEach(function (b3) {
         if (b3.parentNode) b3.parentNode.removeChild(b3);
       });
@@ -1842,6 +2035,7 @@
         m.cells[ck] = cellObj;
       });
     });
+    syncCellModalMetaFromMatrixIfOpen(page);
   }
 
   function syncDeckFromEditableDomBeforeMatrixRebuild() {
@@ -2365,6 +2559,7 @@
     bindKeyboard();
     bindHashNav();
     bindModal();
+    bindMatrixAxisLabelInputDelegation();
     bindCompareReportModal();
     bindDeckEditToolbar();
     bindDeckPortableTransfer();
