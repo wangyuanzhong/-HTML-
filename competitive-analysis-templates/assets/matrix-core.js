@@ -1598,10 +1598,10 @@
         body +=
           '<article class="cr-card cr-card--model" style="animation-delay:' +
           (rbx * 0.04 + cix * 0.035) +
-          's"><header class="cr-card-head"><span class="cr-param">' +
-          rowLabel +
-          '</span><span class="cr-chip">' +
+          's"><header class="cr-card-head"><span class="cr-chip">' +
           colLabel +
+          '</span><span class="cr-param">' +
+          rowLabel +
           '</span></header><div class="cr-sum">' +
           summary +
           '</div><div class="cr-detail">' +
