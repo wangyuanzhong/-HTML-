@@ -7,9 +7,9 @@
  *   1) 可选：把 <html data-deck-base-w="…" data-deck-base-h="…"> 写回 CSS 变量。
  *
  *   2) 矩阵表格 cell 字号 / padding 自适应。每个 table 都会被独立观察 / 重算。
- *      在 ≤7 数据行、≤5 产品列时：字号与均分行高按「5 产品列 + 角标」这一列上限网格计算，
- *      避免仅加列就整体改字号或改行高；内容多的格在保持字号的前提下抬高行高/表头高度，
- *      整表仍放不下 .table-scroll 时再打开内滚动（slider），不为单格溢出而全局缩小字体。
+ *      在 ≤7 数据行、≤5 产品列时：字号与「最小行高」按「5 产品列 + 角标」网格计算，加列不牵动字号；
+ *      单元格用 min-height + height:auto，仅该行随换行变高；整表超出 .table-scroll 时出内滚动条。
+ *      在幻灯上写 data-matrix-inner-scroll，禁止外层 [data-slide] 抢滚轮（不依赖 :has）。
  *      超过 7 行或 5 产品列（结构上限）时仍走原逻辑：列宽锁定 / 行冻结 + 内滚动。
  *      整页 transform scale 不会影响 fontPx 计算（clientWidth/Height 始终是设计像素）。
  *
@@ -43,7 +43,7 @@
    *   - MAX_FONT_PX 40 → 26：1440×900 设计画布上，矩阵单元格再大也不超过 26px
    *     （映射到 1920×1080 浏览器 100% 缩放后约 31px，对应 PPT 24pt）
    *   - 行/列极少时不再无脑顶到上限，保留合理的视觉密度
-   *   - 未超结构行列上限时：字号按「列上限网格」算，不因加列整体变小；长内容优先加行高再出 slider
+   *   - 未超结构行列上限：长内容只撑高所在行，不整表同步加高；不够再用表区内 slider
    * ------------------------------------------------------------------ */
 
   var MIN_FONT_PX = 9;
@@ -302,6 +302,14 @@
     return s;
   }
 
+  /** 表区内滚动时禁止外层幻灯 [data-slide] 吃滚轮/拖条（由 JS 写属性，避免 :has 与结构误判） */
+  function setMatrixSlideInnerScroll(scroll, on) {
+    var slide = scroll && scroll.closest && scroll.closest("[data-slide]");
+    if (!slide) return;
+    if (on) slide.setAttribute("data-matrix-inner-scroll", "1");
+    else slide.removeAttribute("data-matrix-inner-scroll");
+  }
+
   function fitTable(table) {
     var scroll = tableScrollAreaFor(table);
     if (!scroll || !scroll.isConnected) return;
@@ -329,6 +337,7 @@
       table.classList.remove("comparison-table--scroll-cols");
       clearTableWidth(table);
       table.style.removeProperty("height");
+      setMatrixSlideInnerScroll(scroll, false);
     }
 
     var colgroup = table.querySelector("colgroup[data-fit-colgroup]");
@@ -374,6 +383,7 @@
         clearTableWidth(table);
         table.style.width = "100%";
       }
+      setMatrixSlideInnerScroll(scroll, true);
       return;
     }
 
@@ -382,8 +392,6 @@
     var colSlotsForFit = MAX_FIT_DATA_COLS + 1;
     var cap = fitTypographyAndRows(availW, availH, colSlotsForFit, dataRows);
     var fontPx = cap.fontPx;
-    var theadRefH = cap.theadH;
-    var bodyEvenH = cap.bodyRowH;
 
     var leadColPct = nColVisible > 1 ? 22 : 100;
     var otherCols = Math.max(1, nColVisible - 1);
@@ -404,47 +412,7 @@
     colgroup.innerHTML = colsHtmlFit;
 
     applyCellTypography(table, fontPx);
-
-    table.style.setProperty("height", "auto");
-    table.style.setProperty("min-height", "0");
-    void table.offsetWidth;
-
-    var theadNeed = theadRefH;
-    var trh = table.tHead && table.tHead.rows[0];
-    if (trh) {
-      for (var hi = 0; hi < trh.cells.length; hi++) {
-        var hc = trh.cells[hi];
-        if (hc.hidden) continue;
-        theadNeed = Math.max(theadNeed, hc.scrollHeight);
-      }
-    }
-
-    var maxRowNeed = bodyEvenH;
-    var tbodyM = table.tBodies && table.tBodies[0];
-    if (tbodyM) {
-      for (var ri = 0; ri < tbodyM.rows.length; ri++) {
-        var row = tbodyM.rows[ri];
-        if (row.hidden) continue;
-        var rowMax = 0;
-        for (var ci = 0; ci < row.cells.length; ci++) {
-          var cell = row.cells[ci];
-          if (cell.hidden) continue;
-          rowMax = Math.max(rowMax, cell.scrollHeight);
-        }
-        maxRowNeed = Math.max(maxRowNeed, rowMax);
-      }
-    }
-
-    table.style.removeProperty("height");
-    table.style.removeProperty("min-height");
-
-    var theadUse = Math.max(theadRefH, theadNeed);
-    var bodyRowH = Math.max(bodyEvenH, maxRowNeed);
-    var totalContentH = theadUse + dataRows * bodyRowH;
-    var needsVScroll =
-      totalContentH > availH + LAYOUT_OVERFLOW_EPS_PX;
-
-    applyRowHeights(table, theadUse, bodyRowH);
+    applyRowHeights(table, cap.theadH, cap.bodyRowH);
     void table.offsetWidth;
 
     /** 以 .table-scroll 为准：<table> 的 scrollHeight/scrollWidth 在部分引擎不可靠 */
@@ -456,22 +424,24 @@
       );
     }
 
-    var needsSlider = needsVScroll || measureScrollerOverflow();
+    var needsSlider = measureScrollerOverflow();
     if (needsSlider) {
       scroll.classList.add("table-scroll--overflow");
       table.classList.add("comparison-table--scroll-mode");
       table.style.setProperty("height", "auto");
+      setMatrixSlideInnerScroll(scroll, true);
     } else {
       scroll.classList.remove("table-scroll--overflow");
       table.classList.remove("comparison-table--scroll-mode");
       table.style.removeProperty("height");
+      setMatrixSlideInnerScroll(scroll, false);
     }
 
     if (dataRows <= MAX_FIT_DATA_ROWS && productCols <= MAX_FIT_DATA_COLS) {
       saveRowBaseline(table, {
         fontPx: fontPx,
-        theadH: theadUse,
-        bodyRowH: bodyRowH,
+        theadH: cap.theadH,
+        bodyRowH: cap.bodyRowH,
         availW: availW,
         availH: availH,
         dataRows: dataRows,
@@ -516,6 +486,7 @@
         mo.observe(table, {
           childList: true,
           subtree: true,
+          characterData: true,
           attributes: true,
           attributeFilter: ["hidden", "data-row-id", "data-col-id"],
         });

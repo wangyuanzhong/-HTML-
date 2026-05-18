@@ -210,20 +210,19 @@ test("矩阵在行列未超上限时：表格不超出 .table-scroll，否则容
   }
 });
 
-test("矩阵表区内滚动时幻灯层 overflow 为 hidden（避免抢滚轮/滑块无效）", async ({ page }) => {
+test("矩阵表区内滚动时幻灯层 overflow 为 hidden（data-matrix-inner-scroll）", async ({ page }) => {
   await page.goto("/template-tech.html");
   await page.locator('[data-slide-dot="2"]').click();
   await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
   await page.waitForTimeout(120);
-  const slideOverflowY = await page.locator('[data-slide-index="2"][data-page-type="table"]').evaluate((slide) => {
-    const sc = slide.querySelector(".table-scroll") as HTMLElement | null;
-    if (!sc) return "";
-    const had = sc.classList.contains("table-scroll--overflow");
-    if (!had) sc.classList.add("table-scroll--overflow");
-    const y = getComputedStyle(slide as HTMLElement).overflowY;
-    if (!had) sc.classList.remove("table-scroll--overflow");
-    return y;
-  });
+  const slideOverflowY = await page
+    .locator('[data-slide-index="2"][data-page-type="table"]')
+    .evaluate((slide) => {
+      slide.setAttribute("data-matrix-inner-scroll", "1");
+      const y = getComputedStyle(slide as HTMLElement).overflowY;
+      slide.removeAttribute("data-matrix-inner-scroll");
+      return y;
+    });
   expect(slideOverflowY).toBe("hidden");
 });
 
