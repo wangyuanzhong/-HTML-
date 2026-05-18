@@ -6,12 +6,11 @@
  *
  *   1) 可选：把 <html data-deck-base-w="…" data-deck-base-h="…"> 写回 CSS 变量。
  *
- *   2) 矩阵表格 cell 字号 / padding 自适应。每个 table 都会被独立观察 / 重算，
- *      字号目标是「视觉中等」：默认 4×3 行列时 ~20px 设计像素，行列变多 / 内容变长
- *      时在 ≤7 数据行、≤5 产品列范围内迭代缩小直到不溢出 .table-scroll 矩形。
- *      超过上述上限后不再缩小，改为 .table-scroll--overflow 内滚动（slider）。
- *      在「未超行列上限」时若布局后仍略超出容器（测量 scroll 尺寸），会再缩小字号；
- *      缩到 MIN_FONT_PX 仍超出则打开内滚动，避免出现「不到一格」露在框外却无 slider。
+ *   2) 矩阵表格 cell 字号 / padding 自适应。每个 table 都会被独立观察 / 重算。
+ *      在 ≤7 数据行、≤5 产品列时：字号与均分行高按「5 产品列 + 角标」这一列上限网格计算，
+ *      避免仅加列就整体改字号或改行高；内容多的格在保持字号的前提下抬高行高/表头高度，
+ *      整表仍放不下 .table-scroll 时再打开内滚动（slider），不为单格溢出而全局缩小字体。
+ *      超过 7 行或 5 产品列（结构上限）时仍走原逻辑：列宽锁定 / 行冻结 + 内滚动。
  *      整页 transform scale 不会影响 fontPx 计算（clientWidth/Height 始终是设计像素）。
  *
  * 关掉整套体系：在 <html> 上加 data-deck-fit-disabled="true"。
@@ -44,6 +43,7 @@
    *   - MAX_FONT_PX 40 → 26：1440×900 设计画布上，矩阵单元格再大也不超过 26px
    *     （映射到 1920×1080 浏览器 100% 缩放后约 31px，对应 PPT 24pt）
    *   - 行/列极少时不再无脑顶到上限，保留合理的视觉密度
+   *   - 未超结构行列上限时：字号按「列上限网格」算，不因加列整体变小；长内容优先加行高再出 slider
    * ------------------------------------------------------------------ */
 
   var MIN_FONT_PX = 9;
@@ -163,27 +163,6 @@
       MAX_FIT_DATA_COLS + 1,
       MAX_FIT_DATA_ROWS
     );
-  }
-
-  function fitWithLockedThead(availW, availH, nColVisible, dataRows, lockedTheadH) {
-    dataRows = Math.max(1, dataRows);
-    var colW = availW / Math.max(1, nColVisible);
-    var bodyRowH = (availH - lockedTheadH) / dataRows;
-    var fontPx = Math.min(colW * W_FACTOR, bodyRowH * H_FACTOR);
-    fontPx = Math.max(MIN_FONT_PX, Math.min(MAX_FONT_PX, fontPx));
-    for (var iter = 0; iter < 8; iter++) {
-      bodyRowH = (availH - lockedTheadH) / dataRows;
-      fontPx = Math.min(colW * W_FACTOR, bodyRowH * H_FACTOR);
-      fontPx = Math.max(MIN_FONT_PX, Math.min(MAX_FONT_PX, fontPx));
-      if (estimateRowHeightPx(fontPx) <= lockedTheadH + 2) break;
-      fontPx = Math.max(MIN_FONT_PX, fontPx * 0.92);
-      if (fontPx <= MIN_FONT_PX + 0.01) break;
-    }
-    return {
-      fontPx: fontPx,
-      theadH: lockedTheadH,
-      bodyRowH: (availH - lockedTheadH) / dataRows,
-    };
   }
 
   function applyRowHeights(table, theadH, bodyRowH) {
@@ -400,7 +379,12 @@
 
     clearRowHeights(table);
 
-    var colCapHeights = computeColCapHeights(availW, availH);
+    var colSlotsForFit = MAX_FIT_DATA_COLS + 1;
+    var cap = fitTypographyAndRows(availW, availH, colSlotsForFit, dataRows);
+    var fontPx = cap.fontPx;
+    var theadRefH = cap.theadH;
+    var bodyEvenH = cap.bodyRowH;
+
     var leadColPct = nColVisible > 1 ? 22 : 100;
     var otherCols = Math.max(1, nColVisible - 1);
     var otherPct = nColVisible > 1 ? (100 - leadColPct) / otherCols : 0;
@@ -419,17 +403,49 @@
     }
     colgroup.innerHTML = colsHtmlFit;
 
-    var fit = fitWithLockedThead(
-      availW,
-      availH,
-      nColVisible,
-      dataRows,
-      colCapHeights.theadH
-    );
-    /* 列上限字号与按当前行数+锁定表头算出的字号取小，避免一侧偏大导致裁切或表格外溢 */
-    var fontPx = Math.min(colCapHeights.fontPx, fit.fontPx);
     applyCellTypography(table, fontPx);
-    applyRowHeights(table, colCapHeights.theadH, fit.bodyRowH);
+
+    table.style.setProperty("height", "auto");
+    table.style.setProperty("min-height", "0");
+    void table.offsetWidth;
+
+    var theadNeed = theadRefH;
+    var trh = table.tHead && table.tHead.rows[0];
+    if (trh) {
+      for (var hi = 0; hi < trh.cells.length; hi++) {
+        var hc = trh.cells[hi];
+        if (hc.hidden) continue;
+        theadNeed = Math.max(theadNeed, hc.scrollHeight);
+      }
+    }
+
+    var maxRowNeed = bodyEvenH;
+    var tbodyM = table.tBodies && table.tBodies[0];
+    if (tbodyM) {
+      for (var ri = 0; ri < tbodyM.rows.length; ri++) {
+        var row = tbodyM.rows[ri];
+        if (row.hidden) continue;
+        var rowMax = 0;
+        for (var ci = 0; ci < row.cells.length; ci++) {
+          var cell = row.cells[ci];
+          if (cell.hidden) continue;
+          rowMax = Math.max(rowMax, cell.scrollHeight);
+        }
+        maxRowNeed = Math.max(maxRowNeed, rowMax);
+      }
+    }
+
+    table.style.removeProperty("height");
+    table.style.removeProperty("min-height");
+
+    var theadUse = Math.max(theadRefH, theadNeed);
+    var bodyRowH = Math.max(bodyEvenH, maxRowNeed);
+    var totalContentH = theadUse + dataRows * bodyRowH;
+    var needsVScroll =
+      totalContentH > availH + LAYOUT_OVERFLOW_EPS_PX;
+
+    applyRowHeights(table, theadUse, bodyRowH);
+    void table.offsetWidth;
 
     function measureTableOverflow() {
       void table.offsetWidth;
@@ -438,29 +454,23 @@
         table.scrollHeight - scroll.clientHeight > LAYOUT_OVERFLOW_EPS_PX
       );
     }
-    var shrinkIters = 0;
-    while (
-      measureTableOverflow() &&
-      fontPx > MIN_FONT_PX + 0.01 &&
-      shrinkIters < 28
-    ) {
-      fontPx = Math.max(MIN_FONT_PX, fontPx * 0.94);
-      applyCellTypography(table, fontPx);
-      shrinkIters++;
-    }
-    if (measureTableOverflow()) {
+
+    var needsSlider = needsVScroll || measureTableOverflow();
+    if (needsSlider) {
       scroll.classList.add("table-scroll--overflow");
       table.classList.add("comparison-table--scroll-mode");
+      table.style.setProperty("height", "auto");
+    } else {
+      scroll.classList.remove("table-scroll--overflow");
+      table.classList.remove("comparison-table--scroll-mode");
+      table.style.removeProperty("height");
     }
 
     if (dataRows <= MAX_FIT_DATA_ROWS && productCols <= MAX_FIT_DATA_COLS) {
       saveRowBaseline(table, {
         fontPx: fontPx,
-        theadH: colCapHeights.theadH,
-        bodyRowH:
-          dataRows >= MAX_FIT_DATA_ROWS
-            ? colCapHeights.bodyRowH
-            : fit.bodyRowH,
+        theadH: theadUse,
+        bodyRowH: bodyRowH,
         availW: availW,
         availH: availH,
         dataRows: dataRows,

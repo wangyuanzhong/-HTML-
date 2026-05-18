@@ -1575,6 +1575,15 @@ html:not([data-deck-fit-disabled="true"])
   max-height: none;
 }
 
+/** 未超结构行列上限、仅因内容装不下而内滚动：表高随内容增高，便于纵向滑动 */
+html:not([data-deck-fit-disabled="true"])
+  table[id^="comparison-table"].comparison-table--scroll-mode:not(
+    .comparison-table--scroll-rows
+  ):not(.comparison-table--scroll-cols) {
+  height: auto !important;
+  min-height: 100%;
+}
+
 /** 仅超行：表宽仍铺满视口，列宽与 ≤7 行时一致 */
 html:not([data-deck-fit-disabled="true"])
   table[id^="comparison-table"].comparison-table--scroll-mode.comparison-table--scroll-rows:not(
