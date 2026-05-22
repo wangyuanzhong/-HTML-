@@ -63,15 +63,51 @@ test.describe("mindmap slide", () => {
       .toBeGreaterThan(50);
   });
 
-  test("zoom controls change stage scale without edit mode", async ({ page }) => {
+  test("callout: add, line, delete; zoom only in edit and persists", async ({ page }) => {
     const slide = await openMindmapSlide(page);
+
+    await expect(slide.locator(".mindmap-zoom")).toBeHidden();
     const stage = slide.locator("[data-mindmap-stage]");
-    const before = await stage.evaluate((el) => (el as HTMLElement).style.transform);
+    const transformBefore = await stage.evaluate((el) => (el as HTMLElement).style.transform);
+
+    await enterMindmapEdit(page, slide);
+    await expect(slide.locator(".mindmap-zoom")).toBeVisible();
+
     await slide.locator('[data-mindmap-action="zoom-in"]').click();
     await expect
       .poll(async () => stage.evaluate((el) => (el as HTMLElement).style.transform))
-      .not.toBe(before);
-    const zoomVal = await slide.locator("[data-mindmap-zoom-range]").inputValue();
-    expect(Number(zoomVal)).toBeGreaterThan(100);
+      .not.toBe(transformBefore);
+
+    const branch = slide.locator(".mindmap-node").filter({ hasNot: slide.locator(".mindmap-node--hub") }).first();
+    await branch.click();
+    await slide.locator('[data-mindmap-action="add-callout"]').click();
+    const callout = slide.locator(".mindmap-callout").first();
+    await expect(callout).toBeVisible();
+    await expect(slide.locator(".mindmap-edge--callout")).toHaveCount(1);
+
+    await callout.click();
+    await slide.locator('[data-mindmap-action="remove-callout"]').click();
+    await expect(slide.locator(".mindmap-callout")).toHaveCount(0);
+
+    const userZoomZoomed = await stage.evaluate(
+      (el) => Number((el as HTMLElement).dataset.userZoom) || 1
+    );
+    expect(userZoomZoomed).toBeGreaterThan(1);
+
+    await page.locator("#deck-edit-exit").click();
+    await expect(page.locator("body")).not.toHaveClass(/deck--editing/);
+    await expect(slide.locator(".mindmap-zoom")).toBeHidden();
+
+    await expect(stage).toHaveAttribute("style", /transform/);
+    const userZoomAfterExit = await stage.evaluate(
+      (el) => Number((el as HTMLElement).dataset.userZoom) || 1
+    );
+    expect(userZoomAfterExit).toBe(userZoomZoomed);
+
+    await expect(slide.locator("[data-mindmap-zoom-range]")).toBeHidden();
+    const userZoomStill = await stage.evaluate(
+      (el) => Number((el as HTMLElement).dataset.userZoom) || 1
+    );
+    expect(userZoomStill).toBe(userZoomZoomed);
   });
 });

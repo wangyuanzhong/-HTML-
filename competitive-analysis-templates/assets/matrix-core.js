@@ -131,7 +131,7 @@
 
   function migrateDeckIfNeeded(d) {
     if (!d) return d;
-    if (Array.isArray(d.pages) && d.pages.length) return ensureMindmapPage(d);
+    if (Array.isArray(d.pages) && d.pages.length) return finalizeDeckPages(d);
     var pages = [];
     if (d.cover) {
       pages.push({ id: newPageId("cover"), type: "cover", data: d.cover });
@@ -179,6 +179,23 @@
     delete d.matrix;
     delete d.matrixSubjective;
     delete d.ending;
+    return finalizeDeckPages(d);
+  }
+
+  function migrateMindmapPagesInDeck(d) {
+    if (!d || !Array.isArray(d.pages)) return d;
+    var MM = typeof window !== "undefined" ? window.MindmapDeck : null;
+    if (!MM || !MM.normalizePageData) return d;
+    for (var i = 0; i < d.pages.length; i++) {
+      var p = d.pages[i];
+      if (p && p.type === "mindmap" && p.data) p.data = MM.normalizePageData(p.data);
+    }
+    return d;
+  }
+
+  function finalizeDeckPages(d) {
+    if (!d) return d;
+    migrateMindmapPagesInDeck(d);
     return ensureMindmapPage(d);
   }
 
@@ -496,11 +513,12 @@
           mindmapToolBtn(page.id, "add-hub", "+ 总节点") +
           mindmapToolBtn(page.id, "add-branch", "+ 分支") +
           mindmapToolBtn(page.id, "remove-branch", "− 分支") +
-          mindmapToolBtn(page.id, "toggle-note", "说明") +
+          mindmapToolBtn(page.id, "add-callout", "+ 引出说明") +
+          mindmapToolBtn(page.id, "remove-callout", "− 引出说明") +
           "</div>" +
           (MM ? MM.renderZoomControls(page.id, data.zoom) : "") +
           '<div class="mindmap-entry-row">' +
-          '<p class="mindmap-slide-hint" data-mindmap-hint>讲演时可缩放；点「编辑导图」可增删节点、拖拽布局</p>' +
+          '<p class="mindmap-slide-hint" data-mindmap-hint>讲演时保持编辑期缩放比例；点「编辑导图」可缩放、增删节点与引出说明</p>' +
           '<button type="button" class="btn mindmap-edit-cta" data-mindmap-enter-edit>编辑导图</button>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
@@ -595,7 +613,9 @@
     canvas.style.width = layout.width + "px";
     canvas.style.height = layout.height + "px";
     canvas.innerHTML =
-      MM.renderEdgesSvg(layout.edges) + MM.renderNodesHtml(layout.nodes, selected);
+      MM.renderEdgesSvg(layout.edges, layout.calloutEdges) +
+      MM.renderNodesHtml(layout.nodes, selected) +
+      MM.renderCalloutsHtml(layout.callouts, selected);
     MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
     MM.bindViewportFit(viewport, stage, function () {
       return { layout: MM.computeLayout(page.data), zoom: page.data.zoom };
@@ -608,10 +628,11 @@
     var zr = section.querySelector("[data-mindmap-zoom-range]");
     var zl = section.querySelector("[data-mindmap-zoom-label]");
     if (zr) {
-      zr.value = String(Math.round((page.data.zoom || 1) * 100));
+      zr.value = String(Math.round((page.data.zoom || MM.ZOOM_DEFAULT || 1) * 100));
       if (!zr.dataset.bound) {
         zr.dataset.bound = "1";
         zr.addEventListener("input", function () {
+          if (!deckEditActive || zr.disabled) return;
           page.data.zoom = Number(zr.value) / 100;
           if (zl) zl.textContent = zr.value + "%";
           MM.applyViewportTransform(
@@ -624,6 +645,7 @@
       }
       if (zl) zl.textContent = zr.value + "%";
     }
+    MM.setZoomControlsEnabled(section, deckEditActive);
     if (deckEditActive) applyMindmapEditable(section);
   }
 
@@ -2052,12 +2074,33 @@
         return;
       }
 
+      var calloutEl = t.closest(".mindmap-callout[data-callout-id]");
+      if (calloutEl && calloutEl.closest("[data-page-type='mindmap']")) {
+        var secC = calloutEl.closest("[data-slide]");
+        if (secC && deckEditActive) {
+          MM.setSelectedId(secC, calloutEl.getAttribute("data-callout-id"));
+        }
+        return;
+      }
+
       var nodeEl = t.closest(".mindmap-node[data-node-id]");
       if (nodeEl && nodeEl.closest("[data-page-type='mindmap']")) {
         var sec0 = nodeEl.closest("[data-slide]");
         if (sec0 && deckEditActive) {
+          var page0 = pageById(sec0.getAttribute("data-page-id"));
+          if (page0 && page0.data) {
+            page0.data = MM.normalizePageData(page0.data);
+            var sel0 = MM.getSelectedId(sec0);
+            if (MM.isCalloutId(page0.data, sel0)) {
+              MM.setCalloutTarget(page0.data, sel0, nodeEl.getAttribute("data-node-id"));
+              paintMindmapSection(sec0, page0);
+              ev.preventDefault();
+              return;
+            }
+          }
           MM.setSelectedId(sec0, nodeEl.getAttribute("data-node-id"));
         }
+        return;
       }
 
       var btn = t.closest("[data-mindmap-action]");
@@ -2073,7 +2116,7 @@
 
       var zoomOnly =
         action === "zoom-in" || action === "zoom-out" || action === "zoom-reset";
-      if (!zoomOnly && !deckEditActive) return;
+      if (!deckEditActive) return;
 
       syncDeckFromEditableDomBeforeMatrixRebuild();
       page.data = MM.normalizePageData(page.data);
@@ -2104,14 +2147,20 @@
           }
         }
         paintMindmapSection(section, page);
-      } else if (action === "toggle-note") {
-        var n = MM.findNodeInForest(page.data.roots, sel);
-        if (n) {
-          if (noteVisibleMindmap(n.note)) {
-            n.note = "";
-          } else {
-            n.note = "引出说明…";
-          }
+      } else if (action === "add-callout") {
+        var targetId = sel;
+        if (MM.isCalloutId(page.data, sel)) {
+          var co = MM.findCallout(page.data, sel);
+          if (co) targetId = co.targetId;
+        }
+        if (targetId && !MM.isCalloutId(page.data, targetId) && MM.addCallout(page.data, targetId)) {
+          var added = page.data.callouts[page.data.callouts.length - 1];
+          if (added) MM.setSelectedId(section, added.id);
+          paintMindmapSection(section, page);
+        }
+      } else if (action === "remove-callout") {
+        if (MM.isCalloutId(page.data, sel) && MM.removeCallout(page.data, sel)) {
+          if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
           paintMindmapSection(section, page);
         }
       } else if (action === "zoom-in") {
@@ -2121,16 +2170,12 @@
         page.data.zoom = Math.max(MM.ZOOM_MIN, (page.data.zoom || 1) - 0.12);
         paintMindmapSection(section, page);
       } else if (action === "zoom-reset") {
-        page.data.zoom = 1;
+        page.data.zoom = MM.ZOOM_DEFAULT || 1;
         paintMindmapSection(section, page);
       }
       ev.preventDefault();
       ev.stopPropagation();
     });
-  }
-
-  function noteVisibleMindmap(note) {
-    return !!(note && String(note).replace(/\s/g, "").length);
   }
 
   /* ============================================================
@@ -2152,7 +2197,7 @@
     $all(".mindmap-node__label", section).forEach(function (el) {
       setCe(el, plc);
     });
-    $all(".mindmap-node__note:not([hidden])", section).forEach(function (el) {
+    $all(".mindmap-callout__label", section).forEach(function (el) {
       setCe(el, plc);
     });
   }
@@ -2207,9 +2252,31 @@
       } else if (t === "mindmap") {
         var mttl = sec.querySelector('[data-field="title"]');
         setCe(mttl, on ? plc : "inherit");
+        var MMm = window.MindmapDeck;
+        if (!on) {
+          var pidM = sec.getAttribute("data-page-id");
+          var pageM = pageById(pidM);
+          var zrM = sec.querySelector("[data-mindmap-zoom-range]");
+          if (pageM && pageM.data && zrM) {
+            pageM.data.zoom = Number(zrM.value) / 100;
+            if (MMm) {
+              var vp = sec.querySelector("[data-mindmap-viewport]");
+              var st = sec.querySelector("[data-mindmap-stage]");
+              if (vp && st) {
+                MMm.applyViewportTransform(
+                  vp,
+                  st,
+                  MMm.computeLayout(pageM.data),
+                  pageM.data.zoom
+                );
+              }
+            }
+          }
+        }
+        if (MMm) MMm.setZoomControlsEnabled(sec, !!on);
         if (on) applyMindmapEditable(sec);
         else {
-          $all(".mindmap-node__label, .mindmap-node__note", sec).forEach(function (n) {
+          $all(".mindmap-node__label, .mindmap-callout__label", sec).forEach(function (n) {
             setCe(n, "inherit");
           });
         }
@@ -2791,13 +2858,39 @@
     applyEditableToDOM(true);
   }
 
+  /** 退出编辑时保留各思维导图页的缩放比例（讲演态仍用该比例，但不可再调） */
+  function readMindmapZoomPatches() {
+    var patches = {};
+    var stage = $("#deck-stage");
+    if (!stage) return patches;
+    $all('section[data-page-type="mindmap"]', stage).forEach(function (sec) {
+      var pid = sec.getAttribute("data-page-id");
+      var zr = sec.querySelector("[data-mindmap-zoom-range]");
+      if (pid && zr) patches[pid] = Number(zr.value) / 100;
+    });
+    return patches;
+  }
+
+  function applyMindmapZoomPatches(patches) {
+    if (!deck || !patches) return;
+    var MM = window.MindmapDeck;
+    for (var i = 0; i < deck.pages.length; i++) {
+      var p = deck.pages[i];
+      if (!p || p.type !== "mindmap" || !p.data || patches[p.id] == null) continue;
+      p.data.zoom = patches[p.id];
+      if (MM) p.data = MM.normalizePageData(p.data);
+    }
+  }
+
   function exitDeckEditDiscard() {
     closeModal();
+    var zoomPatches = readMindmapZoomPatches();
     if (deckEditBaselineJSON) {
       try {
         deck = JSON.parse(deckEditBaselineJSON);
       } catch (e1) {}
     }
+    applyMindmapZoomPatches(zoomPatches);
     deckEditBaselineJSON = "";
     deckEditActive = false;
     var s = $("#deck-edit-save");
@@ -2848,7 +2941,7 @@
   function init() {
     var raw = parseDeck();
     if (!raw) return;
-    deck = ensureMindmapPage(migrateDeckIfNeeded(raw));
+    deck = migrateDeckIfNeeded(raw);
     bindKeyboard();
     bindHashNav();
     bindModal();
@@ -2869,6 +2962,7 @@
       })
       .catch(Boolean)
       .finally(function () {
+        finalizeDeckPages(deck);
         syncDeckThemeFromHtml();
         renderAllSlides();
         bindCompareFab();
@@ -2886,7 +2980,8 @@
   window.__matrixDeckReload = function () {
     var raw = parseDeck();
     if (!raw) return;
-    deck = ensureMindmapPage(migrateDeckIfNeeded(raw));
+    deck = migrateDeckIfNeeded(raw);
+    finalizeDeckPages(deck);
     syncDeckThemeFromHtml();
     renderAllSlides();
     bindCompareFab();

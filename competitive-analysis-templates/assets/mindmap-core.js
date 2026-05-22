@@ -11,9 +11,11 @@
   var NODE_MIN_W = 96;
   var NODE_MAX_W = 200;
   var LABEL_LINE_H = 22;
-  var NOTE_PAD = 8;
-  var ZOOM_MIN = 0.35;
-  var ZOOM_MAX = 2.5;
+  var CALLOUT_W = 108;
+  var CALLOUT_H = 108;
+  var ZOOM_MIN = 0.45;
+  var ZOOM_MAX = 1.65;
+  var ZOOM_DEFAULT = 1;
   var DRAG_THRESHOLD = 4;
 
   function escapeHtml(s) {
@@ -35,39 +37,51 @@
     return "n_" + String(Date.now()) + "_" + String(Math.floor(Math.random() * 1e4));
   }
 
+  function newCalloutId() {
+    return "c_" + String(Date.now()) + "_" + String(Math.floor(Math.random() * 1e4));
+  }
+
   function defaultHub(label) {
     return {
       id: newNodeId(),
       label: label || "总节点",
-      note: "",
       fx: null,
       fy: null,
       children: [],
     };
   }
 
-  function defaultPageData() {
-    var a = defaultHub("中心主题");
-    a.children = [
-      { id: newNodeId(), label: "分支一", note: "", fx: null, fy: null, children: [] },
-      { id: newNodeId(), label: "分支二", note: "可写引出说明", fx: null, fy: null, children: [] },
-    ];
+  function defaultCallout(targetId, label, fx, fy) {
     return {
-      title: "思维导图",
-      zoom: 1,
-      roots: [a],
+      id: newCalloutId(),
+      label: label || "引出说明",
+      targetId: targetId,
+      fx: fx != null ? fx : null,
+      fy: fy != null ? fy : null,
     };
   }
 
-  function noteVisible(note) {
-    return !!(note && String(note).replace(/\s/g, "").length);
+  function defaultPageData() {
+    var a = defaultHub("中心主题");
+    var b1 = newNodeId();
+    var b2 = newNodeId();
+    a.children = [
+      { id: b1, label: "分支一", fx: null, fy: null, children: [] },
+      { id: b2, label: "分支二", fx: null, fy: null, children: [] },
+    ];
+    return {
+      title: "思维导图",
+      zoom: ZOOM_DEFAULT,
+      roots: [a],
+      callouts: [],
+    };
   }
 
   function normalizeNode(node) {
     if (!node || typeof node !== "object") return defaultHub("节点");
     if (!node.id) node.id = newNodeId();
     if (node.label == null) node.label = "节点";
-    if (node.note == null) node.note = "";
+    delete node.note;
     if (node.fx != null && node.fx !== "") node.fx = Number(node.fx);
     else node.fx = null;
     if (node.fy != null && node.fy !== "") node.fy = Number(node.fy);
@@ -75,6 +89,42 @@
     if (!Array.isArray(node.children)) node.children = [];
     node.children.forEach(normalizeNode);
     return node;
+  }
+
+  function normalizeCallout(c) {
+    if (!c || typeof c !== "object") return null;
+    if (!c.id) c.id = newCalloutId();
+    if (c.label == null) c.label = "引出说明";
+    if (!c.targetId) c.targetId = "";
+    if (c.fx != null && c.fx !== "") c.fx = Number(c.fx);
+    else c.fx = null;
+    if (c.fy != null && c.fy !== "") c.fy = Number(c.fy);
+    else c.fy = null;
+    return c;
+  }
+
+  /** 旧版节点内 note → 独立引出说明节点 */
+  function migrateNotesToCallouts(data) {
+    if (!Array.isArray(data.callouts)) data.callouts = [];
+    var existing = {};
+    data.callouts.forEach(function (c) {
+      if (c && c.targetId) existing[String(c.targetId)] = true;
+    });
+    forEachNode(data.roots, function (n) {
+      var note = n.note;
+      if (!note || !String(note).replace(/\s/g, "").length) return;
+      if (existing[String(n.id)]) return;
+      data.callouts.push(
+        normalizeCallout({
+          id: newCalloutId(),
+          label: String(note).trim(),
+          targetId: n.id,
+          fx: null,
+          fy: null,
+        })
+      );
+      delete n.note;
+    });
   }
 
   /** 兼容旧版单 root */
@@ -87,12 +137,20 @@
       } else {
         var d = defaultPageData();
         data.roots = d.roots;
+        data.callouts = d.callouts;
       }
     }
     data.roots = data.roots.map(function (r) {
       return normalizeNode(r);
     });
-    if (data.zoom == null || isNaN(Number(data.zoom))) data.zoom = 1;
+    if (!Array.isArray(data.callouts)) data.callouts = [];
+    migrateNotesToCallouts(data);
+    data.callouts = data.callouts
+      .map(normalizeCallout)
+      .filter(function (c) {
+        return c && c.targetId && findNodeInForest(data.roots, c.targetId);
+      });
+    if (data.zoom == null || isNaN(Number(data.zoom))) data.zoom = ZOOM_DEFAULT;
     data.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(data.zoom)));
     if (!data.title) data.title = "思维导图";
     return data;
@@ -150,12 +208,26 @@
   function measureNode(node) {
     var w = estimateLabelWidth(node.label);
     var labelH = LABEL_LINE_H + 14;
-    var noteH = 0;
-    if (noteVisible(node.note)) {
-      var lines = String(node.note).split(/\r?\n/).length;
-      noteH = Math.max(36, lines * 18 + NOTE_PAD * 2);
+    return { w: w, labelH: labelH, h: labelH };
+  }
+
+  function findCallout(data, id) {
+    if (!data || !Array.isArray(data.callouts)) return null;
+    for (var i = 0; i < data.callouts.length; i++) {
+      if (String(data.callouts[i].id) === String(id)) return data.callouts[i];
     }
-    return { w: w, labelH: labelH, noteH: noteH, h: labelH + noteH };
+    return null;
+  }
+
+  function isCalloutId(data, id) {
+    return !!findCallout(data, id);
+  }
+
+  function pruneCalloutsForNode(data, nodeId) {
+    if (!data.callouts) return;
+    data.callouts = data.callouts.filter(function (c) {
+      return String(c.targetId) !== String(nodeId);
+    });
   }
 
   function hasFixedPos(node) {
@@ -202,14 +274,12 @@
     out.nodes.push({
       id: node.id,
       label: node.label,
-      note: node.note,
       depth: depth,
       isHub: false,
       x: nx,
       y: ny,
       w: m.w,
       h: m.h,
-      hasNote: noteVisible(node.note),
     });
 
     if (!ch.length) return m.h + SIBLING_GAP;
@@ -276,6 +346,41 @@
     data.roots.forEach(function (r) {
       buildEdgesFromTree(r, nodesById, out.edges);
     });
+
+    out.callouts = [];
+    out.calloutEdges = [];
+    (data.callouts || []).forEach(function (c, idx) {
+      var target = nodesById[c.targetId];
+      if (!target) return;
+      var cx;
+      var cy;
+      if (c.fx != null && c.fy != null && !isNaN(c.fx) && !isNaN(c.fy)) {
+        cx = c.fx;
+        cy = c.fy;
+      } else {
+        cx = target.x + target.w + 56 + (idx % 3) * 24;
+        cy = target.y + target.h / 2 - CALLOUT_H / 2 + (idx % 2) * 28;
+      }
+      out.callouts.push({
+        id: c.id,
+        label: c.label,
+        targetId: c.targetId,
+        x: cx,
+        y: cy,
+        w: CALLOUT_W,
+        h: CALLOUT_H,
+      });
+      out.calloutEdges.push({
+        x1: target.x + target.w,
+        y1: target.y + target.h / 2,
+        x2: cx,
+        y2: cy + CALLOUT_H / 2,
+        kind: "callout",
+      });
+      maxX = Math.max(maxX, cx + CALLOUT_W + PAD);
+      maxY = Math.max(maxY, cy + CALLOUT_H + PAD);
+    });
+
     out.width = Math.max(280, Math.ceil(maxX));
     out.height = Math.max(200, Math.ceil(maxY));
     return out;
@@ -303,7 +408,54 @@
       }
     }
     if (idx < 0) return false;
+    pruneCalloutsForNode(data, hubId);
     data.roots.splice(idx, 1);
+    return true;
+  }
+
+  function addCallout(pageData, targetId) {
+    var data = normalizePageData(pageData);
+    if (!targetId || !findNodeInForest(data.roots, targetId)) return false;
+    if (data.callouts.length >= 32) return false;
+    var layout = computeLayout(data);
+    var nodesById = {};
+    layout.nodes.forEach(function (n) {
+      nodesById[n.id] = n;
+    });
+    var target = nodesById[targetId];
+    var fx = target ? target.x + target.w + 48 : PAD + 180;
+    var fy = target ? target.y + target.h / 2 - CALLOUT_H / 2 : PAD + 40;
+    data.callouts.push(defaultCallout(targetId, "引出说明", fx, fy));
+    return true;
+  }
+
+  function removeCallout(pageData, calloutId) {
+    var data = normalizePageData(pageData);
+    var idx = -1;
+    for (var i = 0; i < data.callouts.length; i++) {
+      if (String(data.callouts[i].id) === String(calloutId)) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) return false;
+    data.callouts.splice(idx, 1);
+    return true;
+  }
+
+  function setCalloutTarget(pageData, calloutId, targetId) {
+    var data = normalizePageData(pageData);
+    var c = findCallout(data, calloutId);
+    if (!c || !findNodeInForest(data.roots, targetId)) return false;
+    c.targetId = targetId;
+    return true;
+  }
+
+  function setCalloutPosition(pageData, calloutId, x, y) {
+    var c = findCallout(normalizePageData(pageData), calloutId);
+    if (!c) return false;
+    c.fx = Math.round(x);
+    c.fy = Math.round(y);
     return true;
   }
 
@@ -316,7 +468,6 @@
     parent.children.push({
       id: newNodeId(),
       label: "新分支",
-      note: "",
       fx: null,
       fy: null,
       children: [],
@@ -338,6 +489,7 @@
     }
     if (idx < 0) parent.children.pop();
     else parent.children.splice(idx, 1);
+    pruneCalloutsForNode(data, childId);
     return true;
   }
 
@@ -349,28 +501,36 @@
     return true;
   }
 
-  function renderEdgesSvg(edges) {
+  function edgePathD(e) {
+    var mx = (e.x1 + e.x2) / 2;
+    return (
+      "M" +
+      e.x1 +
+      " " +
+      e.y1 +
+      " C" +
+      mx +
+      " " +
+      e.y1 +
+      ", " +
+      mx +
+      " " +
+      e.y2 +
+      ", " +
+      e.x2 +
+      " " +
+      e.y2
+    );
+  }
+
+  function renderEdgesSvg(treeEdges, calloutEdges) {
     var paths = "";
-    edges.forEach(function (e) {
-      var mx = (e.x1 + e.x2) / 2;
+    (treeEdges || []).forEach(function (e) {
+      paths += '<path class="mindmap-edge" d="' + edgePathD(e) + '"/>';
+    });
+    (calloutEdges || []).forEach(function (e) {
       paths +=
-        '<path class="mindmap-edge" d="M' +
-        e.x1 +
-        " " +
-        e.y1 +
-        " C" +
-        mx +
-        " " +
-        e.y1 +
-        ", " +
-        mx +
-        " " +
-        e.y2 +
-        ", " +
-        e.x2 +
-        " " +
-        e.y2 +
-        '"/>';
+        '<path class="mindmap-edge mindmap-edge--callout" d="' + edgePathD(e) + '"/>';
     });
     return '<svg class="mindmap-edges" aria-hidden="true">' + paths + "</svg>";
   }
@@ -396,17 +556,35 @@
         '<span class="mindmap-node__grip" aria-hidden="true" title="拖拽移动"></span>' +
         '<div class="mindmap-node__label" data-field="label">' +
         escapeHtml(n.label || "") +
-        "</div>";
-      if (n.hasNote) {
-        html +=
-          '<div class="mindmap-node__note" data-field="note">' +
-          escapeHtml(n.note) +
-          "</div>";
-      } else {
-        html +=
-          '<div class="mindmap-node__note mindmap-node__note--empty" data-field="note" hidden></div>';
-      }
-      html += "</div>";
+        "</div></div>";
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function renderCalloutsHtml(callouts, selectedId) {
+    if (!callouts || !callouts.length) return "";
+    var html = '<div class="mindmap-callouts" aria-label="引出说明">';
+    callouts.forEach(function (c) {
+      var sel = selectedId && String(selectedId) === String(c.id) ? " is-selected" : "";
+      html +=
+        '<div class="mindmap-callout' +
+        sel +
+        '" data-callout-id="' +
+        escapeHtmlAttr(c.id) +
+        '" style="left:' +
+        c.x +
+        "px;top:" +
+        c.y +
+        "px;width:" +
+        c.w +
+        "px;height:" +
+        c.h +
+        'px" tabindex="0">' +
+        '<span class="mindmap-callout__grip" aria-hidden="true" title="拖拽引出说明"></span>' +
+        '<div class="mindmap-callout__label" data-field="label">' +
+        escapeHtml(c.label || "") +
+        "</div></div>";
     });
     html += "</div>";
     return html;
@@ -421,12 +599,13 @@
     var ch = layout.height;
     var pad = 16;
     var fit = Math.min((vw - pad) / cw, (vh - pad) / ch);
+    fit = Math.min(fit, 1);
     if (layout.nodeCount <= 5) {
-      fit = Math.min(Math.max(fit, 0.85), 1.75);
+      fit = Math.min(Math.max(fit, 0.48), 0.88);
     } else if (layout.nodeCount <= 9) {
-      fit = Math.min(Math.max(fit, 0.7), 1.35);
+      fit = Math.min(Math.max(fit, 0.42), 0.82);
     } else {
-      fit = Math.min(fit, 1.15);
+      fit = Math.min(fit, 0.78);
     }
     var z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(zoom) || 1));
     var total = fit * z;
@@ -481,6 +660,17 @@
         h: el.offsetHeight,
       };
     });
+    var calloutsById = {};
+    $allCalloutsIn(section).forEach(function (el) {
+      var id = el.getAttribute("data-callout-id");
+      if (!id) return;
+      calloutsById[id] = {
+        x: parseFloat(el.style.left) || 0,
+        y: parseFloat(el.style.top) || 0,
+        w: el.offsetWidth || CALLOUT_W,
+        h: el.offsetHeight || CALLOUT_H,
+      };
+    });
     var edges = [];
     function walk(node) {
       var p = nodesById[node.id];
@@ -499,8 +689,26 @@
       });
     }
     data.roots.forEach(walk);
+    var calloutEdges = [];
+    (data.callouts || []).forEach(function (c) {
+      var target = nodesById[c.targetId];
+      var box = calloutsById[c.id];
+      if (!target || !box) return;
+      calloutEdges.push({
+        x1: target.x + target.w,
+        y1: target.y + target.h / 2,
+        x2: box.x,
+        y2: box.y + box.h / 2,
+      });
+    });
     var svg = canvas.querySelector(".mindmap-edges");
-    if (svg) svg.outerHTML = renderEdgesSvg(edges);
+    if (svg) svg.outerHTML = renderEdgesSvg(edges, calloutEdges);
+  }
+
+  function $allCalloutsIn(root) {
+    return Array.prototype.slice.call(
+      root.querySelectorAll(".mindmap-callout[data-callout-id]")
+    );
   }
 
   function collectPageFromDom(section, pageData) {
@@ -514,15 +722,22 @@
       var id = el.getAttribute("data-node-id");
       if (!id || !byId[id]) return;
       var lab = el.querySelector('[data-field="label"]');
-      var note = el.querySelector('[data-field="note"]');
       if (lab) byId[id].label = String(lab.innerText || "").trim() || "节点";
-      if (note && !note.hasAttribute("hidden")) {
-        byId[id].note = String(note.innerText || "").trim();
-      } else if (note && note.hasAttribute("hidden")) {
-        byId[id].note = "";
-      }
       byId[id].fx = parseFloat(el.style.left) || 0;
       byId[id].fy = parseFloat(el.style.top) || 0;
+    });
+
+    var calloutById = {};
+    (data.callouts || []).forEach(function (c) {
+      calloutById[c.id] = c;
+    });
+    $allCalloutsIn(section).forEach(function (el) {
+      var id = el.getAttribute("data-callout-id");
+      if (!id || !calloutById[id]) return;
+      var lab = el.querySelector('[data-field="label"]');
+      if (lab) calloutById[id].label = String(lab.innerText || "").trim() || "引出说明";
+      calloutById[id].fx = parseFloat(el.style.left) || 0;
+      calloutById[id].fy = parseFloat(el.style.top) || 0;
     });
 
     var zr = section.querySelector("[data-mindmap-zoom-range]");
@@ -543,6 +758,12 @@
     section.setAttribute("data-mindmap-selected", id || "");
     $allNodesIn(section).forEach(function (el) {
       el.classList.toggle("is-selected", String(el.getAttribute("data-node-id")) === String(id));
+    });
+    $allCalloutsIn(section).forEach(function (el) {
+      el.classList.toggle(
+        "is-selected",
+        String(el.getAttribute("data-callout-id")) === String(id)
+      );
     });
   }
 
@@ -572,6 +793,7 @@
 
     var drag = {
       active: false,
+      kind: "",
       nodeId: null,
       el: null,
       startX: 0,
@@ -589,12 +811,33 @@
       if (!editOn()) return;
       var t = ev.target;
       if (!(t instanceof Element)) return;
+
+      var calloutEl = t.closest(".mindmap-callout[data-callout-id]");
+      if (calloutEl && section.contains(calloutEl)) {
+        if (!t.closest(".mindmap-callout__grip") && t.closest('[data-field="label"]')) return;
+        drag.active = true;
+        drag.kind = "callout";
+        drag.nodeId = calloutEl.getAttribute("data-callout-id");
+        drag.el = calloutEl;
+        drag.startX = ev.clientX;
+        drag.startY = ev.clientY;
+        drag.originX = parseFloat(calloutEl.style.left) || 0;
+        drag.originY = parseFloat(calloutEl.style.top) || 0;
+        drag.moved = false;
+        calloutEl.classList.add("is-dragging");
+        setSelectedId(section, drag.nodeId);
+        if (calloutEl.setPointerCapture) calloutEl.setPointerCapture(ev.pointerId);
+        ev.preventDefault();
+        return;
+      }
+
       var nodeEl = t.closest(".mindmap-node[data-node-id]");
       if (!nodeEl || !section.contains(nodeEl)) return;
       if (!t.closest(".mindmap-node__grip")) {
-        if (t.closest('[data-field="label"], [data-field="note"]')) return;
+        if (t.closest('[data-field="label"]')) return;
       }
       drag.active = true;
+      drag.kind = "node";
       drag.nodeId = nodeEl.getAttribute("data-node-id");
       drag.el = nodeEl;
       drag.startX = ev.clientX;
@@ -627,12 +870,21 @@
       if (el) {
         el.classList.remove("is-dragging");
         if (drag.moved) {
-          setNodePosition(
-            pageData,
-            drag.nodeId,
-            parseFloat(el.style.left) || 0,
-            parseFloat(el.style.top) || 0
-          );
+          if (drag.kind === "callout") {
+            setCalloutPosition(
+              pageData,
+              drag.nodeId,
+              parseFloat(el.style.left) || 0,
+              parseFloat(el.style.top) || 0
+            );
+          } else {
+            setNodePosition(
+              pageData,
+              drag.nodeId,
+              parseFloat(el.style.left) || 0,
+              parseFloat(el.style.top) || 0
+            );
+          }
           if (typeof onMoved === "function") onMoved();
         }
         if (ev && ev.pointerId != null && el.releasePointerCapture) {
@@ -643,20 +895,41 @@
       }
       drag.active = false;
       drag.el = null;
+      drag.kind = "";
     }
 
     section.addEventListener("pointerup", endDrag);
     section.addEventListener("pointercancel", endDrag);
   }
 
+  function setZoomControlsEnabled(section, enabled) {
+    var zr = section.querySelector("[data-mindmap-zoom-range]");
+    if (zr) zr.disabled = !enabled;
+    $all('[data-mindmap-action="zoom-in"], [data-mindmap-action="zoom-out"], [data-mindmap-action="zoom-reset"]', section).forEach(
+      function (btn) {
+        btn.disabled = !enabled;
+      }
+    );
+  }
+
+  function $all(sel, root) {
+    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+  }
+
   function renderZoomControls(pageId, zoom) {
-    var pct = Math.round((Number(zoom) || 1) * 100);
+    var pct = Math.round((Number(zoom) || ZOOM_DEFAULT) * 100);
+    var minPct = Math.round(ZOOM_MIN * 100);
+    var maxPct = Math.round(ZOOM_MAX * 100);
     return (
-      '<div class="mindmap-zoom" aria-label="整体缩放">' +
+      '<div class="mindmap-zoom" aria-label="整体缩放" data-mindmap-zoom-bar>' +
       '<button type="button" class="btn btn--ghost mindmap-zoom__btn" data-mindmap-page="' +
       escapeHtmlAttr(pageId) +
       '" data-mindmap-action="zoom-out" title="缩小">−</button>' +
-      '<input type="range" class="mindmap-zoom__range" min="35" max="250" value="' +
+      '<input type="range" class="mindmap-zoom__range" min="' +
+      minPct +
+      '" max="' +
+      maxPct +
+      '" value="' +
       pct +
       '" data-mindmap-zoom-range aria-label="缩放比例" />' +
       '<span class="mindmap-zoom__pct" data-mindmap-zoom-label>' +
@@ -678,14 +951,21 @@
     computeLayout: computeLayout,
     findNodeInForest: findNodeInForest,
     findParentInForest: findParentInForest,
+    findCallout: findCallout,
+    isCalloutId: isCalloutId,
     isHubNode: isHubNode,
     addHub: addHub,
     removeHub: removeHub,
     addChild: addChild,
     removeChild: removeChild,
+    addCallout: addCallout,
+    removeCallout: removeCallout,
+    setCalloutTarget: setCalloutTarget,
+    setCalloutPosition: setCalloutPosition,
     setNodePosition: setNodePosition,
     renderEdgesSvg: renderEdgesSvg,
     renderNodesHtml: renderNodesHtml,
+    renderCalloutsHtml: renderCalloutsHtml,
     applyViewportTransform: applyViewportTransform,
     collectPageFromDom: collectPageFromDom,
     getSelectedId: getSelectedId,
@@ -695,8 +975,11 @@
     repaintEdgesFromDom: repaintEdgesFromDom,
     pointerScaleForElement: pointerScaleForElement,
     renderZoomControls: renderZoomControls,
+    setZoomControlsEnabled: setZoomControlsEnabled,
     newNodeId: newNodeId,
+    newCalloutId: newCalloutId,
     ZOOM_MIN: ZOOM_MIN,
     ZOOM_MAX: ZOOM_MAX,
+    ZOOM_DEFAULT: ZOOM_DEFAULT,
   };
 })();
