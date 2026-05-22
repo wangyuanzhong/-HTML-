@@ -33,7 +33,7 @@
  *   - "添加" 默认插入到当前页的下一页位置；"复制本页" 把当前页深克隆插到下一页。
  *
  * 文稿编辑、IndexedDB 快照、对比报告、模态、xlsx 等沿用旧版功能；
- * 控制台保留 `__matrixDeckReload()` 调试入口。
+ * 控制台：`__matrixDeckReload()` 重载 deck-data；`__matrixResetLocalDeck()` 清除 IndexedDB 快照。
  */
 (function () {
   "use strict";
@@ -131,7 +131,7 @@
 
   function migrateDeckIfNeeded(d) {
     if (!d) return d;
-    if (Array.isArray(d.pages) && d.pages.length) return ensureMindmapPage(d);
+    if (Array.isArray(d.pages) && d.pages.length) return finalizeDeckPages(d);
     var pages = [];
     if (d.cover) {
       pages.push({ id: newPageId("cover"), type: "cover", data: d.cover });
@@ -179,7 +179,7 @@
     delete d.matrix;
     delete d.matrixSubjective;
     delete d.ending;
-    return ensureMindmapPage(d);
+    return finalizeDeckPages(d);
   }
 
   /** 演示稿默认插入一页思维导图（概述之后），避免用户找不到「+ 思维导图」入口 */
@@ -199,6 +199,27 @@
     }
     d.pages.splice(at, 0, { id: newPageId("mindmap"), type: "mindmap", data: data });
     return d;
+  }
+
+  /** 迁移思维导图页数据（root → roots 等）；快照恢复后也要执行 */
+  function migrateMindmapPagesInDeck(d) {
+    if (!d || !Array.isArray(d.pages)) return d;
+    var MM = typeof window !== "undefined" ? window.MindmapDeck : null;
+    if (!MM || !MM.normalizePageData) return d;
+    for (var i = 0; i < d.pages.length; i++) {
+      var p = d.pages[i];
+      if (p && p.type === "mindmap" && p.data) {
+        p.data = MM.normalizePageData(p.data);
+      }
+    }
+    return d;
+  }
+
+  /** 在 deck-data / IndexedDB 快照合并后统一补齐思维导图页并规范化数据 */
+  function finalizeDeckPages(d) {
+    if (!d) return d;
+    migrateMindmapPagesInDeck(d);
+    return ensureMindmapPage(d);
   }
 
   /* ============================================================
@@ -2555,6 +2576,32 @@
         DECK_DB_OK = false;
       });
   }
+  function clearDeckSnapshot() {
+    MEM_DECK_FULL = null;
+    if (!DECK_DB_OK) return Promise.resolve();
+    return dbOpen()
+      .then(function (db) {
+        return new Promise(function (resolve, reject) {
+          if (!db.objectStoreNames.contains(DECK_DB_STORE)) {
+            db.close();
+            resolve();
+            return;
+          }
+          var tx = db.transaction(DECK_DB_STORE, "readwrite");
+          tx.objectStore(DECK_DB_STORE).delete(DECK_DB_KEY);
+          tx.oncomplete = function () {
+            db.close();
+            resolve();
+          };
+          tx.onerror = function () {
+            reject(tx.error);
+          };
+        });
+      })
+      .catch(function () {
+        DECK_DB_OK = false;
+      });
+  }
   function loadSnapshot() {
     if (!DECK_DB_OK) return Promise.resolve(MEM_DECK_FULL);
     return dbGet().catch(function () {
@@ -2848,7 +2895,7 @@
   function init() {
     var raw = parseDeck();
     if (!raw) return;
-    deck = ensureMindmapPage(migrateDeckIfNeeded(raw));
+    deck = migrateDeckIfNeeded(raw);
     bindKeyboard();
     bindHashNav();
     bindModal();
@@ -2869,6 +2916,7 @@
       })
       .catch(Boolean)
       .finally(function () {
+        finalizeDeckPages(deck);
         syncDeckThemeFromHtml();
         renderAllSlides();
         bindCompareFab();
@@ -2886,9 +2934,23 @@
   window.__matrixDeckReload = function () {
     var raw = parseDeck();
     if (!raw) return;
-    deck = ensureMindmapPage(migrateDeckIfNeeded(raw));
+    deck = migrateDeckIfNeeded(raw);
+    finalizeDeckPages(deck);
     syncDeckThemeFromHtml();
     renderAllSlides();
     bindCompareFab();
+  };
+  /** 清除本域 IndexedDB 文稿快照并恢复为 HTML 内 deck-data（含思维导图页） */
+  window.__matrixResetLocalDeck = function () {
+    return clearDeckSnapshot().then(function () {
+      var raw = parseDeck();
+      if (!raw) return;
+      deck = migrateDeckIfNeeded(raw);
+      finalizeDeckPages(deck);
+      syncDeckThemeFromHtml();
+      renderAllSlides();
+      bindCompareFab();
+      return saveDeckPersistAll();
+    });
   };
 })();

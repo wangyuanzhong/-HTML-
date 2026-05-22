@@ -105,6 +105,18 @@ python tools/build-matrix-xlsx.py   # 按科技风向量重写两份演示 xlsx
 
 ## 常见问题
 
+### GitHub Pages 上看不到思维导图 / 新按钮
+
+线上脚本已更新时，**浏览器 IndexedDB 里旧的文稿快照**仍可能覆盖 HTML 里的新结构（本地库名 `matrix-cell-detail-uploads`，键 `deck-pages-v1`），表现为没有「思维导图」页或仍是旧布局。
+
+**处理办法（任选其一）：**
+
+1. 强制刷新（Ctrl+Shift+R / Cmd+Shift+R）后，点底部导航 **第 3 个点**（概述后的思维导图页），再点 **「编辑导图」**。
+2. 开发者工具 → Application → IndexedDB → 删除 `matrix-cell-detail-uploads` 后刷新。
+3. 控制台执行 `__matrixResetLocalDeck()`，恢复为当前 HTML 的 `deck-data` 并重新保存。
+
+自 `matrix-core.js?v=20260522` 起，恢复快照后也会自动补全思维导图页；仍建议清一次旧快照以免其它页内容过旧。
+
 ### 幻灯「下一页」点了没反应，或三页能一起往下滚
 
 根本原因常有两类：
@@ -125,7 +137,7 @@ python tools/build-matrix-xlsx.py   # 按科技风向量重写两份演示 xlsx
 避免改动：`#compare-fab-park` / `#compare-fab-anchor-objective` / `#compare-fab-anchor-subjective` / `#filter-deck` / `#filter-deck-sub` / `#matrix-*` / `#comparison-table` / `#comparison-table-sub` / `compare-fab-host` / `compare-launch-btn` / `#compare-report-modal*` 等 DOM id；`matrix-core.js` 文件名与路径
 新增对比行：若以 **JSON** 写死数据，仍为 matrix.rows.push(...)，并为每个 columns[].id 写 cells["行id::列id"]；若以 **xlsx** 为准，载入后行列 id 由表结构决定（行 id 如上 auto）
 结束页：顶层 `ending`: { "eyebrow","title","bodyHtml" }（对应第 5 页，索引 4）
-调试：控制台执行 __matrixDeckReload()
+调试：控制台执行 __matrixDeckReload()；若 Pages 仍像旧版执行 __matrixResetLocalDeck()
 ```
 
 ---
