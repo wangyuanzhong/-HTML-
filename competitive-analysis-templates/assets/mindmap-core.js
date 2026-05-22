@@ -856,7 +856,7 @@
         if (!document.body.classList.contains("deck--editing")) return;
         var t = ev.target;
         if (!(t instanceof Element)) return;
-        if (t.closest("[data-mindmap-action], .mindmap-zoom, [data-mindmap-enter-edit]")) return;
+        if (t.closest("[data-mindmap-action], .mindmap-zoom")) return;
         var nodeEl = t.closest(".mindmap-node[data-node-id]");
         if (!nodeEl || !section.contains(nodeEl)) return;
         var nid = nodeEl.getAttribute("data-node-id");

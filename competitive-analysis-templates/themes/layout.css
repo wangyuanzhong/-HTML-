@@ -1774,7 +1774,7 @@ section[data-page-type="mindmap"] {
 
 section[data-page-type="mindmap"] .slide-inner {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   row-gap: clamp(0.45rem, 1.1vw, 0.85rem);
   min-height: 0;
   height: 100%;
@@ -1787,35 +1787,16 @@ section[data-page-type="mindmap"] .mindmap-title {
   line-height: 1.18;
 }
 
-section[data-page-type="mindmap"] .mindmap-entry-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem 0.75rem;
-}
-
-section[data-page-type="mindmap"] .mindmap-slide-hint {
-  margin: 0;
-  font-size: 0.78rem;
-  opacity: 0.62;
-  line-height: 1.35;
-}
-
-section[data-page-type="mindmap"] .mindmap-edit-cta {
-  width: auto;
-  flex-shrink: 0;
-}
-
-body.deck--editing section[data-page-type="mindmap"] .mindmap-entry-row {
-  display: none;
-}
-
 section[data-page-type="mindmap"] .mindmap-toolbar {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem 0.65rem;
   font-size: 0.82rem;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-toolbar {
+  display: flex;
 }
 
 section[data-page-type="mindmap"] .mindmap-toolbar__hint {
@@ -1823,32 +1804,29 @@ section[data-page-type="mindmap"] .mindmap-toolbar__hint {
   margin-right: 0.25rem;
 }
 
-body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-toolbar {
-  display: none;
+section[data-page-type="mindmap"] .mindmap-toolbar__hint--ops {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  margin-right: 0;
+  font-size: 0.76rem;
+  opacity: 0.58;
 }
 
-section[data-page-type="mindmap"] .mindmap-zoom-overlay {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 4;
-  pointer-events: none;
+section[data-page-type="mindmap"] .mindmap-toolbar__zoom {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
 }
 
-body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-zoom-overlay {
-  display: none;
-}
-
-section[data-page-type="mindmap"] .mindmap-zoom-overlay .mindmap-zoom {
+section[data-page-type="mindmap"] .mindmap-toolbar__zoom .mindmap-zoom {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.55rem;
-  padding: 0.25rem 0.45rem;
+  padding: 0.2rem 0.4rem;
   border-radius: 6px;
   background: var(--mindmap-zoom-bg, rgba(0, 0, 0, 0.35));
   font-size: 0.78rem;
-  pointer-events: auto;
 }
 
 section[data-page-type="mindmap"] .mindmap-zoom__range {
@@ -2024,5 +2002,5 @@ section[data-page-type="mindmap"] .mindmap-node__label {
 }
 
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="mindmap"] .slide-inner {
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }

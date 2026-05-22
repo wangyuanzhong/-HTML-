@@ -524,15 +524,12 @@
           mindmapToolBtn(page.id, "remove-small", "− 小节点") +
           mindmapToolBtn(page.id, "add-link", "+ 连线") +
           mindmapToolBtn(page.id, "remove-link", "− 连线") +
-          "</div>" +
-          '<div class="mindmap-entry-row">' +
-          '<p class="mindmap-slide-hint" data-mindmap-hint>仅中间画布缩放；+ 连线：选中起点→点「+ 连线」→点终点</p>' +
-          '<button type="button" class="btn mindmap-edit-cta" data-mindmap-enter-edit>编辑导图</button>' +
+          (MM
+            ? '<span class="mindmap-toolbar__zoom">' + MM.renderZoomControls(page.id, data.zoom) + "</span>"
+            : "") +
+          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>选中节点后 +/−；连线：选起点→「+ 连线」→点终点</span>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
-          (MM
-            ? '<div class="mindmap-zoom-overlay">' + MM.renderZoomControls(page.id, data.zoom) + "</div>"
-            : "") +
           '<div class="mindmap-scaler" data-mindmap-scaler>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
           '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
@@ -610,6 +607,16 @@
       label +
       "</button>"
     );
+  }
+
+  function refreshAllMindmapSlides() {
+    var stage = $("#deck-stage");
+    if (!stage || !deck) return;
+    $all('section[data-page-type="mindmap"]', stage).forEach(function (sec) {
+      var pid = sec.getAttribute("data-page-id");
+      var page = pageById(pid);
+      if (page) paintMindmapSection(sec, page);
+    });
   }
 
   function paintMindmapSection(section, page) {
@@ -2076,21 +2083,13 @@
 
   function bindMindmapDelegations() {
     if (document.documentElement.dataset.mindmapDelegBound === "1") return;
-    document.documentElement.dataset.mindmapDelegBound = "1";
     var MM = window.MindmapDeck;
     if (!MM) return;
+    document.documentElement.dataset.mindmapDelegBound = "1";
 
     document.addEventListener("click", function (ev) {
       var t = ev.target;
       if (!(t instanceof Element)) return;
-
-      var enterEdit = t.closest("[data-mindmap-enter-edit]");
-      if (enterEdit) {
-        var ent = document.getElementById("deck-edit-enter");
-        if (ent) ent.click();
-        ev.preventDefault();
-        return;
-      }
 
       var btn = t.closest("[data-mindmap-action]");
       if (!btn) return;
@@ -2103,9 +2102,7 @@
       );
       if (!section) return;
 
-      var zoomOnly =
-        action === "zoom-in" || action === "zoom-out" || action === "zoom-reset";
-      if (!deckEditActive) return;
+      if (!document.body.classList.contains("deck--editing")) return;
 
       syncDeckFromEditableDomBeforeMatrixRebuild();
       page.data = MM.normalizePageData(page.data);
@@ -2864,6 +2861,7 @@
     if (x) x.removeAttribute("disabled");
     if (e) e.setAttribute("disabled", "disabled");
     applyEditableToDOM(true);
+    refreshAllMindmapSlides();
   }
 
   /** 退出编辑时保留各思维导图页的缩放比例（讲演态仍用该比例，但不可再调） */
