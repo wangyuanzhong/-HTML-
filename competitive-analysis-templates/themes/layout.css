@@ -1782,12 +1782,14 @@ section[data-page-type="mindmap"] .slide-inner {
 }
 
 section[data-page-type="mindmap"] .mindmap-title {
+  grid-row: 1;
   margin: 0;
   font-size: clamp(1.5rem, 2.6vw, 2.1rem);
   line-height: 1.18;
 }
 
 section[data-page-type="mindmap"] .mindmap-toolbar {
+  grid-row: 2;
   display: none;
   flex-wrap: wrap;
   align-items: center;
@@ -1857,6 +1859,7 @@ section[data-page-type="mindmap"] .mindmap-zoom__btn {
 }
 
 section[data-page-type="mindmap"] .mindmap-viewport {
+  grid-row: 3;
   position: relative;
   min-height: 0;
   flex: 1;
@@ -1867,6 +1870,10 @@ section[data-page-type="mindmap"] .mindmap-viewport {
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+section[data-page-type="mindmap"] .slide-actions {
+  grid-row: 4;
 }
 
 section[data-page-type="mindmap"] .mindmap-stage {

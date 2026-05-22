@@ -53,11 +53,8 @@
   /** 关闭 xlsx fetch / 拖入 / 底栏；改 true 可恢复 */
   var MATRIX_FEATURE_XLSX_ENABLED = false;
 
-  /**
-   * 为修复讲演态思维导图不显示：打开页面即处于编辑模式且不再退出。
-   * 改为 false 可恢复「进入 / 退出编辑」流程。
-   */
-  var DECK_ALWAYS_EDIT = true;
+  /** 默认按「进入编辑 → 保存 → 退出编辑」流程运行；调试时才强制始终编辑。 */
+  var DECK_ALWAYS_EDIT = false;
 
   /* ============================================================
    * 1. 工具
@@ -2390,7 +2387,7 @@
         var pidMm = sec.getAttribute("data-page-id");
         var pageMm = pageById(pidMm);
         var canvasMm = sec.querySelector("[data-mindmap-canvas]");
-        if (pageMm && MMm && canvasMm && !canvasMm.querySelector(".mindmap-node")) {
+        if (pageMm && MMm && canvasMm) {
           paintMindmapSection(sec, pageMm);
         }
         if (!on) {
@@ -2822,15 +2819,18 @@
     if (!deck) return Promise.resolve();
     syncAllMindmapPagesBeforeSave();
     collectDOMIntoDeck();
-    return Promise.resolve(flushModalDetailIntoDeckWhenOpen()).then(function () {
-      return dbPut(deepClone(buildSnapshot())).then(function () {
-        deckEditBaselineJSON = JSON.stringify(deck);
-        var active = deck.pages[slideIndexNav];
-        if (active && active.type === "mindmap") {
-          var sec = mindmapSectionByIndex(slideIndexNav);
-          if (sec) paintMindmapSection(sec, active);
-        }
-      });
+    flushModalDetailIntoDeckWhenOpen();
+
+    var savedDeck = deepClone(deck);
+    var savedSnapshot = { v: 2, theme: savedDeck.theme, pages: deepClone(savedDeck.pages) };
+    deckEditBaselineJSON = JSON.stringify(savedDeck);
+
+    return dbPut(savedSnapshot).then(function () {
+      var active = deck.pages[slideIndexNav];
+      if (active && active.type === "mindmap") {
+        var sec = mindmapSectionByIndex(slideIndexNav);
+        if (sec) paintMindmapSection(sec, active);
+      }
     });
   }
 

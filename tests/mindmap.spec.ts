@@ -124,6 +124,42 @@ test.describe("mindmap slide", () => {
     await expect(slide.locator("[data-mindmap-stage]")).toHaveCSS("transform", /matrix/);
   });
 
+  test("saved mindmap edits remain after exiting edit mode", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+    const branches = slide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)");
+    const smallNodes = slide.locator(".mindmap-node--small");
+    const branchesBefore = await branches.count();
+    const smallBefore = await smallNodes.count();
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-branch"]').click();
+    await expect(branches).toHaveCount(branchesBefore + 1);
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    await expect(smallNodes).toHaveCount(smallBefore + 1);
+
+    await page.locator("#deck-edit-save").click();
+    await page.locator("#deck-edit-exit").click();
+
+    await expect(page.locator("body")).not.toHaveClass(/deck--editing/);
+    await expect(branches).toHaveCount(branchesBefore + 1);
+    await expect(smallNodes).toHaveCount(smallBefore + 1);
+    await expect(slide.locator(".mindmap-toolbar")).toBeHidden();
+
+    await page.waitForTimeout(250);
+    await page.reload();
+    await page.locator('[data-slide-dot="2"]').click();
+    const restoredSlide = page.locator('section[data-page-type="mindmap"]:not([hidden])');
+    await expect(restoredSlide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)")).toHaveCount(
+      branchesBefore + 1
+    );
+    await expect(restoredSlide.locator(".mindmap-node--small")).toHaveCount(smallBefore + 1);
+    await expect(restoredSlide.locator(".mindmap-node__label", { hasText: "新分支" })).toBeVisible();
+    await expect(restoredSlide.locator(".mindmap-node--small .mindmap-node__label", { hasText: "小节点" })).toBeVisible();
+  });
+
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {
     const slide = await openMindmapSlide(page);
     await expect(slide.locator(".mindmap-toolbar")).toBeHidden();
