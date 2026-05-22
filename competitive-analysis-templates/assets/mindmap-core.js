@@ -198,6 +198,24 @@
     });
   }
 
+  function pruneLinksForSubtree(node, data) {
+    if (!node) return;
+    pruneLinksForNode(data, node.id);
+    (node.children || []).forEach(function (ch) {
+      pruneLinksForSubtree(ch, data);
+    });
+  }
+
+  /** small | hub | branch | none */
+  function getSelectionKind(data, selId) {
+    var sel = selId == null ? "" : String(selId);
+    if (!sel) return "none";
+    if (isSmallNodeId(data, sel)) return "small";
+    if (isHubNode(data.roots, sel)) return "hub";
+    if (findNodeInForest(data.roots, sel)) return "branch";
+    return "none";
+  }
+
   function estimateLabelWidth(text, compact) {
     var t = String(text || "").trim() || "节点";
     var len = 0;
@@ -461,7 +479,7 @@
       }
     }
     if (idx < 0) return false;
-    pruneLinksForNode(data, hubId);
+    pruneLinksForSubtree(data.roots[idx], data);
     data.roots.splice(idx, 1);
     return true;
   }
@@ -484,6 +502,7 @@
 
   function removeChild(pageData, parentId, childId) {
     var data = normalizePageData(pageData);
+    if (!childId) return false;
     if (isHubNode(data.roots, childId)) return removeHub(pageData, childId);
     var parent = findNodeInForest(data.roots, parentId);
     if (!parent || !parent.children || !parent.children.length) return false;
@@ -494,9 +513,10 @@
         break;
       }
     }
-    if (idx < 0) parent.children.pop();
-    else parent.children.splice(idx, 1);
-    pruneLinksForNode(data, childId);
+    if (idx < 0) return false;
+    var removed = parent.children[idx];
+    pruneLinksForSubtree(removed, data);
+    parent.children.splice(idx, 1);
     return true;
   }
 
@@ -581,29 +601,31 @@
     return false;
   }
 
-  /** 删除当前选中项：小节点 / 总节点 / 分支 / 与选中相关的连线 */
+  function resolveBranchParentId(data, selId) {
+    var kind = getSelectionKind(data, selId);
+    if (kind === "hub" || kind === "branch") return String(selId);
+    if (kind === "small" && data.roots[0]) return data.roots[0].id;
+    return data.roots[0] ? data.roots[0].id : "";
+  }
+
+  /** 删除当前选中项：仅删除选中本身（小节点 / 总节点 / 分支），不误删兄弟节点 */
   function removeSelection(pageData, selId) {
     var data = normalizePageData(pageData);
     var sel = selId == null ? "" : String(selId);
     if (!sel) return false;
 
-    if (isSmallNodeId(data, sel)) {
-      return removeSmallNode(data, sel);
-    }
-
-    if (isHubNode(data.roots, sel)) {
+    var kind = getSelectionKind(data, sel);
+    if (kind === "small") return removeSmallNode(data, sel);
+    if (kind === "hub") {
       if (data.roots.length <= 1) return false;
       return removeHub(data, sel);
     }
-
-    var selNode = findNodeInForest(data.roots, sel);
-    if (selNode) {
+    if (kind === "branch") {
       var par = findParentInForest(data.roots, sel);
-      if (par) return removeChild(data, par.id, sel);
-      return false;
+      if (!par) return false;
+      return removeChild(data, par.id, sel);
     }
-
-    return removeLinkForSelection(data, sel);
+    return false;
   }
 
   function setNodePosition(pageData, nodeId, x, y, kind) {
@@ -813,12 +835,16 @@
       var label = lab ? String(lab.innerText || "").trim() : "";
       if (kind === "small" && smallById[id]) {
         if (lab) smallById[id].label = label || "小节点";
-        smallById[id].fx = parseFloat(el.style.left) || 0;
-        smallById[id].fy = parseFloat(el.style.top) || 0;
+        if (el.getAttribute("data-user-moved") === "1") {
+          smallById[id].fx = parseFloat(el.style.left) || 0;
+          smallById[id].fy = parseFloat(el.style.top) || 0;
+        }
       } else if (byId[id]) {
         if (lab) byId[id].label = label || "节点";
-        byId[id].fx = parseFloat(el.style.left) || 0;
-        byId[id].fy = parseFloat(el.style.top) || 0;
+        if (el.getAttribute("data-user-moved") === "1") {
+          byId[id].fx = parseFloat(el.style.left) || 0;
+          byId[id].fy = parseFloat(el.style.top) || 0;
+        }
       }
     });
 
@@ -968,6 +994,7 @@
             parseFloat(el.style.top) || 0,
             drag.kind
           );
+          el.setAttribute("data-user-moved", "1");
           if (typeof onMoved === "function") onMoved();
         }
         if (ev && ev.pointerId != null && el.releasePointerCapture) {
@@ -1047,6 +1074,8 @@
     removeLink: removeLink,
     removeLinkForSelection: removeLinkForSelection,
     removeSelection: removeSelection,
+    getSelectionKind: getSelectionKind,
+    resolveBranchParentId: resolveBranchParentId,
     setNodePosition: setNodePosition,
     renderEdgesSvg: renderEdgesSvg,
     renderNodesHtml: renderNodesHtml,

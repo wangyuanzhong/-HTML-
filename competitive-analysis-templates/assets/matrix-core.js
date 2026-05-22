@@ -535,6 +535,8 @@
           renderSlideActionsHtml(ctx) +
           "</div>";
         section.innerHTML = html;
+        delete section.dataset.mindmapSelectBound;
+        delete section.dataset.mindmapDragBound;
         var firstHub = data.roots && data.roots[0] ? data.roots[0].id : "";
         section.setAttribute(
           "data-mindmap-selected",
@@ -2105,7 +2107,7 @@
 
       if (!document.body.classList.contains("deck--editing")) return;
 
-      syncDeckFromEditableDomBeforeMatrixRebuild();
+      syncMindmapPageFromDom(section, page);
       page.data = MM.normalizePageData(page.data);
       var sel = MM.getSelectedId(section);
 
@@ -2115,17 +2117,24 @@
         if (hubs.length) MM.setSelectedId(section, hubs[hubs.length - 1].id);
         paintMindmapSection(section, page);
       } else if (action === "add-branch") {
-        MM.addChild(page.data, sel);
-        paintMindmapSection(section, page);
+        var parentId = MM.resolveBranchParentId(page.data, sel);
+        if (!parentId || !MM.findNodeInForest(page.data.roots, parentId)) return;
+        if (MM.addChild(page.data, parentId)) {
+          var parentNode = MM.findNodeInForest(page.data.roots, parentId);
+          var kids = parentNode && parentNode.children ? parentNode.children : [];
+          var newest = kids.length ? kids[kids.length - 1] : null;
+          if (newest) MM.setSelectedId(section, newest.id);
+          paintMindmapSection(section, page);
+        }
       } else if (action === "remove-selection") {
         if (!sel) return;
-        var wasHub = MM.isHubNode(page.data.roots, sel);
-        var wasSmall = MM.isSmallNodeId(page.data, sel);
-        var parBefore = MM.findParentInForest(page.data.roots, sel);
+        var kind = MM.getSelectionKind(page.data, sel);
+        var parBefore =
+          kind === "branch" ? MM.findParentInForest(page.data.roots, sel) : null;
         if (MM.removeSelection(page.data, sel)) {
           MM.setLinkPickFrom(section, "");
           section.classList.remove("mindmap--link-pick");
-          if (wasSmall || wasHub) {
+          if (kind === "small" || kind === "hub") {
             if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
           } else if (parBefore) {
             MM.setSelectedId(section, parBefore.id);
@@ -2134,7 +2143,7 @@
         }
       } else if (action === "add-small") {
         var anchor = sel;
-        if (MM.isSmallNodeId(page.data, sel) && page.data.roots[0]) {
+        if (MM.getSelectionKind(page.data, sel) === "small" && page.data.roots[0]) {
           anchor = page.data.roots[0].id;
         }
         if (MM.addSmallNode(page.data, anchor)) {
@@ -2626,7 +2635,14 @@
   function applySnapshot(snap) {
     if (!snap || snap.v !== 2 || !Array.isArray(snap.pages)) return;
     deck.pages = snap.pages;
+    migrateMindmapPagesInDeck(deck);
     /* theme 不随快照恢复：每个 template-*.html 只链一份 theme-*.css */
+  }
+
+  function syncMindmapPageFromDom(section, page) {
+    var MM = window.MindmapDeck;
+    if (!MM || !section || !page || page.type !== "mindmap") return;
+    page.data = MM.collectPageFromDom(section, page.data);
   }
 
   /** 以当前 HTML 的 data-deck-theme 为准，避免 IndexedDB 里旧 theme 与 CSS 不匹配 */
@@ -2971,6 +2987,35 @@
 
   /** 控制台：__matrixDeckReload() 重新解析 deck-data 并渲染 */
   window.__matrixEnterEdit = enterDeckEditMode;
+
+  /** E2E：读取内存中的思维导图计数（与 DOM 绘制一致） */
+  window.__matrixMindmapCounts = function (pageId) {
+    var page = pageById(pageId);
+    var MM = window.MindmapDeck;
+    if (!page || page.type !== "mindmap" || !MM) return null;
+    page.data = MM.normalizePageData(page.data);
+    function countBranches(roots) {
+      var n = 0;
+      function walk(node, isRoot) {
+        if (!isRoot) n++;
+        (node.children || []).forEach(function (c) {
+          walk(c, false);
+        });
+      }
+      (roots || []).forEach(function (r) {
+        walk(r, true);
+      });
+      return n;
+    }
+    return {
+      hub: (page.data.roots || []).length,
+      branch: countBranches(page.data.roots),
+      small: (page.data.smallNodes || []).length,
+      link: (page.data.links || []).length,
+      hubChildren: page.data.roots[0] ? page.data.roots[0].children.length : 0,
+    };
+  };
+
   window.__matrixDeckReload = function () {
     var raw = parseDeck();
     if (!raw) return;
