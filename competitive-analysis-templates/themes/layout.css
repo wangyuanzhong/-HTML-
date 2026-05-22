@@ -700,6 +700,12 @@ body.deck--editing .deck-chrome-hover-target {
   will-change: transform, opacity;
 }
 
+body:not(.deck--editing) .deck-chrome-inner {
+  transform: translateY(calc(-100% + 2.85rem));
+  opacity: 1;
+  pointer-events: auto;
+}
+
 body:not(.deck--editing) .deck-chrome-shell:hover .deck-chrome-inner,
 body:not(.deck--editing) .deck-chrome-shell:focus-within .deck-chrome-inner {
   transform: translateY(0);
@@ -1768,7 +1774,7 @@ section[data-page-type="mindmap"] {
 
 section[data-page-type="mindmap"] .slide-inner {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   row-gap: clamp(0.45rem, 1.1vw, 0.85rem);
   min-height: 0;
   height: 100%;
@@ -1779,6 +1785,29 @@ section[data-page-type="mindmap"] .mindmap-title {
   margin: 0;
   font-size: clamp(1.5rem, 2.6vw, 2.1rem);
   line-height: 1.18;
+}
+
+section[data-page-type="mindmap"] .mindmap-entry-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+}
+
+section[data-page-type="mindmap"] .mindmap-slide-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.62;
+  line-height: 1.35;
+}
+
+section[data-page-type="mindmap"] .mindmap-edit-cta {
+  width: auto;
+  flex-shrink: 0;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-entry-row {
+  display: none;
 }
 
 section[data-page-type="mindmap"] .mindmap-toolbar {
@@ -1904,20 +1933,29 @@ section[data-page-type="mindmap"] .mindmap-node--hub {
   padding-left: 0.85rem;
 }
 
+section[data-page-type="mindmap"] .mindmap-node {
+  padding-left: 0.85rem;
+}
+
 section[data-page-type="mindmap"] .mindmap-node__grip {
   position: absolute;
-  left: 0.35rem;
+  left: 0.28rem;
   top: 50%;
-  width: 4px;
-  height: 1.1rem;
-  margin-top: -0.55rem;
+  width: 5px;
+  height: 1.25rem;
+  margin-top: -0.62rem;
   border-radius: 4px;
   background: var(--mindmap-node-selected-border, rgba(255, 255, 255, 0.35));
   opacity: 0.55;
+  cursor: grab;
 }
 
 body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-node__grip {
   display: none;
+}
+
+body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-node {
+  padding-left: 0.65rem;
 }
 
 section[data-page-type="mindmap"] .mindmap-node__label {
@@ -1944,5 +1982,5 @@ section[data-page-type="mindmap"] .mindmap-node__note--empty {
 }
 
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="mindmap"] .slide-inner {
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
 }

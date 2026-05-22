@@ -29,8 +29,9 @@ for (const file of templates) {
       await expect(page.locator('[data-slide-index="1"]')).toBeVisible();
       await expect(page.locator("#overview-sections")).toBeVisible();
 
-      await page.locator('[data-slide-index="1"] [data-slide-go="2"]').first().click();
-      await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
+      // 索引 2 为自动插入的思维导图页，客观矩阵在索引 3
+      await page.locator('[data-slide-dot="3"]').click();
+      await expect(page.locator('[data-slide-index="3"]')).toBeVisible();
       await expect(page.locator("#filter-deck")).toBeVisible();
     });
   });

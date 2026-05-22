@@ -393,7 +393,7 @@
         "px;width:" +
         n.w +
         'px" tabindex="0">' +
-        (n.isHub ? '<span class="mindmap-node__grip" aria-hidden="true"></span>' : "") +
+        '<span class="mindmap-node__grip" aria-hidden="true" title="拖拽移动"></span>' +
         '<div class="mindmap-node__label" data-field="label">' +
         escapeHtml(n.label || "") +
         "</div>";
@@ -445,6 +445,62 @@
     return Array.prototype.slice.call(
       root.querySelectorAll(".mindmap-node[data-node-id]")
     );
+  }
+
+  function pointerScaleForElement(el) {
+    var scale = 1;
+    var node = el;
+    while (node && node !== document.documentElement) {
+      var tr = window.getComputedStyle(node).transform;
+      if (tr && tr !== "none") {
+        var m = tr.match(/matrix\(([^)]+)\)/);
+        if (m) {
+          var parts = m[1].split(",").map(function (v) {
+            return parseFloat(String(v).trim());
+          });
+          if (parts[0] && !isNaN(parts[0])) scale *= parts[0];
+        }
+      }
+      node = node.parentElement;
+    }
+    return scale > 0 ? scale : 1;
+  }
+
+  function repaintEdgesFromDom(section, pageData) {
+    var canvas = section.querySelector("[data-mindmap-canvas]");
+    if (!canvas) return;
+    var data = normalizePageData(pageData);
+    var nodesById = {};
+    $allNodesIn(section).forEach(function (el) {
+      var id = el.getAttribute("data-node-id");
+      if (!id) return;
+      nodesById[id] = {
+        x: parseFloat(el.style.left) || 0,
+        y: parseFloat(el.style.top) || 0,
+        w: el.offsetWidth,
+        h: el.offsetHeight,
+      };
+    });
+    var edges = [];
+    function walk(node) {
+      var p = nodesById[node.id];
+      if (!p) return;
+      (node.children || []).forEach(function (ch) {
+        var c = nodesById[ch.id];
+        if (c) {
+          edges.push({
+            x1: p.x + p.w,
+            y1: p.y + p.h / 2,
+            x2: c.x,
+            y2: c.y + c.h / 2,
+          });
+        }
+        walk(ch);
+      });
+    }
+    data.roots.forEach(walk);
+    var svg = canvas.querySelector(".mindmap-edges");
+    if (svg) svg.outerHTML = renderEdgesSvg(edges);
   }
 
   function collectPageFromDom(section, pageData) {
@@ -533,9 +589,11 @@
       if (!editOn()) return;
       var t = ev.target;
       if (!(t instanceof Element)) return;
-      if (t.closest('[data-field="label"], [data-field="note"]') && t.isContentEditable) return;
       var nodeEl = t.closest(".mindmap-node[data-node-id]");
       if (!nodeEl || !section.contains(nodeEl)) return;
+      if (!t.closest(".mindmap-node__grip")) {
+        if (t.closest('[data-field="label"], [data-field="note"]')) return;
+      }
       drag.active = true;
       drag.nodeId = nodeEl.getAttribute("data-node-id");
       drag.el = nodeEl;
@@ -556,14 +614,10 @@
       var dy = ev.clientY - drag.startY;
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
       drag.moved = true;
-      var stage = section.querySelector("[data-mindmap-stage]");
-      var scale = 1;
-      if (stage) {
-        var m = stage.style.transform.match(/scale\(([\d.]+)\)/);
-        if (m) scale = parseFloat(m[1]) || 1;
-      }
+      var scale = pointerScaleForElement(drag.el);
       drag.el.style.left = drag.originX + dx / scale + "px";
       drag.el.style.top = drag.originY + dy / scale + "px";
+      repaintEdgesFromDom(section, pageData);
       ev.preventDefault();
     });
 
@@ -638,6 +692,8 @@
     setSelectedId: setSelectedId,
     bindViewportFit: bindViewportFit,
     bindNodeDrag: bindNodeDrag,
+    repaintEdgesFromDom: repaintEdgesFromDom,
+    pointerScaleForElement: pointerScaleForElement,
     renderZoomControls: renderZoomControls,
     newNodeId: newNodeId,
     ZOOM_MIN: ZOOM_MIN,

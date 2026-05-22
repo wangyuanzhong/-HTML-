@@ -131,7 +131,7 @@
 
   function migrateDeckIfNeeded(d) {
     if (!d) return d;
-    if (Array.isArray(d.pages) && d.pages.length) return d;
+    if (Array.isArray(d.pages) && d.pages.length) return ensureMindmapPage(d);
     var pages = [];
     if (d.cover) {
       pages.push({ id: newPageId("cover"), type: "cover", data: d.cover });
@@ -179,6 +179,25 @@
     delete d.matrix;
     delete d.matrixSubjective;
     delete d.ending;
+    return ensureMindmapPage(d);
+  }
+
+  /** 演示稿默认插入一页思维导图（概述之后），避免用户找不到「+ 思维导图」入口 */
+  function ensureMindmapPage(d) {
+    if (!d || !Array.isArray(d.pages)) return d;
+    for (var i = 0; i < d.pages.length; i++) {
+      if (d.pages[i] && d.pages[i].type === "mindmap") return d;
+    }
+    var MM = typeof window !== "undefined" ? window.MindmapDeck : null;
+    var data = MM && MM.defaultPageData ? MM.defaultPageData() : { title: "思维导图", zoom: 1, roots: [] };
+    var at = Math.min(2, d.pages.length);
+    for (var j = 0; j < d.pages.length; j++) {
+      if (d.pages[j].type === "overview") {
+        at = j + 1;
+        break;
+      }
+    }
+    d.pages.splice(at, 0, { id: newPageId("mindmap"), type: "mindmap", data: data });
     return d;
   }
 
@@ -480,6 +499,10 @@
           mindmapToolBtn(page.id, "toggle-note", "说明") +
           "</div>" +
           (MM ? MM.renderZoomControls(page.id, data.zoom) : "") +
+          '<div class="mindmap-entry-row">' +
+          '<p class="mindmap-slide-hint" data-mindmap-hint>讲演时可缩放；点「编辑导图」可增删节点、拖拽布局</p>' +
+          '<button type="button" class="btn mindmap-edit-cta" data-mindmap-enter-edit>编辑导图</button>' +
+          "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
           '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
@@ -579,7 +602,7 @@
     });
     if (section.dataset.mindmapDragBound !== "1") {
       MM.bindNodeDrag(section, page.data, function () {
-        paintMindmapSection(section, page);
+        MM.repaintEdgesFromDom(section, page.data);
       });
     }
     var zr = section.querySelector("[data-mindmap-zoom-range]");
@@ -2021,6 +2044,14 @@
       var t = ev.target;
       if (!(t instanceof Element)) return;
 
+      var enterEdit = t.closest("[data-mindmap-enter-edit]");
+      if (enterEdit) {
+        var ent = document.getElementById("deck-edit-enter");
+        if (ent) ent.click();
+        ev.preventDefault();
+        return;
+      }
+
       var nodeEl = t.closest(".mindmap-node[data-node-id]");
       if (nodeEl && nodeEl.closest("[data-page-type='mindmap']")) {
         var sec0 = nodeEl.closest("[data-slide]");
@@ -2749,6 +2780,7 @@
 
   function enterDeckEditMode() {
     if (!deck) return;
+    deckEditActive = true;
     deckEditBaselineJSON = JSON.stringify(deck);
     var s = $("#deck-edit-save");
     var x = $("#deck-edit-exit");
@@ -2816,7 +2848,7 @@
   function init() {
     var raw = parseDeck();
     if (!raw) return;
-    deck = migrateDeckIfNeeded(raw);
+    deck = ensureMindmapPage(migrateDeckIfNeeded(raw));
     bindKeyboard();
     bindHashNav();
     bindModal();
@@ -2850,10 +2882,11 @@
   }
 
   /** 控制台：__matrixDeckReload() 重新解析 deck-data 并渲染 */
+  window.__matrixEnterEdit = enterDeckEditMode;
   window.__matrixDeckReload = function () {
     var raw = parseDeck();
     if (!raw) return;
-    deck = migrateDeckIfNeeded(raw);
+    deck = ensureMindmapPage(migrateDeckIfNeeded(raw));
     syncDeckThemeFromHtml();
     renderAllSlides();
     bindCompareFab();
