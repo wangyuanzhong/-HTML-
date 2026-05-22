@@ -8,11 +8,13 @@
   var SIBLING_GAP = 18;
   var ROOT_GAP = 36;
   var PAD = 16;
-  var NODE_MIN_W = 96;
-  var NODE_MAX_W = 188;
-  var SMALL_W = 76;
+  var NODE_MIN_W = 112;
+  var NODE_MAX_W = 300;
+  var SMALL_MIN_W = 88;
+  var SMALL_MAX_W = 148;
   var SMALL_H = 38;
-  var LABEL_LINE_H = 24;
+  var LABEL_LINE_H = 22;
+  var NODE_PAD_X = 28;
   var FIT_CAP = 0.92;
   var FIT_BOOST_SMALL = 0.92;
   var ZOOM_MIN = 0.5;
@@ -216,20 +218,40 @@
     return "none";
   }
 
+  function labelLineUnits(text) {
+    var lines = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .split("\n");
+    if (!lines.length) lines = [""];
+    var maxUnits = 0;
+    lines.forEach(function (line) {
+      var len = 0;
+      var t = String(line || "").trim() || " ";
+      for (var i = 0; i < t.length; i++) {
+        len += t.charCodeAt(i) > 255 ? 1.85 : 1;
+      }
+      maxUnits = Math.max(maxUnits, len);
+    });
+    return { lines: lines.length, units: maxUnits };
+  }
+
   function estimateLabelWidth(text, compact) {
-    var t = String(text || "").trim() || "节点";
-    var len = 0;
-    for (var i = 0; i < t.length; i++) {
-      len += t.charCodeAt(i) > 255 ? 1.7 : 1;
-    }
-    var minW = compact ? SMALL_W : NODE_MIN_W;
-    var maxW = compact ? SMALL_W + 8 : NODE_MAX_W;
-    return Math.min(maxW, Math.max(minW, Math.ceil(len * (compact ? 7 : 9) + (compact ? 14 : 22))));
+    var o = labelLineUnits(text);
+    var pxPerUnit = compact ? 9.5 : 12;
+    var pad = compact ? 22 : NODE_PAD_X;
+    var minW = compact ? SMALL_MIN_W : NODE_MIN_W;
+    var maxW = compact ? SMALL_MAX_W : NODE_MAX_W;
+    return Math.min(maxW, Math.max(minW, Math.ceil(o.units * pxPerUnit + pad)));
   }
 
   function measureNode(node, compact) {
+    var o = labelLineUnits(node.label);
     var w = estimateLabelWidth(node.label, compact);
-    var h = (compact ? SMALL_H : LABEL_LINE_H + 12);
+    var lineH = compact ? 18 : LABEL_LINE_H;
+    var padY = compact ? 14 : 18;
+    var h = compact
+      ? Math.max(SMALL_H, o.lines * lineH + padY)
+      : Math.max(lineH + padY, o.lines * lineH + padY);
     return { w: w, h: h };
   }
 
@@ -701,11 +723,13 @@
         n.x +
         "px;top:" +
         n.y +
-        "px;width:" +
+        "px;min-width:" +
         n.w +
-        "px" +
-        (n.kind === "small" ? ";height:" + n.h + "px" : "") +
-        '" tabindex="0">' +
+        "px;max-width:" +
+        (n.kind === "small" ? SMALL_MAX_W : NODE_MAX_W) +
+        "px;width:max-content;min-height:" +
+        n.h +
+        'px" tabindex="0">' +
         '<span class="mindmap-node__grip" aria-hidden="true" title="拖拽移动"></span>' +
         '<div class="mindmap-node__label" data-field="label">' +
         escapeHtml(n.label || "") +
@@ -926,6 +950,59 @@
     );
   }
 
+  function measureLabelContentWidth(labelEl) {
+    if (!labelEl) return 0;
+    var saved = labelEl.style.whiteSpace;
+    labelEl.style.whiteSpace = "nowrap";
+    var w = labelEl.scrollWidth;
+    labelEl.style.whiteSpace = saved || "";
+    return w;
+  }
+
+  function fitNodeWidthToLabel(nodeEl) {
+    if (!nodeEl) return;
+    var lab = nodeEl.querySelector('[data-field="label"]');
+    if (!lab) return;
+    var compact = nodeEl.classList.contains("mindmap-node--small");
+    var minW = compact ? SMALL_MIN_W : NODE_MIN_W;
+    var maxW = compact ? SMALL_MAX_W : NODE_MAX_W;
+    var pad = compact ? 18 : NODE_PAD_X;
+    var contentW = measureLabelContentWidth(lab);
+    var w = Math.min(maxW, Math.max(minW, Math.ceil(contentW + pad)));
+    nodeEl.style.minWidth = w + "px";
+    var o = labelLineUnits(lab.innerText || "");
+    var lineH = compact ? 18 : LABEL_LINE_H;
+    var padY = compact ? 14 : 18;
+    var h = compact
+      ? Math.max(SMALL_H, o.lines * lineH + padY)
+      : Math.max(lineH + padY, o.lines * lineH + padY);
+    nodeEl.style.minHeight = h + "px";
+  }
+
+  function fitAllNodeWidthsInSection(section) {
+    $allNodesIn(section).forEach(fitNodeWidthToLabel);
+  }
+
+  function bindLabelAutoSize(section, pageData) {
+    if (section.dataset.mindmapLabelSizeBound === "1") return;
+    section.dataset.mindmapLabelSizeBound = "1";
+    section.addEventListener(
+      "input",
+      function (ev) {
+        if (!document.body.classList.contains("deck--editing")) return;
+        var t = ev.target;
+        if (!(t instanceof Element)) return;
+        var lab = t.closest('[data-field="label"]');
+        if (!lab || !section.contains(lab)) return;
+        var nodeEl = lab.closest(".mindmap-node[data-node-id]");
+        if (!nodeEl) return;
+        fitNodeWidthToLabel(nodeEl);
+        repaintEdgesFromDom(section, pageData);
+      },
+      true
+    );
+  }
+
   function bindNodeDrag(section, pageData, onMoved) {
     if (section.dataset.mindmapDragBound === "1") return;
     section.dataset.mindmapDragBound = "1";
@@ -1087,6 +1164,9 @@
     setLinkPickFrom: setLinkPickFrom,
     bindViewportFit: bindViewportFit,
     bindNodeDrag: bindNodeDrag,
+    bindLabelAutoSize: bindLabelAutoSize,
+    fitNodeWidthToLabel: fitNodeWidthToLabel,
+    fitAllNodeWidthsInSection: fitAllNodeWidthsInSection,
     bindNodeSelectionAndLink: bindNodeSelectionAndLink,
     repaintEdgesFromDom: repaintEdgesFromDom,
     pointerScaleForElement: pointerScaleForElement,

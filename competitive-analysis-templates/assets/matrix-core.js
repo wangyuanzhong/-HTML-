@@ -652,6 +652,13 @@
         MM.repaintEdgesFromDom(section, page.data);
       });
     }
+    if (section.dataset.mindmapLabelSizeBound !== "1") {
+      MM.bindLabelAutoSize(section, page.data);
+    }
+    if (deckEditActive && MM.fitAllNodeWidthsInSection) {
+      MM.fitAllNodeWidthsInSection(section);
+      MM.repaintEdgesFromDom(section, page.data);
+    }
     var zr = section.querySelector("[data-mindmap-zoom-range]");
     var zl = section.querySelector("[data-mindmap-zoom-label]");
     if (zr) {
@@ -2276,7 +2283,15 @@
           }
         }
         if (MMm) MMm.setZoomControlsEnabled(sec, !!on);
-        if (on) applyMindmapEditable(sec);
+        if (on) {
+          applyMindmapEditable(sec);
+          if (MMm && MMm.fitAllNodeWidthsInSection) {
+            var pidFit = sec.getAttribute("data-page-id");
+            var pageFit = pidFit ? pageById(pidFit) : null;
+            MMm.fitAllNodeWidthsInSection(sec);
+            if (pageFit && pageFit.data) MMm.repaintEdgesFromDom(sec, pageFit.data);
+          }
+        }
         else {
           $all(".mindmap-node__label, .mindmap-callout__label", sec).forEach(function (n) {
             setCe(n, "inherit");

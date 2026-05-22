@@ -1927,6 +1927,9 @@ section[data-page-type="mindmap"] .mindmap-node {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  width: max-content;
+  max-width: var(--mindmap-node-max-w, 300px);
   gap: 0.35rem;
   padding: 0.45rem 0.65rem;
   border-radius: var(--mindmap-node-radius, 8px);
@@ -1966,6 +1969,7 @@ section[data-page-type="mindmap"] .mindmap-node--small {
   padding: 0.35rem 0.55rem;
   min-height: 2rem;
   border-radius: 999px;
+  max-width: var(--mindmap-node-small-max-w, 148px);
 }
 
 section[data-page-type="mindmap"] .mindmap-node--small .mindmap-node__label {
@@ -2007,7 +2011,13 @@ body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-node {
 section[data-page-type="mindmap"] .mindmap-node__label {
   font-size: clamp(0.9rem, 1.55vw, 1.08rem);
   line-height: 1.35;
-  word-break: break-word;
+  flex: 0 1 auto;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 section[data-page-type="mindmap"] .mindmap-node--hub .mindmap-node__label {
