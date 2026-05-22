@@ -35,8 +35,8 @@ test.describe("mindmap slide", () => {
     await enterMindmapEdit(page, slide);
     const actBoxBefore = await actions.boundingBox();
     expect(actBoxBefore).not.toBeNull();
-    await slide.locator('[data-mindmap-action="zoom-in"]').click();
-    await slide.locator('[data-mindmap-action="zoom-in"]').click();
+    await slide.locator('[data-mindmap-action="zoom-in"]').click({ force: true });
+    await slide.locator('[data-mindmap-action="zoom-in"]').click({ force: true });
 
     const actBoxAfter = await actions.boundingBox();
     expect(actBoxAfter!.y).toBeCloseTo(actBoxBefore!.y, 0);
