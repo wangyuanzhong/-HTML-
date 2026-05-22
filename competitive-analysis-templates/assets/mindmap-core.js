@@ -70,15 +70,22 @@
     };
   }
 
+  var COORD_MAX = 8000;
+
+  function sanitizeCoord(v) {
+    if (v == null || v === "") return null;
+    var n = Number(v);
+    if (isNaN(n) || Math.abs(n) > COORD_MAX) return null;
+    return n;
+  }
+
   function normalizeNode(node) {
     if (!node || typeof node !== "object") return defaultHub("节点");
     if (!node.id) node.id = newNodeId();
     if (node.label == null) node.label = "节点";
     delete node.note;
-    if (node.fx != null && node.fx !== "") node.fx = Number(node.fx);
-    else node.fx = null;
-    if (node.fy != null && node.fy !== "") node.fy = Number(node.fy);
-    else node.fy = null;
+    node.fx = sanitizeCoord(node.fx);
+    node.fy = sanitizeCoord(node.fy);
     if (!Array.isArray(node.children)) node.children = [];
     node.children.forEach(normalizeNode);
     return node;
@@ -88,10 +95,8 @@
     if (!s || typeof s !== "object") return null;
     if (!s.id) s.id = newNodeId();
     if (s.label == null) s.label = "小节点";
-    if (s.fx != null && s.fx !== "") s.fx = Number(s.fx);
-    else s.fx = null;
-    if (s.fy != null && s.fy !== "") s.fy = Number(s.fy);
-    else s.fy = null;
+    s.fx = sanitizeCoord(s.fx);
+    s.fy = sanitizeCoord(s.fy);
     return s;
   }
 
@@ -739,32 +744,67 @@
     return html;
   }
 
-  function applyViewportTransform(viewport, scaler, stage, layout, zoom) {
-    if (!viewport || !scaler || !stage) return;
+  function viewportClientSize(viewport) {
     var vw = viewport.clientWidth;
     var vh = viewport.clientHeight;
-    if (vw < 40 || vh < 40) return;
-    var cw = layout.width;
-    var ch = layout.height;
+    if (vw >= 40 && vh >= 40) return { vw: vw, vh: vh };
+    var slide = viewport.closest("[data-slide]");
+    if (slide) {
+      vw = slide.clientWidth;
+      vh = slide.clientHeight;
+    }
+    if (vw < 40 || vh < 40) {
+      var inner = viewport.closest(".slide-inner");
+      if (inner) {
+        vw = inner.clientWidth;
+        vh = inner.clientHeight;
+      }
+    }
+    if (vw < 40 || vh < 40) {
+      var ds = document.querySelector(".deck-stage");
+      if (ds) {
+        vw = ds.clientWidth;
+        vh = ds.clientHeight;
+      }
+    }
+    return { vw: Math.max(vw, 320), vh: Math.max(vh, 220) };
+  }
+
+  function applyViewportTransform(viewport, stage, layout, zoom) {
+    if (!viewport || !stage || !layout) return false;
+    var vp = viewportClientSize(viewport);
+    var vw = vp.vw;
+    var vh = vp.vh;
+    var cw = Math.max(layout.width, 120);
+    var ch = Math.max(layout.height, 120);
     var fit = Math.min((vw - 16) / cw, (vh - 16) / ch);
-    if (layout.nodeCount <= 8) {
-      fit = Math.min(fit, FIT_BOOST_SMALL);
+    /* 大图谱也要保底可见（旧版逻辑；仅 cap 上限会把 fit 压成近 0） */
+    if (layout.nodeCount <= 5) {
+      fit = Math.min(Math.max(fit, 0.85), 1.75);
+    } else if (layout.nodeCount <= 9) {
+      fit = Math.min(Math.max(fit, 0.7), 1.35);
     } else {
-      fit = Math.min(fit, FIT_CAP);
+      fit = Math.min(Math.max(fit, 0.35), 1.15);
     }
     var z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(zoom) || ZOOM_DEFAULT));
     var total = fit * z;
-    scaler.dataset.fitScale = String(fit);
-    scaler.dataset.userZoom = String(z);
+    stage.dataset.fitScale = String(fit);
+    stage.dataset.userZoom = String(z);
     stage.style.width = cw + "px";
     stage.style.height = ch + "px";
-    scaler.style.width = cw + "px";
-    scaler.style.height = ch + "px";
-    scaler.style.position = "absolute";
-    scaler.style.left = "50%";
-    scaler.style.top = "50%";
-    scaler.style.margin = "0";
-    scaler.style.transform = "translate(-50%, -50%) scale(" + total + ")";
+    stage.style.position = "absolute";
+    stage.style.left = "50%";
+    stage.style.top = "50%";
+    stage.style.margin = "0";
+    stage.style.transform = "translate(-50%, -50%) scale(" + total + ")";
+    stage.style.transformOrigin = "center center";
+    return true;
+  }
+
+  function refreshViewportWhenSized(viewport, stage, pageData) {
+    if (!viewport || !stage || !pageData) return false;
+    var data = normalizePageData(pageData);
+    return applyViewportTransform(viewport, stage, computeLayout(data), data.zoom);
   }
 
   function $allNodesIn(root) {
@@ -841,8 +881,88 @@
     if (svg) svg.outerHTML = renderEdgesSvg(treeEdges, linkEdges);
   }
 
+  /** DOM 里已有、page.data 里还没有的节点（刚点「+ 节点」尚未写回时）并入数据树 */
+  function mergeOrphanDomNodesIntoData(section, data) {
+    var byId = {};
+    forEachNode(data.roots, function (n) {
+      byId[n.id] = n;
+    });
+    var smallById = {};
+    (data.smallNodes || []).forEach(function (s) {
+      smallById[s.id] = s;
+    });
+
+    var sel = getSelectedId(section);
+    var anchor = null;
+    if (sel && byId[sel] && !isSmallNodeId(data, sel)) anchor = byId[sel];
+    if (!anchor && data.roots.length) anchor = data.roots[data.roots.length - 1];
+
+    $allNodesIn(section).forEach(function (el) {
+      var id = el.getAttribute("data-node-id");
+      if (!id || byId[id] || smallById[id]) return;
+      var kind = el.getAttribute("data-node-kind") || "tree";
+      var lab = el.querySelector('[data-field="label"]');
+      var label = lab ? String(lab.innerText || "").trim() : "";
+      var isHub = el.classList.contains("mindmap-node--hub");
+
+      if (kind === "small") {
+        if (!data.smallNodes) data.smallNodes = [];
+        data.smallNodes.push({
+          id: id,
+          label: label || "小节点",
+          fx: parseFloat(el.style.left) || 0,
+          fy: parseFloat(el.style.top) || 0,
+        });
+        smallById[id] = data.smallNodes[data.smallNodes.length - 1];
+        return;
+      }
+      if (isHub) {
+        if (data.roots.length >= 8) return;
+        var hub = {
+          id: id,
+          label: label || "总节点",
+          fx: null,
+          fy: null,
+          children: [],
+        };
+        if (el.getAttribute("data-user-moved") === "1") {
+          hub.fx = parseFloat(el.style.left) || 0;
+          hub.fy = parseFloat(el.style.top) || 0;
+        }
+        data.roots.push(hub);
+        byId[id] = hub;
+        return;
+      }
+      var parent = anchor;
+      if (parent && isHubNode(data.roots, parent.id)) {
+        /* 选中总节点时，新分支挂在该总节点下 */
+      } else if (sel && findParentInForest(data.roots, sel)) {
+        parent = findParentInForest(data.roots, sel);
+      } else if (data.roots[0]) {
+        parent = data.roots[0];
+      }
+      if (!parent) return;
+      if (!parent.children) parent.children = [];
+      if (parent.children.length >= 24) return;
+      var branch = {
+        id: id,
+        label: label || "新分支",
+        fx: null,
+        fy: null,
+        children: [],
+      };
+      if (el.getAttribute("data-user-moved") === "1") {
+        branch.fx = parseFloat(el.style.left) || 0;
+        branch.fy = parseFloat(el.style.top) || 0;
+      }
+      parent.children.push(branch);
+      byId[id] = branch;
+    });
+  }
+
   function collectPageFromDom(section, pageData) {
     var data = normalizePageData(pageData);
+    mergeOrphanDomNodesIntoData(section, data);
     var byId = {};
     forEachNode(data.roots, function (n) {
       byId[n.id] = n;
@@ -901,12 +1021,20 @@
     section.classList.toggle("mindmap--link-pick", !!id);
   }
 
-  function bindViewportFit(viewport, scaler, stage, getLayoutAndZoom) {
+  function bindViewportFit(viewport, stage, getLayoutAndZoom) {
     if (!viewport || viewport.dataset.mindmapFitBound === "1") return;
     viewport.dataset.mindmapFitBound = "1";
+    var fitRetries = 0;
     var run = function () {
       var o = getLayoutAndZoom();
-      if (o) applyViewportTransform(viewport, scaler, stage, o.layout, o.zoom);
+      if (!o) return;
+      var ok = applyViewportTransform(viewport, stage, o.layout, o.zoom);
+      if (!ok) {
+        fitRetries += 1;
+        if (fitRetries < 32) requestAnimationFrame(run);
+      } else {
+        fitRetries = 0;
+      }
     };
     if (typeof ResizeObserver !== "undefined") {
       try {
@@ -918,7 +1046,26 @@
     } else {
       window.addEventListener("resize", run);
     }
+    if (typeof IntersectionObserver !== "undefined") {
+      try {
+        var io = new IntersectionObserver(
+          function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+              if (entries[i].isIntersecting) {
+                fitRetries = 0;
+                run();
+                break;
+              }
+            }
+          },
+          { threshold: 0.01 }
+        );
+        io.observe(viewport);
+      } catch (e2) {}
+    }
     run();
+    setTimeout(run, 80);
+    setTimeout(run, 200);
   }
 
   function bindNodeSelectionAndLink(section, pageData, onChanged) {
@@ -1157,6 +1304,7 @@
     renderEdgesSvg: renderEdgesSvg,
     renderNodesHtml: renderNodesHtml,
     applyViewportTransform: applyViewportTransform,
+    refreshViewportWhenSized: refreshViewportWhenSized,
     collectPageFromDom: collectPageFromDom,
     getSelectedId: getSelectedId,
     setSelectedId: setSelectedId,

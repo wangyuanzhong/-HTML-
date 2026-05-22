@@ -17,7 +17,7 @@ test.describe("mindmap slide", () => {
   test("canvas is much smaller than viewport; chrome stays put on zoom", async ({ page }) => {
     const slide = await openMindmapSlide(page);
     const viewport = slide.locator("[data-mindmap-viewport]");
-    const scaler = slide.locator("[data-mindmap-scaler]");
+    const scaler = slide.locator("[data-mindmap-stage]");
     const actions = slide.locator(".slide-actions");
 
     const vpBox = await viewport.boundingBox();
@@ -98,6 +98,30 @@ test.describe("mindmap slide", () => {
     await expect(slide.locator(".mindmap-node--hub")).toHaveCount(hubsBefore + 1);
     await slide.locator('[data-mindmap-action="remove-selection"]').click();
     await expect(slide.locator(".mindmap-node--hub")).toHaveCount(hubsBefore);
+  });
+
+  test("mindmap stays visible after save (nodes + viewport transform)", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+    const hubsBefore = await slide.locator(".mindmap-node--hub").count();
+    await slide.locator('[data-mindmap-action="add-hub"]').click();
+    await expect(slide.locator(".mindmap-node--hub")).toHaveCount(hubsBefore + 1);
+    await page.locator("#deck-edit-save").click();
+    await page.waitForTimeout(450);
+    await expect(slide.locator(".mindmap-node--hub")).toHaveCount(hubsBefore + 1);
+    const scaler = slide.locator("[data-mindmap-stage]");
+    await expect(scaler).toHaveCSS("transform", /matrix/);
+  });
+
+  test("mindmap visible after exit edit (presentation mode)", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+    await expect(slide.locator(".mindmap-node--hub").first()).toBeVisible();
+    await page.locator("#deck-edit-exit").click();
+    await expect(page.locator("body")).not.toHaveClass(/deck--editing/);
+    await page.waitForTimeout(300);
+    await expect(slide.locator(".mindmap-node--hub").first()).toBeVisible();
+    await expect(slide.locator("[data-mindmap-stage]")).toHaveCSS("transform", /matrix/);
   });
 
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {

@@ -53,6 +53,12 @@
   /** 关闭 xlsx fetch / 拖入 / 底栏；改 true 可恢复 */
   var MATRIX_FEATURE_XLSX_ENABLED = false;
 
+  /**
+   * 为修复讲演态思维导图不显示：打开页面即处于编辑模式且不再退出。
+   * 改为 false 可恢复「进入 / 退出编辑」流程。
+   */
+  var DECK_ALWAYS_EDIT = true;
+
   /* ============================================================
    * 1. 工具
    * ============================================================ */
@@ -164,6 +170,13 @@
         data: { title: "竞品对比矩阵（主观）", matrix: subMatrix },
       });
     }
+    if (d.mindmap) {
+      pages.push({
+        id: newPageId("mindmap"),
+        type: "mindmap",
+        data: typeof d.mindmap === "object" ? d.mindmap : { title: "思维导图" },
+      });
+    }
     if (d.ending) {
       pages.push({ id: newPageId("ending"), type: "ending", data: d.ending });
     } else {
@@ -182,14 +195,58 @@
     return finalizeDeckPages(d);
   }
 
+  function normalizeMindmapPageType(p) {
+    if (!p) return;
+    var t = String(p.type || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "");
+    if (t === "mindmap" || t === "思维导图") p.type = "mindmap";
+  }
+
+  /** 导入 JSON 常把 roots / links 写在 page 顶层而非 page.data 内 */
+  function hoistMindmapFieldsIntoPageData(p) {
+    if (!p) return;
+    normalizeMindmapPageType(p);
+    if (p.type !== "mindmap") return;
+    if (!p.data || typeof p.data !== "object") p.data = {};
+    var data = p.data;
+    if (p.title != null && String(p.title).trim() && !String(data.title || "").trim()) {
+      data.title = String(p.title).trim();
+    }
+    if (p.zoom != null && (data.zoom == null || isNaN(Number(data.zoom)))) {
+      data.zoom = p.zoom;
+    }
+    if (Array.isArray(p.roots) && p.roots.length) {
+      if (!Array.isArray(data.roots) || !data.roots.length) data.roots = p.roots;
+    }
+    if (p.root && (!Array.isArray(data.roots) || !data.roots.length) && !data.root) {
+      data.root = p.root;
+    }
+    if (Array.isArray(p.smallNodes) && p.smallNodes.length) {
+      if (!Array.isArray(data.smallNodes) || !data.smallNodes.length) data.smallNodes = p.smallNodes;
+    }
+    if (Array.isArray(p.links) && p.links.length) {
+      if (!Array.isArray(data.links) || !data.links.length) data.links = p.links;
+    }
+  }
+
   function migrateMindmapPagesInDeck(d) {
     if (!d || !Array.isArray(d.pages)) return d;
     var MM = typeof window !== "undefined" ? window.MindmapDeck : null;
     if (!MM || !MM.normalizePageData) return d;
     for (var i = 0; i < d.pages.length; i++) {
       var p = d.pages[i];
-      if (p && p.type === "mindmap" && p.data) {
-        p.data = MM.normalizePageData(p.data);
+      hoistMindmapFieldsIntoPageData(p);
+      if (!p || p.type !== "mindmap") continue;
+      if (!p.data || typeof p.data !== "object") {
+        p.data = MM.defaultPageData ? MM.defaultPageData() : { title: "思维导图", zoom: 1, roots: [] };
+      }
+      p.data = MM.normalizePageData(p.data);
+      var layout = MM.computeLayout(p.data);
+      if (!layout.nodeCount) {
+        p.data = MM.normalizePageData(MM.defaultPageData());
+      } else {
         var r0 = p.data.roots && p.data.roots[0];
         if (r0 && (!r0.children || !r0.children.length)) {
           var def = MM.defaultPageData();
@@ -508,6 +565,7 @@
         var data = page.data || {};
         var MM = window.MindmapDeck;
         if (MM) data = MM.normalizePageData(data);
+        page.data = data;
         section.setAttribute("aria-label", data.title || "思维导图");
         section.classList.add("slide-mindmap");
         var html =
@@ -528,15 +586,15 @@
           '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>选中后点「删除」移除节点或连线；连线：选起点→「+ 连线」→点终点</span>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
-          '<div class="mindmap-scaler" data-mindmap-scaler>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
           '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
-          "</div></div></div>" +
+          "</div></div>" +
           renderSlideActionsHtml(ctx) +
           "</div>";
         section.innerHTML = html;
         delete section.dataset.mindmapSelectBound;
         delete section.dataset.mindmapDragBound;
+        delete section.dataset.mindmapLabelSizeBound;
         var firstHub = data.roots && data.roots[0] ? data.roots[0].id : "";
         section.setAttribute(
           "data-mindmap-selected",
@@ -545,11 +603,7 @@
         paintMindmapSection(section, page);
       },
       collectFromDom: function (section, page) {
-        var ttl = section.querySelector('[data-field="title"]');
-        page.data = page.data || {};
-        if (ttl) page.data.title = String(ttl.innerText || "").trim();
-        var MM = window.MindmapDeck;
-        if (MM) page.data = MM.collectPageFromDom(section, page.data);
+        syncMindmapPageFromDom(section, page);
       },
     },
 
@@ -622,24 +676,82 @@
     });
   }
 
+  function mindmapSectionByIndex(idx) {
+    return document.querySelector(
+      '[data-slide][data-slide-index="' + idx + '"][data-page-type="mindmap"]'
+    );
+  }
+
+  /** 布局/缩放未就绪时反复重绘，避免 overflow:hidden 裁掉未居中的画布 */
+  function scheduleMindmapRepaintAfterLayout(section, page, delays) {
+    if (!section || !page || page.type !== "mindmap") return;
+    var MM = window.MindmapDeck;
+    if (!MM) return;
+    var tries = 0;
+    var maxTries = 32;
+    function attempt() {
+      tries += 1;
+      if (!section.isConnected) return;
+      paintMindmapSection(section, page);
+      if (section.hidden) return;
+      var viewport = section.querySelector("[data-mindmap-viewport]");
+      var stage = section.querySelector("[data-mindmap-stage]");
+      var ok =
+        MM.refreshViewportWhenSized &&
+        MM.refreshViewportWhenSized(viewport, stage, page.data);
+      if (!ok && tries < maxTries) requestAnimationFrame(attempt);
+    }
+    requestAnimationFrame(attempt);
+    (delays || [80, 200, 400]).forEach(function (ms) {
+      setTimeout(attempt, ms);
+    });
+  }
+
+  function scheduleActiveMindmapRepaint() {
+    if (!deck) return;
+    var page = deck.pages[slideIndexNav];
+    if (!page || page.type !== "mindmap") return;
+    var sec = mindmapSectionByIndex(slideIndexNav);
+    if (sec) scheduleMindmapRepaintAfterLayout(sec, page);
+  }
+
+  function scheduleAllVisibleMindmapRepaint() {
+    if (!deck) return;
+    $all('section[data-page-type="mindmap"]').forEach(function (sec) {
+      if (sec.hidden) return;
+      var pid = sec.getAttribute("data-page-id");
+      var page = pageById(pid);
+      if (page) scheduleMindmapRepaintAfterLayout(sec, page, [100, 250]);
+    });
+  }
+
   function paintMindmapSection(section, page) {
     var MM = window.MindmapDeck;
-    if (!MM || !page.data) return;
+    if (!MM || !section || !page) return;
+    if (!page.data || typeof page.data !== "object") {
+      page.data = MM.defaultPageData ? MM.defaultPageData() : { title: "思维导图", zoom: 1, roots: [] };
+    }
     var viewport = section.querySelector("[data-mindmap-viewport]");
-    var scaler = section.querySelector("[data-mindmap-scaler]");
     var stage = section.querySelector("[data-mindmap-stage]");
     var canvas = section.querySelector("[data-mindmap-canvas]");
-    if (!viewport || !scaler || !stage || !canvas) return;
+    if (!viewport || !stage || !canvas) return;
     page.data = MM.normalizePageData(page.data);
     var selected = MM.getSelectedId(section);
     var layout = MM.computeLayout(page.data);
+    if (
+      !layout.nodeCount &&
+      (!Array.isArray(page.data.roots) || !page.data.roots.length)
+    ) {
+      page.data = MM.normalizePageData(MM.defaultPageData());
+      layout = MM.computeLayout(page.data);
+    }
     canvas.style.width = layout.width + "px";
     canvas.style.height = layout.height + "px";
     canvas.innerHTML =
       MM.renderEdgesSvg(layout.treeEdges, layout.linkEdges) +
       MM.renderNodesHtml(layout.nodes, selected);
-    MM.applyViewportTransform(viewport, scaler, stage, layout, page.data.zoom);
-    MM.bindViewportFit(viewport, scaler, stage, function () {
+    MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
+    MM.bindViewportFit(viewport, stage, function () {
       return { layout: MM.computeLayout(page.data), zoom: page.data.zoom };
     });
     if (section.dataset.mindmapSelectBound !== "1") {
@@ -655,9 +767,11 @@
     if (section.dataset.mindmapLabelSizeBound !== "1") {
       MM.bindLabelAutoSize(section, page.data);
     }
-    if (deckEditActive && MM.fitAllNodeWidthsInSection) {
+    if (MM.fitAllNodeWidthsInSection) {
       MM.fitAllNodeWidthsInSection(section);
       MM.repaintEdgesFromDom(section, page.data);
+      layout = MM.computeLayout(page.data);
+      MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
     }
     var zr = section.querySelector("[data-mindmap-zoom-range]");
     var zl = section.querySelector("[data-mindmap-zoom-label]");
@@ -671,7 +785,6 @@
           if (zl) zl.textContent = zr.value + "%";
           MM.applyViewportTransform(
             viewport,
-            scaler,
             stage,
             MM.computeLayout(page.data),
             page.data.zoom
@@ -830,7 +943,9 @@
     repositionCompareFabHost(slideIndexNav);
     syncActiveSlide();
     hydrateTitle();
-    if (deckEditActive) applyEditableToDOM(true);
+    refreshAllMindmapSlides();
+    applyEditableToDOM(!!deckEditActive);
+    scheduleActiveMindmapRepaint();
   }
 
   /** 仅切换 hidden + active 状态（不重新生成 DOM，保留输入/滚动位置） */
@@ -847,6 +962,12 @@
     });
     var nav = $("#slide-nav");
     if (nav) nav.dataset.activeIndex = String(slideIndexNav);
+    var activePage = deck && deck.pages[slideIndexNav];
+    if (activePage && activePage.type === "mindmap") {
+      var secMm = mindmapSectionByIndex(slideIndexNav);
+      if (secMm) paintMindmapSection(secMm, activePage);
+    }
+    scheduleActiveMindmapRepaint();
   }
 
   function clampSlideIdx(i) {
@@ -870,6 +991,11 @@
     slideIndexNav = idx;
     syncActiveSlide();
     repositionCompareFabHost(idx);
+    var page = deck && deck.pages[idx];
+    if (page && page.type === "mindmap") {
+      var sec = mindmapSectionByIndex(idx);
+      if (sec) scheduleMindmapRepaintAfterLayout(sec, page);
+    }
     try {
       history.replaceState(null, "", "#slide-" + idx);
     } catch (_) {}
@@ -2228,6 +2354,7 @@
   }
 
   function applyEditableToDOM(on) {
+    if (DECK_ALWAYS_EDIT) on = true;
     deckEditActive = !!on;
     document.body.classList.toggle("deck--editing", !!on);
     var plc = on ? bestPlainCe() : "inherit";
@@ -2260,23 +2387,26 @@
         var mttl = sec.querySelector('[data-field="title"]');
         setCe(mttl, on ? plc : "inherit");
         var MMm = window.MindmapDeck;
+        var pidMm = sec.getAttribute("data-page-id");
+        var pageMm = pageById(pidMm);
+        var canvasMm = sec.querySelector("[data-mindmap-canvas]");
+        if (pageMm && MMm && canvasMm && !canvasMm.querySelector(".mindmap-node")) {
+          paintMindmapSection(sec, pageMm);
+        }
         if (!on) {
-          var pidM = sec.getAttribute("data-page-id");
-          var pageM = pageById(pidM);
           var zrM = sec.querySelector("[data-mindmap-zoom-range]");
-          if (pageM && pageM.data && zrM) {
-            pageM.data.zoom = Number(zrM.value) / 100;
+          if (pageMm && pageMm.data) {
+            if (zrM) pageMm.data.zoom = Number(zrM.value) / 100;
             if (MMm) {
               var vp = sec.querySelector("[data-mindmap-viewport]");
-              var sc = sec.querySelector("[data-mindmap-scaler]");
               var st = sec.querySelector("[data-mindmap-stage]");
-              if (vp && sc && st) {
+              if (vp && st) {
+                pageMm.data = MMm.normalizePageData(pageMm.data);
                 MMm.applyViewportTransform(
                   vp,
-                  sc,
                   st,
-                  MMm.computeLayout(pageM.data),
-                  pageM.data.zoom
+                  MMm.computeLayout(pageMm.data),
+                  pageMm.data.zoom
                 );
               }
             }
@@ -2650,14 +2780,27 @@
   function applySnapshot(snap) {
     if (!snap || snap.v !== 2 || !Array.isArray(snap.pages)) return;
     deck.pages = snap.pages;
-    migrateMindmapPagesInDeck(deck);
+    finalizeDeckPages(deck);
     /* theme 不随快照恢复：每个 template-*.html 只链一份 theme-*.css */
   }
 
   function syncMindmapPageFromDom(section, page) {
     var MM = window.MindmapDeck;
     if (!MM || !section || !page || page.type !== "mindmap") return;
+    if (!page.data || typeof page.data !== "object") {
+      page.data = MM.defaultPageData ? MM.defaultPageData() : { title: "思维导图", zoom: 1, roots: [] };
+    }
     page.data = MM.collectPageFromDom(section, page.data);
+  }
+
+  function syncAllMindmapPagesBeforeSave() {
+    var MM = window.MindmapDeck;
+    if (!MM) return;
+    $all('section[data-page-type="mindmap"]').forEach(function (sec) {
+      var pid = sec.getAttribute("data-page-id");
+      var page = pageById(pid);
+      if (page) syncMindmapPageFromDom(sec, page);
+    });
   }
 
   /** 以当前 HTML 的 data-deck-theme 为准，避免 IndexedDB 里旧 theme 与 CSS 不匹配 */
@@ -2677,10 +2820,16 @@
 
   function saveDeckPersistAll() {
     if (!deck) return Promise.resolve();
+    syncAllMindmapPagesBeforeSave();
     collectDOMIntoDeck();
     return Promise.resolve(flushModalDetailIntoDeckWhenOpen()).then(function () {
       return dbPut(deepClone(buildSnapshot())).then(function () {
         deckEditBaselineJSON = JSON.stringify(deck);
+        var active = deck.pages[slideIndexNav];
+        if (active && active.type === "mindmap") {
+          var sec = mindmapSectionByIndex(slideIndexNav);
+          if (sec) paintMindmapSection(sec, active);
+        }
       });
     });
   }
@@ -2689,9 +2838,22 @@
 
   function normalizePortableDeckImport(raw) {
     if (!raw || typeof raw !== "object") return null;
-    var migrated = migrateDeckIfNeeded(raw);
-    if (!Array.isArray(migrated.pages)) return null;
+    var payload = raw;
+    if (Array.isArray(raw.pages)) {
+      payload = { theme: raw.theme, pages: raw.pages };
+    }
+    var migrated = migrateDeckIfNeeded(payload);
+    if (!migrated || !Array.isArray(migrated.pages)) return null;
+    migrateMindmapPagesInDeck(migrated);
     return migrated;
+  }
+
+  function indexOfFirstMindmapPage(d) {
+    if (!d || !Array.isArray(d.pages)) return -1;
+    for (var i = 0; i < d.pages.length; i++) {
+      if (d.pages[i] && d.pages[i].type === "mindmap") return i;
+    }
+    return -1;
   }
 
   function exportDeckPortableDownload() {
@@ -2723,6 +2885,7 @@
     exitComparePickQuiet();
     var importedTheme = next.theme != null ? String(next.theme).trim() : "";
     deck = next;
+    finalizeDeckPages(deck);
     syncDeckThemeFromHtml();
     if (importedTheme && deck.theme && importedTheme !== deck.theme) {
       console.info(
@@ -2732,10 +2895,21 @@
         deck.theme
       );
     }
-    slideIndexNav = 0;
+    var mindIdx = indexOfFirstMindmapPage(deck);
+    slideIndexNav = mindIdx >= 0 ? mindIdx : 0;
     renderAllSlides();
     bindCompareFab();
+    var MM = window.MindmapDeck;
+    if (mindIdx >= 0 && MM && deck.pages[mindIdx] && deck.pages[mindIdx].data) {
+      var roots = deck.pages[mindIdx].data.roots || [];
+      console.info(
+        "[matrix-core] 思维导图页已导入，根节点数:",
+        roots.length,
+        "（若画布仍空，请把 JSON 中 roots 放在 page.data.roots 下）"
+      );
+    }
     return saveDeckPersistAll().then(function () {
+      scheduleActiveMindmapRepaint();
       if (wasEditing) enterDeckEditMode();
     });
   }
@@ -2869,6 +3043,15 @@
    * 16. 编辑栏
    * ============================================================ */
 
+  function applyDeckAlwaysEditChrome() {
+    if (!DECK_ALWAYS_EDIT) return;
+    document.documentElement.setAttribute("data-deck-always-edit", "1");
+    var ent = $("#deck-edit-enter");
+    var ext = $("#deck-edit-exit");
+    if (ent) ent.setAttribute("hidden", "hidden");
+    if (ext) ext.setAttribute("hidden", "hidden");
+  }
+
   function enterDeckEditMode() {
     if (!deck) return;
     deckEditActive = true;
@@ -2877,10 +3060,17 @@
     var x = $("#deck-edit-exit");
     var e = $("#deck-edit-enter");
     if (s) s.removeAttribute("disabled");
-    if (x) x.removeAttribute("disabled");
+    if (DECK_ALWAYS_EDIT) {
+      applyDeckAlwaysEditChrome();
+      if (x) x.setAttribute("hidden", "hidden");
+    } else if (x) {
+      x.removeAttribute("hidden");
+      x.removeAttribute("disabled");
+    }
     if (e) e.setAttribute("disabled", "disabled");
     applyEditableToDOM(true);
     refreshAllMindmapSlides();
+    scheduleActiveMindmapRepaint();
   }
 
   /** 退出编辑时保留各思维导图页的缩放比例（讲演态仍用该比例，但不可再调） */
@@ -2907,15 +3097,15 @@
     }
   }
 
-  function exitDeckEditDiscard() {
+  function exitDeckEditPresent(skipDomCollect) {
     closeModal();
     var zoomPatches = readMindmapZoomPatches();
-    if (deckEditBaselineJSON) {
-      try {
-        deck = JSON.parse(deckEditBaselineJSON);
-      } catch (e1) {}
-    }
+    if (!skipDomCollect) collectDOMIntoDeck();
     applyMindmapZoomPatches(zoomPatches);
+    if (DECK_ALWAYS_EDIT) {
+      enterDeckEditMode();
+      return;
+    }
     deckEditBaselineJSON = "";
     deckEditActive = false;
     var s = $("#deck-edit-save");
@@ -2924,8 +3114,24 @@
     if (s) s.setAttribute("disabled", "disabled");
     if (x) x.setAttribute("disabled", "disabled");
     if (e) e.removeAttribute("disabled");
-    document.body.classList.remove("deck--editing");
     renderAllSlides();
+  }
+
+  function exitDeckEditDiscard() {
+    if (DECK_ALWAYS_EDIT) {
+      closeModal();
+      enterDeckEditMode();
+      return;
+    }
+    closeModal();
+    var zoomPatches = readMindmapZoomPatches();
+    if (deckEditBaselineJSON) {
+      try {
+        deck = JSON.parse(deckEditBaselineJSON);
+      } catch (e1) {}
+    }
+    applyMindmapZoomPatches(zoomPatches);
+    exitDeckEditPresent(true);
   }
 
   function bindDeckEditToolbar() {
@@ -2991,6 +3197,14 @@
         syncDeckThemeFromHtml();
         renderAllSlides();
         bindCompareFab();
+        if (DECK_ALWAYS_EDIT) {
+          enterDeckEditMode();
+        } else {
+          requestAnimationFrame(function () {
+            refreshAllMindmapSlides();
+            scheduleActiveMindmapRepaint();
+          });
+        }
       });
   }
 
@@ -3031,6 +3245,35 @@
     };
   };
 
+  /** 控制台：诊断当前思维导图页（内存节点数 vs DOM 节点数） */
+  window.__matrixMindmapDiag = function () {
+    var MM = window.MindmapDeck;
+    var sec =
+      document.querySelector('section[data-page-type="mindmap"]:not([hidden])') ||
+      document.querySelector('section[data-page-type="mindmap"]');
+    if (!sec) return { error: "no mindmap section in DOM" };
+    var pid = sec.getAttribute("data-page-id");
+    var page = pageById(pid);
+    var domNodes = sec.querySelectorAll(".mindmap-node").length;
+    var mem = null;
+    if (page && MM) {
+      page.data = MM.normalizePageData(page.data);
+      var layout = MM.computeLayout(page.data);
+      mem = {
+        pageId: pid,
+        nodeCount: layout.nodeCount,
+        roots: (page.data.roots || []).length,
+        hidden: sec.hidden,
+      };
+    }
+    return {
+      script: "matrix-core + mindmap-core (check Network ?v=)",
+      deckEditActive: deckEditActive,
+      domNodes: domNodes,
+      memory: mem,
+    };
+  };
+
   window.__matrixDeckReload = function () {
     var raw = parseDeck();
     if (!raw) return;
@@ -3039,6 +3282,38 @@
     syncDeckThemeFromHtml();
     renderAllSlides();
     bindCompareFab();
+  };
+
+  /** 清除 IndexedDB 里损坏的自动保存（思维导图空白时可在控制台执行后刷新） */
+  window.__matrixClearDeckSnapshot = function () {
+    if (!window.indexedDB) {
+      location.reload();
+      return Promise.resolve();
+    }
+    return dbOpen()
+      .then(function (db) {
+        return new Promise(function (resolve, reject) {
+          if (!db.objectStoreNames.contains(DECK_DB_STORE)) {
+            db.close();
+            resolve();
+            return;
+          }
+          var tx = db.transaction(DECK_DB_STORE, "readwrite");
+          tx.objectStore(DECK_DB_STORE).delete(DECK_DB_KEY);
+          tx.oncomplete = function () {
+            db.close();
+            resolve();
+          };
+          tx.onerror = function () {
+            reject(tx.error);
+          };
+        });
+      })
+      .catch(Boolean)
+      .then(function () {
+        MEM_DECK_FULL = null;
+        location.reload();
+      });
   };
 
 })();
