@@ -1774,7 +1774,7 @@ section[data-page-type="mindmap"] {
 
 section[data-page-type="mindmap"] .slide-inner {
   display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   row-gap: clamp(0.45rem, 1.1vw, 0.85rem);
   min-height: 0;
   height: 100%;
@@ -2024,5 +2024,5 @@ section[data-page-type="mindmap"] .mindmap-node__label {
 }
 
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="mindmap"] .slide-inner {
-  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }

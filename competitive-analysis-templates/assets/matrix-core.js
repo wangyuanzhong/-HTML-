@@ -525,12 +525,14 @@
           mindmapToolBtn(page.id, "add-link", "+ 连线") +
           mindmapToolBtn(page.id, "remove-link", "− 连线") +
           "</div>" +
-          (MM ? MM.renderZoomControls(page.id, data.zoom) : "") +
           '<div class="mindmap-entry-row">' +
-          '<p class="mindmap-slide-hint" data-mindmap-hint>仅中间画布缩放；+ 连线：选中起点→点「+ 连线」→点终点（或再点一次「+ 连线」）</p>' +
+          '<p class="mindmap-slide-hint" data-mindmap-hint>仅中间画布缩放；+ 连线：选中起点→点「+ 连线」→点终点</p>' +
           '<button type="button" class="btn mindmap-edit-cta" data-mindmap-enter-edit>编辑导图</button>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
+          (MM
+            ? '<div class="mindmap-zoom-overlay">' + MM.renderZoomControls(page.id, data.zoom) + "</div>"
+            : "") +
           '<div class="mindmap-scaler" data-mindmap-scaler>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
           '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
