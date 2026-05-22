@@ -188,7 +188,14 @@
     if (!MM || !MM.normalizePageData) return d;
     for (var i = 0; i < d.pages.length; i++) {
       var p = d.pages[i];
-      if (p && p.type === "mindmap" && p.data) p.data = MM.normalizePageData(p.data);
+      if (p && p.type === "mindmap" && p.data) {
+        p.data = MM.normalizePageData(p.data);
+        var r0 = p.data.roots && p.data.roots[0];
+        if (r0 && (!r0.children || !r0.children.length)) {
+          var def = MM.defaultPageData();
+          r0.children = deepClone(def.roots[0].children);
+        }
+      }
     }
     return d;
   }
@@ -511,20 +518,23 @@
           '<div class="mindmap-toolbar" aria-label="思维导图结构">' +
           '<span class="mindmap-toolbar__hint">结构</span>' +
           mindmapToolBtn(page.id, "add-hub", "+ 总节点") +
-          mindmapToolBtn(page.id, "add-branch", "+ 分支") +
-          mindmapToolBtn(page.id, "remove-branch", "− 分支") +
-          mindmapToolBtn(page.id, "add-callout", "+ 引出说明") +
-          mindmapToolBtn(page.id, "remove-callout", "− 引出说明") +
+          mindmapToolBtn(page.id, "add-branch", "+ 节点") +
+          mindmapToolBtn(page.id, "remove-branch", "− 节点") +
+          mindmapToolBtn(page.id, "add-small", "+ 小节点") +
+          mindmapToolBtn(page.id, "remove-small", "− 小节点") +
+          mindmapToolBtn(page.id, "add-link", "+ 连线") +
+          mindmapToolBtn(page.id, "remove-link", "− 连线") +
           "</div>" +
           (MM ? MM.renderZoomControls(page.id, data.zoom) : "") +
           '<div class="mindmap-entry-row">' +
-          '<p class="mindmap-slide-hint" data-mindmap-hint>讲演时保持编辑期缩放比例；点「编辑导图」可缩放、增删节点与引出说明</p>' +
+          '<p class="mindmap-slide-hint" data-mindmap-hint>仅中间画布缩放；+ 连线：选中起点→点「+ 连线」→点终点（或再点一次「+ 连线」）</p>' +
           '<button type="button" class="btn mindmap-edit-cta" data-mindmap-enter-edit>编辑导图</button>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
+          '<div class="mindmap-scaler" data-mindmap-scaler>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
           '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
-          "</div></div>" +
+          "</div></div></div>" +
           renderSlideActionsHtml(ctx) +
           "</div>";
         section.innerHTML = html;
@@ -604,22 +614,27 @@
     var MM = window.MindmapDeck;
     if (!MM || !page.data) return;
     var viewport = section.querySelector("[data-mindmap-viewport]");
+    var scaler = section.querySelector("[data-mindmap-scaler]");
     var stage = section.querySelector("[data-mindmap-stage]");
     var canvas = section.querySelector("[data-mindmap-canvas]");
-    if (!viewport || !stage || !canvas) return;
+    if (!viewport || !scaler || !stage || !canvas) return;
     page.data = MM.normalizePageData(page.data);
     var selected = MM.getSelectedId(section);
     var layout = MM.computeLayout(page.data);
     canvas.style.width = layout.width + "px";
     canvas.style.height = layout.height + "px";
     canvas.innerHTML =
-      MM.renderEdgesSvg(layout.edges, layout.calloutEdges) +
-      MM.renderNodesHtml(layout.nodes, selected) +
-      MM.renderCalloutsHtml(layout.callouts, selected);
-    MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
-    MM.bindViewportFit(viewport, stage, function () {
+      MM.renderEdgesSvg(layout.treeEdges, layout.linkEdges) +
+      MM.renderNodesHtml(layout.nodes, selected);
+    MM.applyViewportTransform(viewport, scaler, stage, layout, page.data.zoom);
+    MM.bindViewportFit(viewport, scaler, stage, function () {
       return { layout: MM.computeLayout(page.data), zoom: page.data.zoom };
     });
+    if (section.dataset.mindmapSelectBound !== "1") {
+      MM.bindNodeSelectionAndLink(section, page.data, function () {
+        paintMindmapSection(section, page);
+      });
+    }
     if (section.dataset.mindmapDragBound !== "1") {
       MM.bindNodeDrag(section, page.data, function () {
         MM.repaintEdgesFromDom(section, page.data);
@@ -637,6 +652,7 @@
           if (zl) zl.textContent = zr.value + "%";
           MM.applyViewportTransform(
             viewport,
+            scaler,
             stage,
             MM.computeLayout(page.data),
             page.data.zoom
@@ -2074,35 +2090,6 @@
         return;
       }
 
-      var calloutEl = t.closest(".mindmap-callout[data-callout-id]");
-      if (calloutEl && calloutEl.closest("[data-page-type='mindmap']")) {
-        var secC = calloutEl.closest("[data-slide]");
-        if (secC && deckEditActive) {
-          MM.setSelectedId(secC, calloutEl.getAttribute("data-callout-id"));
-        }
-        return;
-      }
-
-      var nodeEl = t.closest(".mindmap-node[data-node-id]");
-      if (nodeEl && nodeEl.closest("[data-page-type='mindmap']")) {
-        var sec0 = nodeEl.closest("[data-slide]");
-        if (sec0 && deckEditActive) {
-          var page0 = pageById(sec0.getAttribute("data-page-id"));
-          if (page0 && page0.data) {
-            page0.data = MM.normalizePageData(page0.data);
-            var sel0 = MM.getSelectedId(sec0);
-            if (MM.isCalloutId(page0.data, sel0)) {
-              MM.setCalloutTarget(page0.data, sel0, nodeEl.getAttribute("data-node-id"));
-              paintMindmapSection(sec0, page0);
-              ev.preventDefault();
-              return;
-            }
-          }
-          MM.setSelectedId(sec0, nodeEl.getAttribute("data-node-id"));
-        }
-        return;
-      }
-
       var btn = t.closest("[data-mindmap-action]");
       if (!btn) return;
       var action = btn.getAttribute("data-mindmap-action");
@@ -2147,20 +2134,37 @@
           }
         }
         paintMindmapSection(section, page);
-      } else if (action === "add-callout") {
-        var targetId = sel;
-        if (MM.isCalloutId(page.data, sel)) {
-          var co = MM.findCallout(page.data, sel);
-          if (co) targetId = co.targetId;
+      } else if (action === "add-small") {
+        var anchor = sel;
+        if (MM.isSmallNodeId(page.data, sel) && page.data.roots[0]) {
+          anchor = page.data.roots[0].id;
         }
-        if (targetId && !MM.isCalloutId(page.data, targetId) && MM.addCallout(page.data, targetId)) {
-          var added = page.data.callouts[page.data.callouts.length - 1];
-          if (added) MM.setSelectedId(section, added.id);
+        if (MM.addSmallNode(page.data, anchor)) {
+          var sn = page.data.smallNodes[page.data.smallNodes.length - 1];
+          if (sn) MM.setSelectedId(section, sn.id);
           paintMindmapSection(section, page);
         }
-      } else if (action === "remove-callout") {
-        if (MM.isCalloutId(page.data, sel) && MM.removeCallout(page.data, sel)) {
+      } else if (action === "remove-small") {
+        if (MM.isSmallNodeId(page.data, sel) && MM.removeSmallNode(page.data, sel)) {
           if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
+          paintMindmapSection(section, page);
+        }
+      } else if (action === "add-link") {
+        if (!sel) return;
+        var pending = MM.getLinkPickFrom(section);
+        if (pending && pending !== sel) {
+          if (MM.addLink(page.data, pending, sel)) {
+            MM.setLinkPickFrom(section, "");
+            paintMindmapSection(section, page);
+          }
+        } else {
+          MM.setLinkPickFrom(section, sel);
+          section.classList.add("mindmap--link-pick");
+        }
+      } else if (action === "remove-link") {
+        if (MM.removeLinkForSelection(page.data, sel)) {
+          MM.setLinkPickFrom(section, "");
+          section.classList.remove("mindmap--link-pick");
           paintMindmapSection(section, page);
         }
       } else if (action === "zoom-in") {
@@ -2261,10 +2265,12 @@
             pageM.data.zoom = Number(zrM.value) / 100;
             if (MMm) {
               var vp = sec.querySelector("[data-mindmap-viewport]");
+              var sc = sec.querySelector("[data-mindmap-scaler]");
               var st = sec.querySelector("[data-mindmap-stage]");
-              if (vp && st) {
+              if (vp && sc && st) {
                 MMm.applyViewportTransform(
                   vp,
+                  sc,
                   st,
                   MMm.computeLayout(pageM.data),
                   pageM.data.zoom
@@ -2986,4 +2992,5 @@
     renderAllSlides();
     bindCompareFab();
   };
+
 })();

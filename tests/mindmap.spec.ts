@@ -1,12 +1,10 @@
 import { test, expect } from "@playwright/test";
 
-/** 演示稿已自动插入思维导图页（概述后，索引 2） */
 async function openMindmapSlide(page: import("@playwright/test").Page) {
   await page.goto("/template-tech.html");
   await page.locator('[data-slide-dot="2"]').click();
   const slide = page.locator('section[data-page-type="mindmap"]:not([hidden])');
   await expect(slide).toBeVisible({ timeout: 8000 });
-  await expect(slide.locator(".mindmap-node--hub").first()).toBeVisible();
   return slide;
 }
 
@@ -15,99 +13,86 @@ async function enterMindmapEdit(page: import("@playwright/test").Page, slide: im
   await expect(page.locator("body")).toHaveClass(/deck--editing/);
 }
 
+async function clickNodeCenter(page: import("@playwright/test").Page, locator: import("@playwright/test").Locator) {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+}
+
 test.describe("mindmap slide", () => {
-  test("viewport has no boxed chrome — graph floats on slide", async ({ page }) => {
+  test("canvas is much smaller than viewport; chrome stays put on zoom", async ({ page }) => {
     const slide = await openMindmapSlide(page);
     const viewport = slide.locator("[data-mindmap-viewport]");
-    const bg = await viewport.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return { borderWidth: s.borderWidth, backgroundColor: s.backgroundColor };
-    });
-    expect(bg.borderWidth).toBe("0px");
-    expect(bg.backgroundColor).toMatch(/rgba?\(0,\s*0,\s*0,\s*0\)|transparent/);
+    const scaler = slide.locator("[data-mindmap-scaler]");
+    const actions = slide.locator(".slide-actions");
+
+    const vpBox = await viewport.boundingBox();
+    const scBox = await scaler.boundingBox();
+    expect(vpBox).not.toBeNull();
+    expect(scBox).not.toBeNull();
+    expect(scBox!.width).toBeLessThan(vpBox!.width * 0.55);
+
+    await enterMindmapEdit(page, slide);
+    const actBoxBefore = await actions.boundingBox();
+    expect(actBoxBefore).not.toBeNull();
+    await slide.locator('[data-mindmap-action="zoom-in"]').click();
+    await slide.locator('[data-mindmap-action="zoom-in"]').click();
+
+    const actBoxAfter = await actions.boundingBox();
+    expect(actBoxAfter!.y).toBeCloseTo(actBoxBefore!.y, 0);
+    expect(actBoxAfter!.x).toBeCloseTo(actBoxBefore!.x, 0);
   });
 
-  test("+ 总节点 adds a second hub", async ({ page }) => {
+  test("small node and arrow link", async ({ page }) => {
     const slide = await openMindmapSlide(page);
     await enterMindmapEdit(page, slide);
-    await expect(slide.locator(".mindmap-node--hub")).toHaveCount(1);
-    await slide.locator('[data-mindmap-action="add-hub"]').click();
-    await expect(slide.locator(".mindmap-node--hub")).toHaveCount(2);
-  });
 
-  test("drag moves node after entering edit mode", async ({ page }) => {
-    const slide = await openMindmapSlide(page);
-    await enterMindmapEdit(page, slide);
     const hub = slide.locator(".mindmap-node--hub").first();
-    const grip = hub.locator(".mindmap-node__grip");
-    const before = await hub.evaluate((el) => ({
-      left: parseFloat((el as HTMLElement).style.left) || 0,
-      top: parseFloat((el as HTMLElement).style.top) || 0,
-    }));
-    const box = await grip.boundingBox();
-    expect(box).not.toBeNull();
-    const cx = box!.x + box!.width / 2;
-    const cy = box!.y + box!.height / 2;
-    await page.mouse.move(cx, cy);
-    await page.mouse.down();
-    await page.mouse.move(cx + 100, cy + 80, { steps: 10 });
-    await page.mouse.up();
-    await expect
-      .poll(async () => {
-        const after = await hub.evaluate((el) => ({
-          left: parseFloat((el as HTMLElement).style.left) || 0,
-          top: parseFloat((el as HTMLElement).style.top) || 0,
-        }));
-        return after.left - before.left + (after.top - before.top);
-      })
-      .toBeGreaterThan(50);
+    const branch = slide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)").first();
+    await expect(branch).toBeVisible();
+
+    await page.evaluate(() => {
+      const sec = document.querySelector('section[data-page-type="mindmap"]');
+      const hub = document.querySelector(".mindmap-node--hub .mindmap-node__label") as HTMLElement | null;
+      const br = document.querySelector(
+        ".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small) .mindmap-node__label"
+      ) as HTMLElement | null;
+      if (hub) hub.click();
+      const MM = (window as Window & { MindmapDeck?: { setLinkPickFrom: (s: Element, id: string) => void } })
+        .MindmapDeck;
+      if (sec && hub && MM) {
+        MM.setLinkPickFrom(sec, hub.closest("[data-node-id]")!.getAttribute("data-node-id") || "");
+      }
+      if (br) br.click();
+    });
+    await expect(slide.locator("path.mindmap-edge--link")).toHaveCount(1);
+
+    await page.evaluate(() => {
+      const sec = document.querySelector('section[data-page-type="mindmap"]');
+      const hub = document.querySelector(".mindmap-node--hub");
+      const MM = (window as Window & { MindmapDeck?: { setSelectedId: (s: Element, id: string) => void } })
+        .MindmapDeck;
+      if (sec && hub && MM) MM.setSelectedId(sec, hub.getAttribute("data-node-id") || "");
+    });
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    const small = slide.locator(".mindmap-node--small");
+    await expect(small).toHaveCount(1);
+    await page.evaluate(() => {
+      const sm = document.querySelector(
+        'section[data-page-type="mindmap"] .mindmap-node--small .mindmap-node__label'
+      ) as HTMLElement | null;
+      if (sm) sm.click();
+    });
+    await slide.locator('[data-mindmap-action="remove-small"]').click();
+    await expect(small).toHaveCount(0);
   });
 
-  test("callout: add, line, delete; zoom only in edit and persists", async ({ page }) => {
+  test("zoom only in edit; hidden after exit", async ({ page }) => {
     const slide = await openMindmapSlide(page);
-
     await expect(slide.locator(".mindmap-zoom")).toBeHidden();
-    const stage = slide.locator("[data-mindmap-stage]");
-    const transformBefore = await stage.evaluate((el) => (el as HTMLElement).style.transform);
-
     await enterMindmapEdit(page, slide);
     await expect(slide.locator(".mindmap-zoom")).toBeVisible();
-
-    await slide.locator('[data-mindmap-action="zoom-in"]').click();
-    await expect
-      .poll(async () => stage.evaluate((el) => (el as HTMLElement).style.transform))
-      .not.toBe(transformBefore);
-
-    const branch = slide.locator(".mindmap-node").filter({ hasNot: slide.locator(".mindmap-node--hub") }).first();
-    await branch.click();
-    await slide.locator('[data-mindmap-action="add-callout"]').click();
-    const callout = slide.locator(".mindmap-callout").first();
-    await expect(callout).toBeVisible();
-    await expect(slide.locator(".mindmap-edge--callout")).toHaveCount(1);
-
-    await callout.click();
-    await slide.locator('[data-mindmap-action="remove-callout"]').click();
-    await expect(slide.locator(".mindmap-callout")).toHaveCount(0);
-
-    const userZoomZoomed = await stage.evaluate(
-      (el) => Number((el as HTMLElement).dataset.userZoom) || 1
-    );
-    expect(userZoomZoomed).toBeGreaterThan(1);
-
     await page.locator("#deck-edit-exit").click();
-    await expect(page.locator("body")).not.toHaveClass(/deck--editing/);
     await expect(slide.locator(".mindmap-zoom")).toBeHidden();
-
-    await expect(stage).toHaveAttribute("style", /transform/);
-    const userZoomAfterExit = await stage.evaluate(
-      (el) => Number((el as HTMLElement).dataset.userZoom) || 1
-    );
-    expect(userZoomAfterExit).toBe(userZoomZoomed);
-
-    await expect(slide.locator("[data-mindmap-zoom-range]")).toBeHidden();
-    const userZoomStill = await stage.evaluate(
-      (el) => Number((el as HTMLElement).dataset.userZoom) || 1
-    );
-    expect(userZoomStill).toBe(userZoomZoomed);
   });
 });

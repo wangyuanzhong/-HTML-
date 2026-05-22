@@ -67,13 +67,8 @@ html[data-deck-theme="tech"] body {
   --mindmap-node-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   --mindmap-node-selected-border: #00e5ff;
   --mindmap-node-selected-shadow: 0 0 0 2px rgba(0, 229, 255, 0.4), 0 0 22px rgba(0, 229, 255, 0.2);
-  --mindmap-callout-edge-stroke: rgba(255, 196, 120, 0.7);
-  --mindmap-callout-bg: rgba(255, 170, 64, 0.2);
-  --mindmap-callout-border: rgba(255, 210, 120, 0.75);
-  --mindmap-callout-fg: #ffe4b8;
-  --mindmap-callout-font: "Palatino Linotype", Palatino, Georgia, serif;
-  --mindmap-callout-selected-border: #ffc857;
-  --mindmap-callout-selected-shadow: 0 0 0 2px rgba(255, 200, 87, 0.45);
+  --mindmap-link-stroke: rgba(255, 196, 120, 0.9);
+  --mindmap-zoom-bg: rgba(8, 20, 36, 0.72);
 }
 
 html[data-deck-theme="tech"] body.deck {

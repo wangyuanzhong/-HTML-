@@ -68,13 +68,7 @@ html[data-deck-theme="macaron"] body {
   --mindmap-node-shadow: 0 10px 26px rgba(230, 140, 180, 0.18);
   --mindmap-node-selected-border: #e870a8;
   --mindmap-node-selected-shadow: 0 0 0 3px rgba(232, 112, 168, 0.35);
-  --mindmap-callout-edge-stroke: rgba(232, 112, 168, 0.55);
-  --mindmap-callout-bg: rgba(255, 248, 210, 0.92);
-  --mindmap-callout-border: rgba(232, 112, 168, 0.55);
-  --mindmap-callout-fg: #6b4f58;
-  --mindmap-callout-font: "Comic Sans MS", "Segoe Print", cursive;
-  --mindmap-callout-selected-border: #e870a8;
-  --mindmap-callout-selected-shadow: 0 0 0 3px rgba(232, 112, 168, 0.3);
+  --mindmap-link-stroke: rgba(232, 112, 168, 0.85);
 }
 
 html[data-deck-theme="macaron"] body.deck {

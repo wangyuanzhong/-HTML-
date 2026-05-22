@@ -1,21 +1,23 @@
 /**
- * mindmap-core.js — 多总节点、自由定位、整体缩放的思维导图
+ * mindmap-core.js — 树节点、小节点、箭头连线、视口内缩放
  */
 (function () {
   "use strict";
 
-  var LEVEL_GAP = 168;
-  var SIBLING_GAP = 22;
-  var ROOT_GAP = 48;
-  var PAD = 32;
-  var NODE_MIN_W = 96;
-  var NODE_MAX_W = 200;
-  var LABEL_LINE_H = 22;
-  var CALLOUT_W = 108;
-  var CALLOUT_H = 108;
-  var ZOOM_MIN = 0.45;
-  var ZOOM_MAX = 1.65;
-  var ZOOM_DEFAULT = 1;
+  var LEVEL_GAP = 72;
+  var SIBLING_GAP = 14;
+  var ROOT_GAP = 28;
+  var PAD = 12;
+  var NODE_MIN_W = 64;
+  var NODE_MAX_W = 128;
+  var SMALL_W = 52;
+  var SMALL_H = 28;
+  var LABEL_LINE_H = 18;
+  var FIT_CAP = 0.28;
+  var FIT_BOOST_SMALL = 0.34;
+  var ZOOM_MIN = 0.35;
+  var ZOOM_MAX = 1.45;
+  var ZOOM_DEFAULT = 0.85;
   var DRAG_THRESHOLD = 4;
 
   function escapeHtml(s) {
@@ -37,8 +39,8 @@
     return "n_" + String(Date.now()) + "_" + String(Math.floor(Math.random() * 1e4));
   }
 
-  function newCalloutId() {
-    return "c_" + String(Date.now()) + "_" + String(Math.floor(Math.random() * 1e4));
+  function newLinkId() {
+    return "l_" + String(Date.now()) + "_" + String(Math.floor(Math.random() * 1e4));
   }
 
   function defaultHub(label) {
@@ -51,29 +53,18 @@
     };
   }
 
-  function defaultCallout(targetId, label, fx, fy) {
-    return {
-      id: newCalloutId(),
-      label: label || "引出说明",
-      targetId: targetId,
-      fx: fx != null ? fx : null,
-      fy: fy != null ? fy : null,
-    };
-  }
-
   function defaultPageData() {
     var a = defaultHub("中心主题");
-    var b1 = newNodeId();
-    var b2 = newNodeId();
     a.children = [
-      { id: b1, label: "分支一", fx: null, fy: null, children: [] },
-      { id: b2, label: "分支二", fx: null, fy: null, children: [] },
+      { id: newNodeId(), label: "分支一", fx: null, fy: null, children: [] },
+      { id: newNodeId(), label: "分支二", fx: null, fy: null, children: [] },
     ];
     return {
       title: "思维导图",
       zoom: ZOOM_DEFAULT,
       roots: [a],
-      callouts: [],
+      smallNodes: [],
+      links: [],
     };
   }
 
@@ -91,43 +82,24 @@
     return node;
   }
 
-  function normalizeCallout(c) {
-    if (!c || typeof c !== "object") return null;
-    if (!c.id) c.id = newCalloutId();
-    if (c.label == null) c.label = "引出说明";
-    if (!c.targetId) c.targetId = "";
-    if (c.fx != null && c.fx !== "") c.fx = Number(c.fx);
-    else c.fx = null;
-    if (c.fy != null && c.fy !== "") c.fy = Number(c.fy);
-    else c.fy = null;
-    return c;
+  function normalizeSmallNode(s) {
+    if (!s || typeof s !== "object") return null;
+    if (!s.id) s.id = newNodeId();
+    if (s.label == null) s.label = "小节点";
+    if (s.fx != null && s.fx !== "") s.fx = Number(s.fx);
+    else s.fx = null;
+    if (s.fy != null && s.fy !== "") s.fy = Number(s.fy);
+    else s.fy = null;
+    return s;
   }
 
-  /** 旧版节点内 note → 独立引出说明节点 */
-  function migrateNotesToCallouts(data) {
-    if (!Array.isArray(data.callouts)) data.callouts = [];
-    var existing = {};
-    data.callouts.forEach(function (c) {
-      if (c && c.targetId) existing[String(c.targetId)] = true;
-    });
-    forEachNode(data.roots, function (n) {
-      var note = n.note;
-      if (!note || !String(note).replace(/\s/g, "").length) return;
-      if (existing[String(n.id)]) return;
-      data.callouts.push(
-        normalizeCallout({
-          id: newCalloutId(),
-          label: String(note).trim(),
-          targetId: n.id,
-          fx: null,
-          fy: null,
-        })
-      );
-      delete n.note;
-    });
+  function normalizeLink(l) {
+    if (!l || typeof l !== "object") return null;
+    if (!l.id) l.id = newLinkId();
+    if (!l.from || !l.to || String(l.from) === String(l.to)) return null;
+    return { id: l.id, from: String(l.from), to: String(l.to) };
   }
 
-  /** 兼容旧版单 root */
   function normalizePageData(data) {
     data = data || {};
     if (!Array.isArray(data.roots) || !data.roots.length) {
@@ -137,19 +109,22 @@
       } else {
         var d = defaultPageData();
         data.roots = d.roots;
-        data.callouts = d.callouts;
+        data.smallNodes = d.smallNodes;
+        data.links = d.links;
       }
     }
     data.roots = data.roots.map(function (r) {
       return normalizeNode(r);
     });
-    if (!Array.isArray(data.callouts)) data.callouts = [];
-    migrateNotesToCallouts(data);
-    data.callouts = data.callouts
-      .map(normalizeCallout)
-      .filter(function (c) {
-        return c && c.targetId && findNodeInForest(data.roots, c.targetId);
-      });
+    if (!Array.isArray(data.smallNodes)) data.smallNodes = [];
+    data.smallNodes = data.smallNodes.map(normalizeSmallNode).filter(Boolean);
+    if (!Array.isArray(data.links)) data.links = [];
+    delete data.callouts;
+    var ids = {};
+    collectAllIds(data, ids);
+    data.links = data.links.map(normalizeLink).filter(function (l) {
+      return l && ids[l.from] && ids[l.to];
+    });
     if (data.zoom == null || isNaN(Number(data.zoom))) data.zoom = ZOOM_DEFAULT;
     data.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(data.zoom)));
     if (!data.title) data.title = "思维导图";
@@ -164,12 +139,32 @@
     roots.forEach(walk);
   }
 
+  function collectAllIds(data, out) {
+    forEachNode(data.roots, function (n) {
+      out[n.id] = true;
+    });
+    (data.smallNodes || []).forEach(function (s) {
+      out[s.id] = true;
+    });
+  }
+
   function findNodeInForest(roots, id) {
     var hit = null;
     forEachNode(roots, function (n) {
       if (!hit && String(n.id) === String(id)) hit = n;
     });
     return hit;
+  }
+
+  function findSmallNode(data, id) {
+    for (var i = 0; i < (data.smallNodes || []).length; i++) {
+      if (String(data.smallNodes[i].id) === String(id)) return data.smallNodes[i];
+    }
+    return null;
+  }
+
+  function isSmallNodeId(data, id) {
+    return !!findSmallNode(data, id);
   }
 
   function findParentInForest(roots, id) {
@@ -196,38 +191,28 @@
     return false;
   }
 
-  function estimateLabelWidth(text) {
+  function pruneLinksForNode(data, nodeId) {
+    var sid = String(nodeId);
+    data.links = (data.links || []).filter(function (l) {
+      return String(l.from) !== sid && String(l.to) !== sid;
+    });
+  }
+
+  function estimateLabelWidth(text, compact) {
     var t = String(text || "").trim() || "节点";
     var len = 0;
     for (var i = 0; i < t.length; i++) {
-      len += t.charCodeAt(i) > 255 ? 1.85 : 1;
+      len += t.charCodeAt(i) > 255 ? 1.7 : 1;
     }
-    return Math.min(NODE_MAX_W, Math.max(NODE_MIN_W, Math.ceil(len * 11 + 28)));
+    var minW = compact ? SMALL_W : NODE_MIN_W;
+    var maxW = compact ? SMALL_W + 8 : NODE_MAX_W;
+    return Math.min(maxW, Math.max(minW, Math.ceil(len * (compact ? 7 : 9) + (compact ? 14 : 22))));
   }
 
-  function measureNode(node) {
-    var w = estimateLabelWidth(node.label);
-    var labelH = LABEL_LINE_H + 14;
-    return { w: w, labelH: labelH, h: labelH };
-  }
-
-  function findCallout(data, id) {
-    if (!data || !Array.isArray(data.callouts)) return null;
-    for (var i = 0; i < data.callouts.length; i++) {
-      if (String(data.callouts[i].id) === String(id)) return data.callouts[i];
-    }
-    return null;
-  }
-
-  function isCalloutId(data, id) {
-    return !!findCallout(data, id);
-  }
-
-  function pruneCalloutsForNode(data, nodeId) {
-    if (!data.callouts) return;
-    data.callouts = data.callouts.filter(function (c) {
-      return String(c.targetId) !== String(nodeId);
-    });
+  function measureNode(node, compact) {
+    var w = estimateLabelWidth(node.label, compact);
+    var h = (compact ? SMALL_H : LABEL_LINE_H + 12);
+    return { w: w, h: h };
   }
 
   function hasFixedPos(node) {
@@ -242,7 +227,7 @@
   }
 
   function layoutAssign(node, depth, y0, out, originX) {
-    var m = measureNode(node);
+    var m = measureNode(node, false);
     var ch = node.children || [];
     var nx;
     var ny;
@@ -274,6 +259,7 @@
     out.nodes.push({
       id: node.id,
       label: node.label,
+      kind: "tree",
       depth: depth,
       isHub: false,
       x: nx,
@@ -309,7 +295,7 @@
     return maxY;
   }
 
-  function buildEdgesFromTree(node, nodesById, edges) {
+  function buildTreeEdgesFromTree(node, nodesById, edges) {
     var parent = nodesById[node.id];
     if (!parent) return;
     (node.children || []).forEach(function (ch) {
@@ -320,20 +306,109 @@
           y1: parent.y + parent.h / 2,
           x2: child.x,
           y2: child.y + child.h / 2,
+          kind: "tree",
         });
       }
-      buildEdgesFromTree(ch, nodesById, edges);
+      buildTreeEdgesFromTree(ch, nodesById, edges);
     });
+  }
+
+  function boxCenter(b) {
+    return { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+  }
+
+  /** 从节点框朝向目标取边界锚点 */
+  function anchorOnBox(box, toward) {
+    var cx = box.x + box.w / 2;
+    var cy = box.y + box.h / 2;
+    var tx = toward.x;
+    var ty = toward.y;
+    var dx = tx - cx;
+    var dy = ty - cy;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return { x: dx > 0 ? box.x + box.w : box.x, y: cy };
+    }
+    return { x: cx, y: dy > 0 ? box.y + box.h : box.y };
+  }
+
+  /** 正交折线 + 圆角感贝塞尔，箭头指向 to */
+  function optimizedLinkPath(fromBox, toBox) {
+    var tc = boxCenter(toBox);
+    var fc = boxCenter(fromBox);
+    var p1 = anchorOnBox(fromBox, tc);
+    var p2 = anchorOnBox(toBox, fc);
+    var dx = p2.x - p1.x;
+    var dy = p2.y - p1.y;
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+      return "M" + p1.x + " " + p1.y + " L" + p2.x + " " + p2.y;
+    }
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      var mx = p1.x + dx * 0.5;
+      return (
+        "M" +
+        p1.x +
+        " " +
+        p1.y +
+        " C" +
+        mx +
+        " " +
+        p1.y +
+        ", " +
+        mx +
+        " " +
+        p2.y +
+        ", " +
+        p2.x +
+        " " +
+        p2.y
+      );
+    }
+    var my = p1.y + dy * 0.5;
+    return (
+      "M" +
+      p1.x +
+      " " +
+      p1.y +
+      " C" +
+      p1.x +
+      " " +
+      my +
+      ", " +
+      p2.x +
+      " " +
+      my +
+      ", " +
+      p2.x +
+      " " +
+      p2.y
+    );
   }
 
   function computeLayout(pageData) {
     var data = normalizePageData(pageData);
-    var out = { nodes: [], edges: [], nodeCount: 0 };
+    var out = { nodes: [], treeEdges: [], linkEdges: [], nodeCount: 0 };
     var y = PAD;
     data.roots.forEach(function (root, idx) {
       if (idx > 0 && !hasFixedPos(root)) y += ROOT_GAP;
       y = layoutHubSubtree(root, y, out);
     });
+
+    (data.smallNodes || []).forEach(function (sn, idx) {
+      var m = measureNode(sn, true);
+      var lx = sn.fx != null && !isNaN(sn.fx) ? sn.fx : PAD + LEVEL_GAP * 2 + 40 + idx * 12;
+      var ly = sn.fy != null && !isNaN(sn.fy) ? sn.fy : PAD + 80 + idx * (SMALL_H + 10);
+      out.nodes.push({
+        id: sn.id,
+        label: sn.label,
+        kind: "small",
+        isHub: false,
+        x: lx,
+        y: ly,
+        w: m.w,
+        h: m.h,
+      });
+    });
+
     var nodesById = {};
     var maxX = PAD;
     var maxY = PAD;
@@ -343,46 +418,24 @@
       maxY = Math.max(maxY, n.y + n.h + PAD);
       out.nodeCount++;
     });
+
     data.roots.forEach(function (r) {
-      buildEdgesFromTree(r, nodesById, out.edges);
+      buildTreeEdgesFromTree(r, nodesById, out.treeEdges);
     });
 
-    out.callouts = [];
-    out.calloutEdges = [];
-    (data.callouts || []).forEach(function (c, idx) {
-      var target = nodesById[c.targetId];
-      if (!target) return;
-      var cx;
-      var cy;
-      if (c.fx != null && c.fy != null && !isNaN(c.fx) && !isNaN(c.fy)) {
-        cx = c.fx;
-        cy = c.fy;
-      } else {
-        cx = target.x + target.w + 56 + (idx % 3) * 24;
-        cy = target.y + target.h / 2 - CALLOUT_H / 2 + (idx % 2) * 28;
-      }
-      out.callouts.push({
-        id: c.id,
-        label: c.label,
-        targetId: c.targetId,
-        x: cx,
-        y: cy,
-        w: CALLOUT_W,
-        h: CALLOUT_H,
+    (data.links || []).forEach(function (lnk) {
+      var a = nodesById[lnk.from];
+      var b = nodesById[lnk.to];
+      if (!a || !b) return;
+      out.linkEdges.push({
+        d: optimizedLinkPath(a, b),
+        from: lnk.from,
+        to: lnk.to,
       });
-      out.calloutEdges.push({
-        x1: target.x + target.w,
-        y1: target.y + target.h / 2,
-        x2: cx,
-        y2: cy + CALLOUT_H / 2,
-        kind: "callout",
-      });
-      maxX = Math.max(maxX, cx + CALLOUT_W + PAD);
-      maxY = Math.max(maxY, cy + CALLOUT_H + PAD);
     });
 
-    out.width = Math.max(280, Math.ceil(maxX));
-    out.height = Math.max(200, Math.ceil(maxY));
+    out.width = Math.max(200, Math.ceil(maxX));
+    out.height = Math.max(160, Math.ceil(maxY));
     return out;
   }
 
@@ -391,7 +444,7 @@
     if (data.roots.length >= 8) return false;
     var hub = defaultHub("总节点 " + (data.roots.length + 1));
     var last = data.roots[data.roots.length - 1];
-    hub.fy = last && last.fy != null ? last.fy + 120 : PAD + data.roots.length * 100;
+    hub.fy = last && last.fy != null ? last.fy + 72 : PAD + data.roots.length * 56;
     hub.fx = PAD;
     data.roots.push(hub);
     return true;
@@ -408,54 +461,8 @@
       }
     }
     if (idx < 0) return false;
-    pruneCalloutsForNode(data, hubId);
+    pruneLinksForNode(data, hubId);
     data.roots.splice(idx, 1);
-    return true;
-  }
-
-  function addCallout(pageData, targetId) {
-    var data = normalizePageData(pageData);
-    if (!targetId || !findNodeInForest(data.roots, targetId)) return false;
-    if (data.callouts.length >= 32) return false;
-    var layout = computeLayout(data);
-    var nodesById = {};
-    layout.nodes.forEach(function (n) {
-      nodesById[n.id] = n;
-    });
-    var target = nodesById[targetId];
-    var fx = target ? target.x + target.w + 48 : PAD + 180;
-    var fy = target ? target.y + target.h / 2 - CALLOUT_H / 2 : PAD + 40;
-    data.callouts.push(defaultCallout(targetId, "引出说明", fx, fy));
-    return true;
-  }
-
-  function removeCallout(pageData, calloutId) {
-    var data = normalizePageData(pageData);
-    var idx = -1;
-    for (var i = 0; i < data.callouts.length; i++) {
-      if (String(data.callouts[i].id) === String(calloutId)) {
-        idx = i;
-        break;
-      }
-    }
-    if (idx < 0) return false;
-    data.callouts.splice(idx, 1);
-    return true;
-  }
-
-  function setCalloutTarget(pageData, calloutId, targetId) {
-    var data = normalizePageData(pageData);
-    var c = findCallout(data, calloutId);
-    if (!c || !findNodeInForest(data.roots, targetId)) return false;
-    c.targetId = targetId;
-    return true;
-  }
-
-  function setCalloutPosition(pageData, calloutId, x, y) {
-    var c = findCallout(normalizePageData(pageData), calloutId);
-    if (!c) return false;
-    c.fx = Math.round(x);
-    c.fy = Math.round(y);
     return true;
   }
 
@@ -489,50 +496,143 @@
     }
     if (idx < 0) parent.children.pop();
     else parent.children.splice(idx, 1);
-    pruneCalloutsForNode(data, childId);
+    pruneLinksForNode(data, childId);
     return true;
   }
 
-  function setNodePosition(pageData, nodeId, x, y) {
-    var n = findNodeInForest(normalizePageData(pageData).roots, nodeId);
+  function addSmallNode(pageData, nearId) {
+    var data = normalizePageData(pageData);
+    if (data.smallNodes.length >= 48) return false;
+    var layout = computeLayout(data);
+    var nodesById = {};
+    layout.nodes.forEach(function (n) {
+      nodesById[n.id] = n;
+    });
+    var near = nearId ? nodesById[nearId] : null;
+    var fx = near ? near.x + near.w + 20 : PAD + LEVEL_GAP + 20;
+    var fy = near ? near.y + near.h + 8 : PAD + 60;
+    data.smallNodes.push({
+      id: newNodeId(),
+      label: "小节点",
+      fx: fx,
+      fy: fy,
+    });
+    return true;
+  }
+
+  function removeSmallNode(pageData, smallId) {
+    var data = normalizePageData(pageData);
+    var idx = -1;
+    for (var i = 0; i < data.smallNodes.length; i++) {
+      if (String(data.smallNodes[i].id) === String(smallId)) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) return false;
+    pruneLinksForNode(data, smallId);
+    data.smallNodes.splice(idx, 1);
+    return true;
+  }
+
+  function addLink(pageData, fromId, toId) {
+    var data = normalizePageData(pageData);
+    if (!fromId || !toId || String(fromId) === String(toId)) return false;
+    for (var i = 0; i < data.links.length; i++) {
+      var l = data.links[i];
+      if (
+        (String(l.from) === String(fromId) && String(l.to) === String(toId)) ||
+        (String(l.from) === String(toId) && String(l.to) === String(fromId))
+      ) {
+        return false;
+      }
+    }
+    data.links.push({ id: newLinkId(), from: String(fromId), to: String(toId) });
+    return true;
+  }
+
+  function removeLink(pageData, linkIdOrFrom, toId) {
+    var data = normalizePageData(pageData);
+    if (toId != null) {
+      data.links = data.links.filter(function (l) {
+        return !(
+          (String(l.from) === String(linkIdOrFrom) && String(l.to) === String(toId)) ||
+          (String(l.from) === String(toId) && String(l.to) === String(linkIdOrFrom))
+        );
+      });
+      return true;
+    }
+    var before = data.links.length;
+    data.links = data.links.filter(function (l) {
+      return String(l.id) !== String(linkIdOrFrom);
+    });
+    return data.links.length < before;
+  }
+
+  function removeLinkForSelection(pageData, sel) {
+    var data = normalizePageData(pageData);
+    for (var i = data.links.length - 1; i >= 0; i--) {
+      var l = data.links[i];
+      if (String(l.from) === String(sel) || String(l.to) === String(sel)) {
+        data.links.splice(i, 1);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function setNodePosition(pageData, nodeId, x, y, kind) {
+    var data = normalizePageData(pageData);
+    if (kind === "small" || isSmallNodeId(data, nodeId)) {
+      var s = findSmallNode(data, nodeId);
+      if (!s) return false;
+      s.fx = Math.round(x);
+      s.fy = Math.round(y);
+      return true;
+    }
+    var n = findNodeInForest(data.roots, nodeId);
     if (!n) return false;
     n.fx = Math.round(x);
     n.fy = Math.round(y);
     return true;
   }
 
-  function edgePathD(e) {
-    var mx = (e.x1 + e.x2) / 2;
-    return (
-      "M" +
-      e.x1 +
-      " " +
-      e.y1 +
-      " C" +
-      mx +
-      " " +
-      e.y1 +
-      ", " +
-      mx +
-      " " +
-      e.y2 +
-      ", " +
-      e.x2 +
-      " " +
-      e.y2
-    );
-  }
-
-  function renderEdgesSvg(treeEdges, calloutEdges) {
+  function renderEdgesSvg(treeEdges, linkEdges) {
     var paths = "";
     (treeEdges || []).forEach(function (e) {
-      paths += '<path class="mindmap-edge" d="' + edgePathD(e) + '"/>';
+      var mx = (e.x1 + e.x2) / 2;
+      var d =
+        "M" +
+        e.x1 +
+        " " +
+        e.y1 +
+        " C" +
+        mx +
+        " " +
+        e.y1 +
+        ", " +
+        mx +
+        " " +
+        e.y2 +
+        ", " +
+        e.x2 +
+        " " +
+        e.y2;
+      paths += '<path class="mindmap-edge mindmap-edge--tree" d="' + d + '"/>';
     });
-    (calloutEdges || []).forEach(function (e) {
+    (linkEdges || []).forEach(function (e) {
       paths +=
-        '<path class="mindmap-edge mindmap-edge--callout" d="' + edgePathD(e) + '"/>';
+        '<path class="mindmap-edge mindmap-edge--link" marker-end="url(#mindmap-arrowhead)" d="' +
+        e.d +
+        '"/>';
     });
-    return '<svg class="mindmap-edges" aria-hidden="true">' + paths + "</svg>";
+    return (
+      '<svg class="mindmap-edges" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><marker id="mindmap-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+      '<path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker></defs>' +
+      paths +
+      "</svg>"
+    );
   }
 
   function renderNodesHtml(nodes, selectedId) {
@@ -540,19 +640,25 @@
     nodes.forEach(function (n) {
       var sel = selectedId && String(selectedId) === String(n.id) ? " is-selected" : "";
       var hub = n.isHub ? " mindmap-node--hub" : "";
+      var small = n.kind === "small" ? " mindmap-node--small" : "";
       html +=
         '<div class="mindmap-node' +
         hub +
+        small +
         sel +
         '" role="treeitem" data-node-id="' +
         escapeHtmlAttr(n.id) +
+        '" data-node-kind="' +
+        escapeHtmlAttr(n.kind || "tree") +
         '" style="left:' +
         n.x +
         "px;top:" +
         n.y +
         "px;width:" +
         n.w +
-        'px" tabindex="0">' +
+        "px" +
+        (n.kind === "small" ? ";height:" + n.h + "px" : "") +
+        '" tabindex="0">' +
         '<span class="mindmap-node__grip" aria-hidden="true" title="拖拽移动"></span>' +
         '<div class="mindmap-node__label" data-field="label">' +
         escapeHtml(n.label || "") +
@@ -562,62 +668,33 @@
     return html;
   }
 
-  function renderCalloutsHtml(callouts, selectedId) {
-    if (!callouts || !callouts.length) return "";
-    var html = '<div class="mindmap-callouts" aria-label="引出说明">';
-    callouts.forEach(function (c) {
-      var sel = selectedId && String(selectedId) === String(c.id) ? " is-selected" : "";
-      html +=
-        '<div class="mindmap-callout' +
-        sel +
-        '" data-callout-id="' +
-        escapeHtmlAttr(c.id) +
-        '" style="left:' +
-        c.x +
-        "px;top:" +
-        c.y +
-        "px;width:" +
-        c.w +
-        "px;height:" +
-        c.h +
-        'px" tabindex="0">' +
-        '<span class="mindmap-callout__grip" aria-hidden="true" title="拖拽引出说明"></span>' +
-        '<div class="mindmap-callout__label" data-field="label">' +
-        escapeHtml(c.label || "") +
-        "</div></div>";
-    });
-    html += "</div>";
-    return html;
-  }
-
-  function applyViewportTransform(viewport, stage, layout, zoom) {
-    if (!viewport || !stage) return;
+  function applyViewportTransform(viewport, scaler, stage, layout, zoom) {
+    if (!viewport || !scaler || !stage) return;
     var vw = viewport.clientWidth;
     var vh = viewport.clientHeight;
     if (vw < 40 || vh < 40) return;
     var cw = layout.width;
     var ch = layout.height;
-    var pad = 16;
-    var fit = Math.min((vw - pad) / cw, (vh - pad) / ch);
-    fit = Math.min(fit, 1);
-    if (layout.nodeCount <= 5) {
-      fit = Math.min(Math.max(fit, 0.48), 0.88);
-    } else if (layout.nodeCount <= 9) {
-      fit = Math.min(Math.max(fit, 0.42), 0.82);
+    var fit = Math.min((vw - 8) / cw, (vh - 8) / ch);
+    fit = Math.min(fit, FIT_CAP);
+    if (layout.nodeCount <= 6) {
+      fit = Math.min(Math.max(fit, 0.28), FIT_BOOST_SMALL);
     } else {
-      fit = Math.min(fit, 0.78);
+      fit = Math.min(fit, FIT_CAP);
     }
-    var z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(zoom) || 1));
+    var z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(zoom) || ZOOM_DEFAULT));
     var total = fit * z;
-    stage.dataset.fitScale = String(fit);
-    stage.dataset.userZoom = String(z);
+    scaler.dataset.fitScale = String(fit);
+    scaler.dataset.userZoom = String(z);
     stage.style.width = cw + "px";
     stage.style.height = ch + "px";
-    stage.style.transform = "scale(" + total + ")";
-    var offsetX = Math.max(0, (vw - cw * total) / 2);
-    var offsetY = Math.max(0, (vh - ch * total) / 2);
-    stage.style.marginLeft = offsetX + "px";
-    stage.style.marginTop = offsetY + "px";
+    scaler.style.width = cw + "px";
+    scaler.style.height = ch + "px";
+    scaler.style.position = "absolute";
+    scaler.style.left = "50%";
+    scaler.style.top = "50%";
+    scaler.style.margin = "0";
+    scaler.style.transform = "translate(-50%, -50%) scale(" + total + ")";
   }
 
   function $allNodesIn(root) {
@@ -645,10 +722,7 @@
     return scale > 0 ? scale : 1;
   }
 
-  function repaintEdgesFromDom(section, pageData) {
-    var canvas = section.querySelector("[data-mindmap-canvas]");
-    if (!canvas) return;
-    var data = normalizePageData(pageData);
+  function domBoxesById(section) {
     var nodesById = {};
     $allNodesIn(section).forEach(function (el) {
       var id = el.getAttribute("data-node-id");
@@ -660,25 +734,22 @@
         h: el.offsetHeight,
       };
     });
-    var calloutsById = {};
-    $allCalloutsIn(section).forEach(function (el) {
-      var id = el.getAttribute("data-callout-id");
-      if (!id) return;
-      calloutsById[id] = {
-        x: parseFloat(el.style.left) || 0,
-        y: parseFloat(el.style.top) || 0,
-        w: el.offsetWidth || CALLOUT_W,
-        h: el.offsetHeight || CALLOUT_H,
-      };
-    });
-    var edges = [];
+    return nodesById;
+  }
+
+  function repaintEdgesFromDom(section, pageData) {
+    var canvas = section.querySelector("[data-mindmap-canvas]");
+    if (!canvas) return;
+    var data = normalizePageData(pageData);
+    var nodesById = domBoxesById(section);
+    var treeEdges = [];
     function walk(node) {
       var p = nodesById[node.id];
       if (!p) return;
       (node.children || []).forEach(function (ch) {
         var c = nodesById[ch.id];
         if (c) {
-          edges.push({
+          treeEdges.push({
             x1: p.x + p.w,
             y1: p.y + p.h / 2,
             x2: c.x,
@@ -689,26 +760,15 @@
       });
     }
     data.roots.forEach(walk);
-    var calloutEdges = [];
-    (data.callouts || []).forEach(function (c) {
-      var target = nodesById[c.targetId];
-      var box = calloutsById[c.id];
-      if (!target || !box) return;
-      calloutEdges.push({
-        x1: target.x + target.w,
-        y1: target.y + target.h / 2,
-        x2: box.x,
-        y2: box.y + box.h / 2,
-      });
+    var linkEdges = [];
+    (data.links || []).forEach(function (lnk) {
+      var a = nodesById[lnk.from];
+      var b = nodesById[lnk.to];
+      if (!a || !b) return;
+      linkEdges.push({ d: optimizedLinkPath(a, b) });
     });
     var svg = canvas.querySelector(".mindmap-edges");
-    if (svg) svg.outerHTML = renderEdgesSvg(edges, calloutEdges);
-  }
-
-  function $allCalloutsIn(root) {
-    return Array.prototype.slice.call(
-      root.querySelectorAll(".mindmap-callout[data-callout-id]")
-    );
+    if (svg) svg.outerHTML = renderEdgesSvg(treeEdges, linkEdges);
   }
 
   function collectPageFromDom(section, pageData) {
@@ -717,41 +777,37 @@
     forEachNode(data.roots, function (n) {
       byId[n.id] = n;
     });
+    var smallById = {};
+    (data.smallNodes || []).forEach(function (s) {
+      smallById[s.id] = s;
+    });
 
     $allNodesIn(section).forEach(function (el) {
       var id = el.getAttribute("data-node-id");
-      if (!id || !byId[id]) return;
+      var kind = el.getAttribute("data-node-kind") || "tree";
       var lab = el.querySelector('[data-field="label"]');
-      if (lab) byId[id].label = String(lab.innerText || "").trim() || "节点";
-      byId[id].fx = parseFloat(el.style.left) || 0;
-      byId[id].fy = parseFloat(el.style.top) || 0;
-    });
-
-    var calloutById = {};
-    (data.callouts || []).forEach(function (c) {
-      calloutById[c.id] = c;
-    });
-    $allCalloutsIn(section).forEach(function (el) {
-      var id = el.getAttribute("data-callout-id");
-      if (!id || !calloutById[id]) return;
-      var lab = el.querySelector('[data-field="label"]');
-      if (lab) calloutById[id].label = String(lab.innerText || "").trim() || "引出说明";
-      calloutById[id].fx = parseFloat(el.style.left) || 0;
-      calloutById[id].fy = parseFloat(el.style.top) || 0;
+      var label = lab ? String(lab.innerText || "").trim() : "";
+      if (kind === "small" && smallById[id]) {
+        if (lab) smallById[id].label = label || "小节点";
+        smallById[id].fx = parseFloat(el.style.left) || 0;
+        smallById[id].fy = parseFloat(el.style.top) || 0;
+      } else if (byId[id]) {
+        if (lab) byId[id].label = label || "节点";
+        byId[id].fx = parseFloat(el.style.left) || 0;
+        byId[id].fy = parseFloat(el.style.top) || 0;
+      }
     });
 
     var zr = section.querySelector("[data-mindmap-zoom-range]");
     if (zr) data.zoom = Number(zr.value) / 100;
 
     delete data.root;
+    delete data.callouts;
     return data;
   }
 
   function getSelectedId(section) {
-    var data = section.getAttribute("data-mindmap-selected");
-    if (data) return data;
-    var first = section.querySelector(".mindmap-node[data-node-id]");
-    return first ? first.getAttribute("data-node-id") : "";
+    return section.getAttribute("data-mindmap-selected") || "";
   }
 
   function setSelectedId(section, id) {
@@ -759,20 +815,24 @@
     $allNodesIn(section).forEach(function (el) {
       el.classList.toggle("is-selected", String(el.getAttribute("data-node-id")) === String(id));
     });
-    $allCalloutsIn(section).forEach(function (el) {
-      el.classList.toggle(
-        "is-selected",
-        String(el.getAttribute("data-callout-id")) === String(id)
-      );
-    });
   }
 
-  function bindViewportFit(viewport, stage, getLayoutAndZoom) {
+  function getLinkPickFrom(section) {
+    return section.getAttribute("data-mindmap-link-from") || "";
+  }
+
+  function setLinkPickFrom(section, id) {
+    if (id) section.setAttribute("data-mindmap-link-from", id);
+    else section.removeAttribute("data-mindmap-link-from");
+    section.classList.toggle("mindmap--link-pick", !!id);
+  }
+
+  function bindViewportFit(viewport, scaler, stage, getLayoutAndZoom) {
     if (!viewport || viewport.dataset.mindmapFitBound === "1") return;
     viewport.dataset.mindmapFitBound = "1";
     var run = function () {
       var o = getLayoutAndZoom();
-      if (o) applyViewportTransform(viewport, stage, o.layout, o.zoom);
+      if (o) applyViewportTransform(viewport, scaler, stage, o.layout, o.zoom);
     };
     if (typeof ResizeObserver !== "undefined") {
       try {
@@ -787,14 +847,43 @@
     run();
   }
 
+  function bindNodeSelectionAndLink(section, pageData, onChanged) {
+    if (section.dataset.mindmapSelectBound === "1") return;
+    section.dataset.mindmapSelectBound = "1";
+    section.addEventListener(
+      "click",
+      function (ev) {
+        if (!document.body.classList.contains("deck--editing")) return;
+        var t = ev.target;
+        if (!(t instanceof Element)) return;
+        if (t.closest("[data-mindmap-action], .mindmap-zoom, [data-mindmap-enter-edit]")) return;
+        var nodeEl = t.closest(".mindmap-node[data-node-id]");
+        if (!nodeEl || !section.contains(nodeEl)) return;
+        var nid = nodeEl.getAttribute("data-node-id");
+        var pickFrom = getLinkPickFrom(section);
+        if (pickFrom && pickFrom !== nid) {
+          if (addLink(pageData, pickFrom, nid)) {
+            setLinkPickFrom(section, "");
+            setSelectedId(section, nid);
+            if (typeof onChanged === "function") onChanged();
+          }
+          ev.stopPropagation();
+          return;
+        }
+        setSelectedId(section, nid);
+      },
+      true
+    );
+  }
+
   function bindNodeDrag(section, pageData, onMoved) {
     if (section.dataset.mindmapDragBound === "1") return;
     section.dataset.mindmapDragBound = "1";
 
     var drag = {
       active: false,
-      kind: "",
       nodeId: null,
+      kind: "tree",
       el: null,
       startX: 0,
       startY: 0,
@@ -811,34 +900,12 @@
       if (!editOn()) return;
       var t = ev.target;
       if (!(t instanceof Element)) return;
-
-      var calloutEl = t.closest(".mindmap-callout[data-callout-id]");
-      if (calloutEl && section.contains(calloutEl)) {
-        if (!t.closest(".mindmap-callout__grip") && t.closest('[data-field="label"]')) return;
-        drag.active = true;
-        drag.kind = "callout";
-        drag.nodeId = calloutEl.getAttribute("data-callout-id");
-        drag.el = calloutEl;
-        drag.startX = ev.clientX;
-        drag.startY = ev.clientY;
-        drag.originX = parseFloat(calloutEl.style.left) || 0;
-        drag.originY = parseFloat(calloutEl.style.top) || 0;
-        drag.moved = false;
-        calloutEl.classList.add("is-dragging");
-        setSelectedId(section, drag.nodeId);
-        if (calloutEl.setPointerCapture) calloutEl.setPointerCapture(ev.pointerId);
-        ev.preventDefault();
-        return;
-      }
-
       var nodeEl = t.closest(".mindmap-node[data-node-id]");
       if (!nodeEl || !section.contains(nodeEl)) return;
-      if (!t.closest(".mindmap-node__grip")) {
-        if (t.closest('[data-field="label"]')) return;
-      }
+      if (!t.closest(".mindmap-node__grip") && t.closest('[data-field="label"]')) return;
       drag.active = true;
-      drag.kind = "node";
       drag.nodeId = nodeEl.getAttribute("data-node-id");
+      drag.kind = nodeEl.getAttribute("data-node-kind") || "tree";
       drag.el = nodeEl;
       drag.startX = ev.clientX;
       drag.startY = ev.clientY;
@@ -870,21 +937,13 @@
       if (el) {
         el.classList.remove("is-dragging");
         if (drag.moved) {
-          if (drag.kind === "callout") {
-            setCalloutPosition(
-              pageData,
-              drag.nodeId,
-              parseFloat(el.style.left) || 0,
-              parseFloat(el.style.top) || 0
-            );
-          } else {
-            setNodePosition(
-              pageData,
-              drag.nodeId,
-              parseFloat(el.style.left) || 0,
-              parseFloat(el.style.top) || 0
-            );
-          }
+          setNodePosition(
+            pageData,
+            drag.nodeId,
+            parseFloat(el.style.left) || 0,
+            parseFloat(el.style.top) || 0,
+            drag.kind
+          );
           if (typeof onMoved === "function") onMoved();
         }
         if (ev && ev.pointerId != null && el.releasePointerCapture) {
@@ -895,7 +954,6 @@
       }
       drag.active = false;
       drag.el = null;
-      drag.kind = "";
     }
 
     section.addEventListener("pointerup", endDrag);
@@ -905,15 +963,16 @@
   function setZoomControlsEnabled(section, enabled) {
     var zr = section.querySelector("[data-mindmap-zoom-range]");
     if (zr) zr.disabled = !enabled;
-    $all('[data-mindmap-action="zoom-in"], [data-mindmap-action="zoom-out"], [data-mindmap-action="zoom-reset"]', section).forEach(
-      function (btn) {
+    var root = section;
+    Array.prototype.slice
+      .call(
+        root.querySelectorAll(
+          '[data-mindmap-action="zoom-in"], [data-mindmap-action="zoom-out"], [data-mindmap-action="zoom-reset"]'
+        )
+      )
+      .forEach(function (btn) {
         btn.disabled = !enabled;
-      }
-    );
-  }
-
-  function $all(sel, root) {
-    return Array.prototype.slice.call((root || document).querySelectorAll(sel));
+      });
   }
 
   function renderZoomControls(pageId, zoom) {
@@ -921,7 +980,7 @@
     var minPct = Math.round(ZOOM_MIN * 100);
     var maxPct = Math.round(ZOOM_MAX * 100);
     return (
-      '<div class="mindmap-zoom" aria-label="整体缩放" data-mindmap-zoom-bar>' +
+      '<div class="mindmap-zoom" aria-label="画布缩放" data-mindmap-zoom-bar>' +
       '<button type="button" class="btn btn--ghost mindmap-zoom__btn" data-mindmap-page="' +
       escapeHtmlAttr(pageId) +
       '" data-mindmap-action="zoom-out" title="缩小">−</button>' +
@@ -940,7 +999,7 @@
       '" data-mindmap-action="zoom-in" title="放大">+</button>' +
       '<button type="button" class="btn btn--ghost mindmap-zoom__btn" data-mindmap-action="zoom-reset" data-mindmap-page="' +
       escapeHtmlAttr(pageId) +
-      '" title="重置缩放">100%</button>' +
+      '" title="重置缩放">适配</button>' +
       "</div>"
     );
   }
@@ -951,33 +1010,35 @@
     computeLayout: computeLayout,
     findNodeInForest: findNodeInForest,
     findParentInForest: findParentInForest,
-    findCallout: findCallout,
-    isCalloutId: isCalloutId,
+    findSmallNode: findSmallNode,
+    isSmallNodeId: isSmallNodeId,
     isHubNode: isHubNode,
     addHub: addHub,
     removeHub: removeHub,
     addChild: addChild,
     removeChild: removeChild,
-    addCallout: addCallout,
-    removeCallout: removeCallout,
-    setCalloutTarget: setCalloutTarget,
-    setCalloutPosition: setCalloutPosition,
+    addSmallNode: addSmallNode,
+    removeSmallNode: removeSmallNode,
+    addLink: addLink,
+    removeLink: removeLink,
+    removeLinkForSelection: removeLinkForSelection,
     setNodePosition: setNodePosition,
     renderEdgesSvg: renderEdgesSvg,
     renderNodesHtml: renderNodesHtml,
-    renderCalloutsHtml: renderCalloutsHtml,
     applyViewportTransform: applyViewportTransform,
     collectPageFromDom: collectPageFromDom,
     getSelectedId: getSelectedId,
     setSelectedId: setSelectedId,
+    getLinkPickFrom: getLinkPickFrom,
+    setLinkPickFrom: setLinkPickFrom,
     bindViewportFit: bindViewportFit,
     bindNodeDrag: bindNodeDrag,
+    bindNodeSelectionAndLink: bindNodeSelectionAndLink,
     repaintEdgesFromDom: repaintEdgesFromDom,
     pointerScaleForElement: pointerScaleForElement,
     renderZoomControls: renderZoomControls,
     setZoomControlsEnabled: setZoomControlsEnabled,
     newNodeId: newNodeId,
-    newCalloutId: newCalloutId,
     ZOOM_MIN: ZOOM_MIN,
     ZOOM_MAX: ZOOM_MAX,
     ZOOM_DEFAULT: ZOOM_DEFAULT,

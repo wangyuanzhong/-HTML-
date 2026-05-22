@@ -79,13 +79,7 @@ html[data-deck-theme="minimal"] body {
   --mindmap-node-shadow: none;
   --mindmap-node-selected-border: var(--accent);
   --mindmap-node-selected-shadow: 0 0 0 1px rgba(239, 243, 255, 0.5);
-  --mindmap-callout-edge-stroke: rgba(239, 243, 255, 0.4);
-  --mindmap-callout-bg: rgba(255, 255, 255, 0.08);
-  --mindmap-callout-border: rgba(239, 243, 255, 0.35);
-  --mindmap-callout-fg: var(--muted);
-  --mindmap-callout-font: "Courier New", Courier, monospace;
-  --mindmap-callout-selected-border: var(--accent);
-  --mindmap-callout-selected-shadow: 0 0 0 1px rgba(239, 243, 255, 0.45);
+  --mindmap-link-stroke: rgba(239, 243, 255, 0.55);
 }
 
 html[data-deck-theme="minimal"] body.deck {
