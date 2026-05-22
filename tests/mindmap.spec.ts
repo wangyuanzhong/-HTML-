@@ -24,7 +24,7 @@ test.describe("mindmap slide", () => {
     const scBox = await scaler.boundingBox();
     expect(vpBox).not.toBeNull();
     expect(scBox).not.toBeNull();
-    expect(scBox!.width).toBeLessThan(vpBox!.width * 0.55);
+    expect(scBox!.width).toBeLessThan(vpBox!.width * 0.92);
 
     await enterDeckEdit(page);
     const actBoxBefore = await actions.boundingBox();
@@ -86,8 +86,18 @@ test.describe("mindmap slide", () => {
       ) as HTMLElement | null;
       if (sm) sm.click();
     });
-    await slide.locator('[data-mindmap-action="remove-small"]').click();
+    await slide.locator('[data-mindmap-action="remove-selection"]').click();
     await expect(small).toHaveCount(0);
+  });
+
+  test("unified delete removes added hub", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+    const hubsBefore = await slide.locator(".mindmap-node--hub").count();
+    await slide.locator('[data-mindmap-action="add-hub"]').click();
+    await expect(slide.locator(".mindmap-node--hub")).toHaveCount(hubsBefore + 1);
+    await slide.locator('[data-mindmap-action="remove-selection"]').click();
+    await expect(slide.locator(".mindmap-node--hub")).toHaveCount(hubsBefore);
   });
 
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {

@@ -519,15 +519,13 @@
           '<span class="mindmap-toolbar__hint">结构</span>' +
           mindmapToolBtn(page.id, "add-hub", "+ 总节点") +
           mindmapToolBtn(page.id, "add-branch", "+ 节点") +
-          mindmapToolBtn(page.id, "remove-branch", "− 节点") +
           mindmapToolBtn(page.id, "add-small", "+ 小节点") +
-          mindmapToolBtn(page.id, "remove-small", "− 小节点") +
           mindmapToolBtn(page.id, "add-link", "+ 连线") +
-          mindmapToolBtn(page.id, "remove-link", "− 连线") +
+          mindmapToolBtn(page.id, "remove-selection", "删除", "删除当前选中（节点或连线）") +
           (MM
             ? '<span class="mindmap-toolbar__zoom">' + MM.renderZoomControls(page.id, data.zoom) + "</span>"
             : "") +
-          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>选中节点后 +/−；连线：选起点→「+ 连线」→点终点</span>' +
+          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>选中后点「删除」移除节点或连线；连线：选起点→「+ 连线」→点终点</span>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
           '<div class="mindmap-scaler" data-mindmap-scaler>' +
@@ -596,14 +594,17 @@
     },
   };
 
-  function mindmapToolBtn(pageId, action, label) {
+  function mindmapToolBtn(pageId, action, label, title) {
     return (
-      '<button type="button" class="btn btn--ghost" ' +
-      'data-mindmap-page="' +
+      '<button type="button" class="btn btn--ghost' +
+      (action === "remove-selection" ? " mindmap-toolbar__delete" : "") +
+      '" data-mindmap-page="' +
       escapeHtmlAttr(pageId) +
       '" data-mindmap-action="' +
       action +
-      '">' +
+      '"' +
+      (title ? ' title="' + escapeHtmlAttr(title) + '"' : "") +
+      ">" +
       label +
       "</button>"
     );
@@ -2116,23 +2117,21 @@
       } else if (action === "add-branch") {
         MM.addChild(page.data, sel);
         paintMindmapSection(section, page);
-      } else if (action === "remove-branch") {
-        var selNode = MM.findNodeInForest(page.data.roots, sel);
-        if (!selNode) return;
-        if (MM.isHubNode(page.data.roots, sel)) {
-          if (MM.removeHub(page.data, sel) && page.data.roots[0]) {
-            MM.setSelectedId(section, page.data.roots[0].id);
+      } else if (action === "remove-selection") {
+        if (!sel) return;
+        var wasHub = MM.isHubNode(page.data.roots, sel);
+        var wasSmall = MM.isSmallNodeId(page.data, sel);
+        var parBefore = MM.findParentInForest(page.data.roots, sel);
+        if (MM.removeSelection(page.data, sel)) {
+          MM.setLinkPickFrom(section, "");
+          section.classList.remove("mindmap--link-pick");
+          if (wasSmall || wasHub) {
+            if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
+          } else if (parBefore) {
+            MM.setSelectedId(section, parBefore.id);
           }
-        } else {
-          var par = MM.findParentInForest(page.data.roots, sel);
-          if (selNode.children && selNode.children.length) {
-            MM.removeChild(page.data, selNode.id, null);
-          } else if (par) {
-            MM.removeChild(page.data, par.id, sel);
-            MM.setSelectedId(section, par.id);
-          }
+          paintMindmapSection(section, page);
         }
-        paintMindmapSection(section, page);
       } else if (action === "add-small") {
         var anchor = sel;
         if (MM.isSmallNodeId(page.data, sel) && page.data.roots[0]) {
@@ -2141,11 +2140,6 @@
         if (MM.addSmallNode(page.data, anchor)) {
           var sn = page.data.smallNodes[page.data.smallNodes.length - 1];
           if (sn) MM.setSelectedId(section, sn.id);
-          paintMindmapSection(section, page);
-        }
-      } else if (action === "remove-small") {
-        if (MM.isSmallNodeId(page.data, sel) && MM.removeSmallNode(page.data, sel)) {
-          if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
           paintMindmapSection(section, page);
         }
       } else if (action === "add-link") {
@@ -2159,12 +2153,6 @@
         } else {
           MM.setLinkPickFrom(section, sel);
           section.classList.add("mindmap--link-pick");
-        }
-      } else if (action === "remove-link") {
-        if (MM.removeLinkForSelection(page.data, sel)) {
-          MM.setLinkPickFrom(section, "");
-          section.classList.remove("mindmap--link-pick");
-          paintMindmapSection(section, page);
         }
       } else if (action === "zoom-in") {
         page.data.zoom = Math.min(MM.ZOOM_MAX, (page.data.zoom || 1) + 0.12);

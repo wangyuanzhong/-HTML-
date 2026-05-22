@@ -4,20 +4,20 @@
 (function () {
   "use strict";
 
-  var LEVEL_GAP = 72;
-  var SIBLING_GAP = 14;
-  var ROOT_GAP = 28;
-  var PAD = 12;
-  var NODE_MIN_W = 64;
-  var NODE_MAX_W = 128;
-  var SMALL_W = 52;
-  var SMALL_H = 28;
-  var LABEL_LINE_H = 18;
-  var FIT_CAP = 0.28;
-  var FIT_BOOST_SMALL = 0.34;
-  var ZOOM_MIN = 0.35;
-  var ZOOM_MAX = 1.45;
-  var ZOOM_DEFAULT = 0.85;
+  var LEVEL_GAP = 96;
+  var SIBLING_GAP = 18;
+  var ROOT_GAP = 36;
+  var PAD = 16;
+  var NODE_MIN_W = 96;
+  var NODE_MAX_W = 188;
+  var SMALL_W = 76;
+  var SMALL_H = 38;
+  var LABEL_LINE_H = 24;
+  var FIT_CAP = 0.92;
+  var FIT_BOOST_SMALL = 0.92;
+  var ZOOM_MIN = 0.5;
+  var ZOOM_MAX = 1.6;
+  var ZOOM_DEFAULT = 1;
   var DRAG_THRESHOLD = 4;
 
   function escapeHtml(s) {
@@ -581,6 +581,31 @@
     return false;
   }
 
+  /** 删除当前选中项：小节点 / 总节点 / 分支 / 与选中相关的连线 */
+  function removeSelection(pageData, selId) {
+    var data = normalizePageData(pageData);
+    var sel = selId == null ? "" : String(selId);
+    if (!sel) return false;
+
+    if (isSmallNodeId(data, sel)) {
+      return removeSmallNode(data, sel);
+    }
+
+    if (isHubNode(data.roots, sel)) {
+      if (data.roots.length <= 1) return false;
+      return removeHub(data, sel);
+    }
+
+    var selNode = findNodeInForest(data.roots, sel);
+    if (selNode) {
+      var par = findParentInForest(data.roots, sel);
+      if (par) return removeChild(data, par.id, sel);
+      return false;
+    }
+
+    return removeLinkForSelection(data, sel);
+  }
+
   function setNodePosition(pageData, nodeId, x, y, kind) {
     var data = normalizePageData(pageData);
     if (kind === "small" || isSmallNodeId(data, nodeId)) {
@@ -675,10 +700,9 @@
     if (vw < 40 || vh < 40) return;
     var cw = layout.width;
     var ch = layout.height;
-    var fit = Math.min((vw - 8) / cw, (vh - 8) / ch);
-    fit = Math.min(fit, FIT_CAP);
-    if (layout.nodeCount <= 6) {
-      fit = Math.min(Math.max(fit, 0.28), FIT_BOOST_SMALL);
+    var fit = Math.min((vw - 16) / cw, (vh - 16) / ch);
+    if (layout.nodeCount <= 8) {
+      fit = Math.min(fit, FIT_BOOST_SMALL);
     } else {
       fit = Math.min(fit, FIT_CAP);
     }
@@ -1022,6 +1046,7 @@
     addLink: addLink,
     removeLink: removeLink,
     removeLinkForSelection: removeLinkForSelection,
+    removeSelection: removeSelection,
     setNodePosition: setNodePosition,
     renderEdgesSvg: renderEdgesSvg,
     renderNodesHtml: renderNodesHtml,

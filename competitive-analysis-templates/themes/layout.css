@@ -1818,6 +1818,15 @@ section[data-page-type="mindmap"] .mindmap-toolbar__zoom {
   margin-left: auto;
 }
 
+section[data-page-type="mindmap"] .mindmap-toolbar__delete {
+  color: var(--mindmap-delete-fg, #ffb4a8);
+  border-color: var(--mindmap-delete-border, rgba(255, 120, 100, 0.45));
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-toolbar__delete:hover {
+  background: var(--mindmap-delete-bg, rgba(255, 80, 60, 0.12));
+}
+
 section[data-page-type="mindmap"] .mindmap-toolbar__zoom .mindmap-zoom {
   display: flex;
   flex-wrap: wrap;
@@ -1949,19 +1958,19 @@ section[data-page-type="mindmap"] .mindmap-node.is-selected {
 
 section[data-page-type="mindmap"] .mindmap-node--hub {
   font-weight: 600;
-  padding-left: 0.85rem;
+  padding: 0.55rem 0.85rem 0.55rem 1rem;
+  min-height: 2.5rem;
 }
 
 section[data-page-type="mindmap"] .mindmap-node--small {
-  padding: 0.2rem 0.35rem;
-  min-height: 0;
+  padding: 0.35rem 0.55rem;
+  min-height: 2rem;
   border-radius: 999px;
-  font-size: 0.68rem;
 }
 
 section[data-page-type="mindmap"] .mindmap-node--small .mindmap-node__label {
-  font-size: 0.68rem;
-  line-height: 1.2;
+  font-size: clamp(0.78rem, 1.25vw, 0.92rem);
+  line-height: 1.25;
   text-align: center;
 }
 
@@ -1996,9 +2005,13 @@ body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-node {
 }
 
 section[data-page-type="mindmap"] .mindmap-node__label {
-  font-size: clamp(0.82rem, 1.35vw, 0.95rem);
+  font-size: clamp(0.9rem, 1.55vw, 1.08rem);
   line-height: 1.35;
   word-break: break-word;
+}
+
+section[data-page-type="mindmap"] .mindmap-node--hub .mindmap-node__label {
+  font-size: clamp(0.95rem, 1.65vw, 1.14rem);
 }
 
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="mindmap"] .slide-inner {
