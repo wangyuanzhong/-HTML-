@@ -77,7 +77,7 @@ python tools/build-matrix-xlsx.py   # 按科技风向量重写两份演示 xlsx
 4. **Slide 3 — 竞品对比矩阵（主观）**：优先由 `matrix-subjective.xlsx` 驱动的独立 `deck.matrixSubjective`；若未抓取到主观表，则用客观矩阵的同构深拷贝占位
 5. **Slide 4 — 结束页**：`ending`；**客观/主观** 两页将 `#compare-fab-host` 挂到页内 `#compare-fab-anchor-*`，与 `.slide-actions` 同一底栏；其它页停靠 `#compare-fab-park`
 
-**思维导图页**（`type: "mindmap"`，编辑栏「+ 思维导图」插入）：左→右树形布局，编辑模式下点击节点选中；**+ 分支** / **− 分支** 增删子节点；**说明** 切换引出说明；画布随视口等比缩放避免重叠。
+**思维导图页**（`type: "mindmap"`）：节点浮在幻灯背景上（无内层方框）；支持多个**总节点**（`roots[]`）、编辑模式拖拽自由定位（`fx`/`fy`）、缩放滑条与节点少时自动放大填充。工具：**+ 总节点** / **+ 分支** / **− 分支** / **说明**。
 
 ---
 

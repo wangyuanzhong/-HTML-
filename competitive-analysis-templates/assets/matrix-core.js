@@ -459,10 +459,12 @@
         var MM = window.MindmapDeck;
         return MM && MM.defaultPageData
           ? MM.defaultPageData()
-          : { title: "思维导图", root: { id: "n_root", label: "中心主题", note: "", children: [] } };
+          : { title: "思维导图", zoom: 1, roots: [] };
       },
       render: function (section, page, ctx) {
         var data = page.data || {};
+        var MM = window.MindmapDeck;
+        if (MM) data = MM.normalizePageData(data);
         section.setAttribute("aria-label", data.title || "思维导图");
         section.classList.add("slide-mindmap");
         var html =
@@ -472,17 +474,24 @@
           "</h2>" +
           '<div class="mindmap-toolbar" aria-label="思维导图结构">' +
           '<span class="mindmap-toolbar__hint">结构</span>' +
+          mindmapToolBtn(page.id, "add-hub", "+ 总节点") +
           mindmapToolBtn(page.id, "add-branch", "+ 分支") +
           mindmapToolBtn(page.id, "remove-branch", "− 分支") +
           mindmapToolBtn(page.id, "toggle-note", "说明") +
           "</div>" +
+          (MM ? MM.renderZoomControls(page.id, data.zoom) : "") +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
+          '<div class="mindmap-stage" data-mindmap-stage>' +
           '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
-          "</div>" +
+          "</div></div>" +
           renderSlideActionsHtml(ctx) +
           "</div>";
         section.innerHTML = html;
-        section.setAttribute("data-mindmap-selected", section.getAttribute("data-mindmap-selected") || "n_root");
+        var firstHub = data.roots && data.roots[0] ? data.roots[0].id : "";
+        section.setAttribute(
+          "data-mindmap-selected",
+          section.getAttribute("data-mindmap-selected") || firstHub
+        );
         paintMindmapSection(section, page);
       },
       collectFromDom: function (section, page) {
@@ -490,9 +499,7 @@
         page.data = page.data || {};
         if (ttl) page.data.title = String(ttl.innerText || "").trim();
         var MM = window.MindmapDeck;
-        if (MM && page.data.root) {
-          page.data.root = MM.collectTreeFromDom(section, page.data.root);
-        }
+        if (MM) page.data = MM.collectPageFromDom(section, page.data);
       },
     },
 
@@ -556,19 +563,44 @@
     var MM = window.MindmapDeck;
     if (!MM || !page.data) return;
     var viewport = section.querySelector("[data-mindmap-viewport]");
+    var stage = section.querySelector("[data-mindmap-stage]");
     var canvas = section.querySelector("[data-mindmap-canvas]");
-    if (!viewport || !canvas) return;
-    page.data.root = MM.normalizeTree(page.data.root || MM.defaultPageData().root);
+    if (!viewport || !stage || !canvas) return;
+    page.data = MM.normalizePageData(page.data);
     var selected = MM.getSelectedId(section);
-    var layout = MM.computeLayout(page.data.root);
-    canvas.dataset.layoutWidth = String(layout.width);
-    canvas.dataset.layoutHeight = String(layout.height);
+    var layout = MM.computeLayout(page.data);
     canvas.style.width = layout.width + "px";
     canvas.style.height = layout.height + "px";
     canvas.innerHTML =
       MM.renderEdgesSvg(layout.edges) + MM.renderNodesHtml(layout.nodes, selected);
-    MM.bindFitOnResize(viewport, canvas);
-    MM.fitCanvasToViewport(viewport, canvas);
+    MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
+    MM.bindViewportFit(viewport, stage, function () {
+      return { layout: MM.computeLayout(page.data), zoom: page.data.zoom };
+    });
+    if (section.dataset.mindmapDragBound !== "1") {
+      MM.bindNodeDrag(section, page.data, function () {
+        paintMindmapSection(section, page);
+      });
+    }
+    var zr = section.querySelector("[data-mindmap-zoom-range]");
+    var zl = section.querySelector("[data-mindmap-zoom-label]");
+    if (zr) {
+      zr.value = String(Math.round((page.data.zoom || 1) * 100));
+      if (!zr.dataset.bound) {
+        zr.dataset.bound = "1";
+        zr.addEventListener("input", function () {
+          page.data.zoom = Number(zr.value) / 100;
+          if (zl) zl.textContent = zr.value + "%";
+          MM.applyViewportTransform(
+            viewport,
+            stage,
+            MM.computeLayout(page.data),
+            page.data.zoom
+          );
+        });
+      }
+      if (zl) zl.textContent = zr.value + "%";
+    }
     if (deckEditActive) applyMindmapEditable(section);
   }
 
@@ -1998,7 +2030,7 @@
       }
 
       var btn = t.closest("[data-mindmap-action]");
-      if (!btn || !deckEditActive) return;
+      if (!btn) return;
       var action = btn.getAttribute("data-mindmap-action");
       var pageId = btn.getAttribute("data-mindmap-page");
       var page = pageById(pageId);
@@ -2008,27 +2040,41 @@
       );
       if (!section) return;
 
+      var zoomOnly =
+        action === "zoom-in" || action === "zoom-out" || action === "zoom-reset";
+      if (!zoomOnly && !deckEditActive) return;
+
       syncDeckFromEditableDomBeforeMatrixRebuild();
-      var root = page.data && page.data.root;
-      if (!root) return;
+      page.data = MM.normalizePageData(page.data);
       var sel = MM.getSelectedId(section);
 
-      if (action === "add-branch") {
-        MM.addChild(root, sel);
+      if (action === "add-hub") {
+        MM.addHub(page.data);
+        var hubs = page.data.roots;
+        if (hubs.length) MM.setSelectedId(section, hubs[hubs.length - 1].id);
+        paintMindmapSection(section, page);
+      } else if (action === "add-branch") {
+        MM.addChild(page.data, sel);
         paintMindmapSection(section, page);
       } else if (action === "remove-branch") {
-        var selNode = MM.findNode(root, sel);
+        var selNode = MM.findNodeInForest(page.data.roots, sel);
         if (!selNode) return;
-        var par = MM.findParent(root, sel, null);
-        if (selNode.children && selNode.children.length) {
-          MM.removeChild(root, selNode.id, null);
-        } else if (par) {
-          MM.removeChild(root, par.id, sel);
-          MM.setSelectedId(section, par.id);
+        if (MM.isHubNode(page.data.roots, sel)) {
+          if (MM.removeHub(page.data, sel) && page.data.roots[0]) {
+            MM.setSelectedId(section, page.data.roots[0].id);
+          }
+        } else {
+          var par = MM.findParentInForest(page.data.roots, sel);
+          if (selNode.children && selNode.children.length) {
+            MM.removeChild(page.data, selNode.id, null);
+          } else if (par) {
+            MM.removeChild(page.data, par.id, sel);
+            MM.setSelectedId(section, par.id);
+          }
         }
         paintMindmapSection(section, page);
       } else if (action === "toggle-note") {
-        var n = MM.findNode(root, sel);
+        var n = MM.findNodeInForest(page.data.roots, sel);
         if (n) {
           if (noteVisibleMindmap(n.note)) {
             n.note = "";
@@ -2037,6 +2083,15 @@
           }
           paintMindmapSection(section, page);
         }
+      } else if (action === "zoom-in") {
+        page.data.zoom = Math.min(MM.ZOOM_MAX, (page.data.zoom || 1) + 0.12);
+        paintMindmapSection(section, page);
+      } else if (action === "zoom-out") {
+        page.data.zoom = Math.max(MM.ZOOM_MIN, (page.data.zoom || 1) - 0.12);
+        paintMindmapSection(section, page);
+      } else if (action === "zoom-reset") {
+        page.data.zoom = 1;
+        paintMindmapSection(section, page);
       }
       ev.preventDefault();
       ev.stopPropagation();

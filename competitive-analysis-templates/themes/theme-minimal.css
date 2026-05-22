@@ -71,9 +71,6 @@ html[data-deck-theme="minimal"] body {
   --deck-version-fg: rgba(169, 176, 200, 0.62);
   --deck-version-bg: rgba(255, 255, 255, 0.05);
   --deck-version-border: rgba(230, 237, 255, 0.2);
-  --mindmap-viewport-radius: 0;
-  --mindmap-viewport-bg: rgba(255, 255, 255, 0.03);
-  --mindmap-viewport-border: rgba(239, 243, 255, 0.12);
   --mindmap-edge-stroke: rgba(239, 243, 255, 0.35);
   --mindmap-node-radius: 2px;
   --mindmap-node-bg: rgba(17, 22, 34, 0.88);
@@ -248,7 +245,7 @@ html[data-deck-theme="minimal"] .compare-fab__cancel {
   color: var(--ink);
 }
 
-html[data-deck-theme="minimal"] section[data-page-type="mindmap"] .mindmap-node--root {
+html[data-deck-theme="minimal"] section[data-page-type="mindmap"] .mindmap-node--hub {
   border-width: 2px;
   letter-spacing: 0.04em;
 }

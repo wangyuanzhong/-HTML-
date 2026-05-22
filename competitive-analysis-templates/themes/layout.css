@@ -1768,7 +1768,7 @@ section[data-page-type="mindmap"] {
 
 section[data-page-type="mindmap"] .slide-inner {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   row-gap: clamp(0.45rem, 1.1vw, 0.85rem);
   min-height: 0;
   height: 100%;
@@ -1798,18 +1798,50 @@ body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-toolbar {
   display: none;
 }
 
+section[data-page-type="mindmap"] .mindmap-zoom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+}
+
+section[data-page-type="mindmap"] .mindmap-zoom__range {
+  width: min(9rem, 28vw);
+  accent-color: var(--mindmap-node-selected-border, #00e5ff);
+  cursor: pointer;
+}
+
+section[data-page-type="mindmap"] .mindmap-zoom__pct {
+  min-width: 2.5rem;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+section[data-page-type="mindmap"] .mindmap-zoom__btn {
+  min-width: 2rem;
+  padding-inline: 0.45rem;
+}
+
 section[data-page-type="mindmap"] .mindmap-viewport {
   position: relative;
   min-height: 0;
-  overflow: auto;
-  border-radius: var(--mindmap-viewport-radius, 8px);
-  background: var(--mindmap-viewport-bg, rgba(0, 0, 0, 0.12));
-  border: 1px solid var(--mindmap-viewport-border, rgba(255, 255, 255, 0.08));
+  flex: 1;
+  overflow: hidden;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+section[data-page-type="mindmap"] .mindmap-stage {
+  position: relative;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 section[data-page-type="mindmap"] .mindmap-canvas {
   position: relative;
-  margin: 0.75rem;
 }
 
 section[data-page-type="mindmap"] .mindmap-edges {
@@ -1853,7 +1885,13 @@ section[data-page-type="mindmap"] .mindmap-node {
 }
 
 body.deck--editing section[data-page-type="mindmap"] .mindmap-node {
-  cursor: pointer;
+  cursor: grab;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-node.is-dragging {
+  cursor: grabbing;
+  z-index: 12;
+  opacity: 0.94;
 }
 
 section[data-page-type="mindmap"] .mindmap-node.is-selected {
@@ -1861,8 +1899,25 @@ section[data-page-type="mindmap"] .mindmap-node.is-selected {
   box-shadow: var(--mindmap-node-selected-shadow, 0 0 0 2px rgba(0, 229, 255, 0.35));
 }
 
-section[data-page-type="mindmap"] .mindmap-node--root {
+section[data-page-type="mindmap"] .mindmap-node--hub {
   font-weight: 600;
+  padding-left: 0.85rem;
+}
+
+section[data-page-type="mindmap"] .mindmap-node__grip {
+  position: absolute;
+  left: 0.35rem;
+  top: 50%;
+  width: 4px;
+  height: 1.1rem;
+  margin-top: -0.55rem;
+  border-radius: 4px;
+  background: var(--mindmap-node-selected-border, rgba(255, 255, 255, 0.35));
+  opacity: 0.55;
+}
+
+body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-node__grip {
+  display: none;
 }
 
 section[data-page-type="mindmap"] .mindmap-node__label {
@@ -1889,5 +1944,5 @@ section[data-page-type="mindmap"] .mindmap-node__note--empty {
 }
 
 html:not([data-deck-fit-disabled="true"]) section[data-page-type="mindmap"] .slide-inner {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }

@@ -60,9 +60,6 @@ html[data-deck-theme="macaron"] body {
   --deck-version-fg: rgba(92, 72, 98, 0.48);
   --deck-version-bg: rgba(255, 255, 255, 0.52);
   --deck-version-border: rgba(200, 170, 210, 0.38);
-  --mindmap-viewport-radius: 28px;
-  --mindmap-viewport-bg: rgba(255, 255, 255, 0.55);
-  --mindmap-viewport-border: rgba(232, 112, 168, 0.22);
   --mindmap-edge-stroke: rgba(232, 112, 168, 0.45);
   --mindmap-node-radius: 20px;
   --mindmap-node-bg: rgba(255, 255, 255, 0.92);
@@ -180,7 +177,7 @@ html[data-deck-theme="macaron"] .deck-edit-bar--chrome .btn--ghost:not([disabled
   --btn-ghost-border: rgba(232, 112, 168, 0.45);
 }
 
-html[data-deck-theme="macaron"] section[data-page-type="mindmap"] .mindmap-node--root {
+html[data-deck-theme="macaron"] section[data-page-type="mindmap"] .mindmap-node--hub {
   background: linear-gradient(135deg, #fff4fa 0%, #ffe8f4 100%);
   border-color: rgba(232, 112, 168, 0.55);
 }

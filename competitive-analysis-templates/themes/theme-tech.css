@@ -59,9 +59,6 @@ html[data-deck-theme="tech"] body {
   --deck-version-fg: rgba(170, 220, 238, 0.52);
   --deck-version-bg: rgba(0, 229, 255, 0.06);
   --deck-version-border: rgba(0, 229, 255, 0.14);
-  --mindmap-viewport-radius: 6px;
-  --mindmap-viewport-bg: rgba(4, 14, 26, 0.55);
-  --mindmap-viewport-border: rgba(0, 234, 255, 0.14);
   --mindmap-edge-stroke: rgba(124, 77, 255, 0.55);
   --mindmap-node-radius: 6px;
   --mindmap-node-bg: rgba(8, 20, 36, 0.94);
@@ -111,7 +108,7 @@ html[data-deck-theme="tech"] .deck-chrome-hover-target:focus-visible {
   );
 }
 
-html[data-deck-theme="tech"] section[data-page-type="mindmap"] .mindmap-node--root {
+html[data-deck-theme="tech"] section[data-page-type="mindmap"] .mindmap-node--hub {
   border-color: rgba(0, 234, 255, 0.55);
   box-shadow: 0 0 24px rgba(0, 229, 255, 0.22);
 }
