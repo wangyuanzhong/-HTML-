@@ -71,6 +71,19 @@ html[data-deck-theme="minimal"] body {
   --deck-version-fg: rgba(169, 176, 200, 0.62);
   --deck-version-bg: rgba(255, 255, 255, 0.05);
   --deck-version-border: rgba(230, 237, 255, 0.2);
+  --mindmap-viewport-radius: 0;
+  --mindmap-viewport-bg: rgba(255, 255, 255, 0.03);
+  --mindmap-viewport-border: rgba(239, 243, 255, 0.12);
+  --mindmap-edge-stroke: rgba(239, 243, 255, 0.35);
+  --mindmap-node-radius: 2px;
+  --mindmap-node-bg: rgba(17, 22, 34, 0.88);
+  --mindmap-node-fg: var(--ink);
+  --mindmap-node-border: rgba(239, 243, 255, 0.22);
+  --mindmap-node-shadow: none;
+  --mindmap-node-selected-border: var(--accent);
+  --mindmap-node-selected-shadow: 0 0 0 1px rgba(239, 243, 255, 0.5);
+  --mindmap-note-bg: rgba(255, 255, 255, 0.06);
+  --mindmap-note-fg: var(--muted);
 }
 
 html[data-deck-theme="minimal"] body.deck {
@@ -233,4 +246,14 @@ html[data-deck-theme="minimal"] .btn--ghost {
 html[data-deck-theme="minimal"] .compare-fab__cancel {
   background: rgba(242, 247, 255, 0.24);
   color: var(--ink);
+}
+
+html[data-deck-theme="minimal"] section[data-page-type="mindmap"] .mindmap-node--root {
+  border-width: 2px;
+  letter-spacing: 0.04em;
+}
+
+html[data-deck-theme="minimal"] section[data-page-type="mindmap"] .mindmap-node__note {
+  border-left: 2px solid rgba(239, 243, 255, 0.35);
+  border-radius: 0;
 }

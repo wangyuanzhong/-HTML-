@@ -12,6 +12,7 @@
 | `template-macaron.html` | 马卡龙圆角可爱风 |
 | `template-minimal.html` | 留白衬线极简风 |
 | `assets/matrix-core.js` | 幻灯切换、矩阵渲染、行列筛选、弹层、可选加载 xlsx |
+| `assets/mindmap-core.js` | 思维导图页：树布局、分支增删、节点说明 |
 | `themes/layout.css` | 版面 / 表格 / 弹层结构（三套共用） |
 | `themes/theme-*.css` | 各自配色与字体 |
 | `data/matrix-objective.xlsx` | 客观矩阵数据源（可被页面 fetch，覆盖 JSON 里的 `matrix`） |
@@ -75,6 +76,8 @@ python tools/build-matrix-xlsx.py   # 按科技风向量重写两份演示 xlsx
 3. **Slide 2 — 竞品对比矩阵（客观）**：优先由 `matrix-objective.xlsx`（或仍为 JSON `matrix`）驱动
 4. **Slide 3 — 竞品对比矩阵（主观）**：优先由 `matrix-subjective.xlsx` 驱动的独立 `deck.matrixSubjective`；若未抓取到主观表，则用客观矩阵的同构深拷贝占位
 5. **Slide 4 — 结束页**：`ending`；**客观/主观** 两页将 `#compare-fab-host` 挂到页内 `#compare-fab-anchor-*`，与 `.slide-actions` 同一底栏；其它页停靠 `#compare-fab-park`
+
+**思维导图页**（`type: "mindmap"`，编辑栏「+ 思维导图」插入）：左→右树形布局，编辑模式下点击节点选中；**+ 分支** / **− 分支** 增删子节点；**说明** 切换引出说明；画布随视口等比缩放避免重叠。
 
 ---
 

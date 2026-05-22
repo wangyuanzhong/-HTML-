@@ -5,7 +5,7 @@
  *
  *   - 新版结构（推荐）：
  *       { theme, pages: [ { id, type, data }, ... ] }
- *     type ∈ { cover, overview, table, ending }
+ *     type ∈ { cover, overview, table, mindmap, ending }
  *     - cover.data:    { eyebrow, title, subtitle }
  *     - overview.data: { title, sections: [ { heading, bodyHtml } ] }
  *     - table.data:    { title, matrix: { cornerLabel, rows[], columns[], cells } }
@@ -453,6 +453,49 @@
       },
     },
 
+    mindmap: {
+      label: "思维导图",
+      defaultData: function () {
+        var MM = window.MindmapDeck;
+        return MM && MM.defaultPageData
+          ? MM.defaultPageData()
+          : { title: "思维导图", root: { id: "n_root", label: "中心主题", note: "", children: [] } };
+      },
+      render: function (section, page, ctx) {
+        var data = page.data || {};
+        section.setAttribute("aria-label", data.title || "思维导图");
+        section.classList.add("slide-mindmap");
+        var html =
+          '<div class="slide-inner">' +
+          '<h2 class="mindmap-title" data-field="title">' +
+          escapeHtml(data.title || "思维导图") +
+          "</h2>" +
+          '<div class="mindmap-toolbar" aria-label="思维导图结构">' +
+          '<span class="mindmap-toolbar__hint">结构</span>' +
+          mindmapToolBtn(page.id, "add-branch", "+ 分支") +
+          mindmapToolBtn(page.id, "remove-branch", "− 分支") +
+          mindmapToolBtn(page.id, "toggle-note", "说明") +
+          "</div>" +
+          '<div class="mindmap-viewport" data-mindmap-viewport>' +
+          '<div class="mindmap-canvas" data-mindmap-canvas></div>' +
+          "</div>" +
+          renderSlideActionsHtml(ctx) +
+          "</div>";
+        section.innerHTML = html;
+        section.setAttribute("data-mindmap-selected", section.getAttribute("data-mindmap-selected") || "n_root");
+        paintMindmapSection(section, page);
+      },
+      collectFromDom: function (section, page) {
+        var ttl = section.querySelector('[data-field="title"]');
+        page.data = page.data || {};
+        if (ttl) page.data.title = String(ttl.innerText || "").trim();
+        var MM = window.MindmapDeck;
+        if (MM && page.data.root) {
+          page.data.root = MM.collectTreeFromDom(section, page.data.root);
+        }
+      },
+    },
+
     ending: {
       label: "结束页",
       defaultData: function () {
@@ -495,6 +538,39 @@
       },
     },
   };
+
+  function mindmapToolBtn(pageId, action, label) {
+    return (
+      '<button type="button" class="btn btn--ghost" ' +
+      'data-mindmap-page="' +
+      escapeHtmlAttr(pageId) +
+      '" data-mindmap-action="' +
+      action +
+      '">' +
+      label +
+      "</button>"
+    );
+  }
+
+  function paintMindmapSection(section, page) {
+    var MM = window.MindmapDeck;
+    if (!MM || !page.data) return;
+    var viewport = section.querySelector("[data-mindmap-viewport]");
+    var canvas = section.querySelector("[data-mindmap-canvas]");
+    if (!viewport || !canvas) return;
+    page.data.root = MM.normalizeTree(page.data.root || MM.defaultPageData().root);
+    var selected = MM.getSelectedId(section);
+    var layout = MM.computeLayout(page.data.root);
+    canvas.dataset.layoutWidth = String(layout.width);
+    canvas.dataset.layoutHeight = String(layout.height);
+    canvas.style.width = layout.width + "px";
+    canvas.style.height = layout.height + "px";
+    canvas.innerHTML =
+      MM.renderEdgesSvg(layout.edges) + MM.renderNodesHtml(layout.nodes, selected);
+    MM.bindFitOnResize(viewport, canvas);
+    MM.fitCanvasToViewport(viewport, canvas);
+    if (deckEditActive) applyMindmapEditable(section);
+  }
 
   function structToolButton(structKey, action, label, title) {
     return (
@@ -1903,6 +1979,74 @@
     });
   }
 
+  function bindMindmapDelegations() {
+    if (document.documentElement.dataset.mindmapDelegBound === "1") return;
+    document.documentElement.dataset.mindmapDelegBound = "1";
+    var MM = window.MindmapDeck;
+    if (!MM) return;
+
+    document.addEventListener("click", function (ev) {
+      var t = ev.target;
+      if (!(t instanceof Element)) return;
+
+      var nodeEl = t.closest(".mindmap-node[data-node-id]");
+      if (nodeEl && nodeEl.closest("[data-page-type='mindmap']")) {
+        var sec0 = nodeEl.closest("[data-slide]");
+        if (sec0 && deckEditActive) {
+          MM.setSelectedId(sec0, nodeEl.getAttribute("data-node-id"));
+        }
+      }
+
+      var btn = t.closest("[data-mindmap-action]");
+      if (!btn || !deckEditActive) return;
+      var action = btn.getAttribute("data-mindmap-action");
+      var pageId = btn.getAttribute("data-mindmap-page");
+      var page = pageById(pageId);
+      if (!page || page.type !== "mindmap") return;
+      var section = document.querySelector(
+        '[data-slide][data-page-id="' + page.id + '"]'
+      );
+      if (!section) return;
+
+      syncDeckFromEditableDomBeforeMatrixRebuild();
+      var root = page.data && page.data.root;
+      if (!root) return;
+      var sel = MM.getSelectedId(section);
+
+      if (action === "add-branch") {
+        MM.addChild(root, sel);
+        paintMindmapSection(section, page);
+      } else if (action === "remove-branch") {
+        var selNode = MM.findNode(root, sel);
+        if (!selNode) return;
+        var par = MM.findParent(root, sel, null);
+        if (selNode.children && selNode.children.length) {
+          MM.removeChild(root, selNode.id, null);
+        } else if (par) {
+          MM.removeChild(root, par.id, sel);
+          MM.setSelectedId(section, par.id);
+        }
+        paintMindmapSection(section, page);
+      } else if (action === "toggle-note") {
+        var n = MM.findNode(root, sel);
+        if (n) {
+          if (noteVisibleMindmap(n.note)) {
+            n.note = "";
+          } else {
+            n.note = "引出说明…";
+          }
+          paintMindmapSection(section, page);
+        }
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+  }
+
+  function noteVisibleMindmap(note) {
+    return !!(note && String(note).replace(/\s/g, "").length);
+  }
+
   /* ============================================================
    * 10. 编辑模式 / DOM 收集 / 保存
    * ============================================================ */
@@ -1915,6 +2059,16 @@
     } catch (e) {
       return "true";
     }
+  }
+
+  function applyMindmapEditable(section) {
+    var plc = bestPlainCe();
+    $all(".mindmap-node__label", section).forEach(function (el) {
+      setCe(el, plc);
+    });
+    $all(".mindmap-node__note:not([hidden])", section).forEach(function (el) {
+      setCe(el, plc);
+    });
   }
 
   function applyMatrixTableEditable(page, plc) {
@@ -1964,6 +2118,15 @@
         var pid = sec.getAttribute("data-page-id");
         var page = pageById(pid);
         if (page) applyMatrixTableEditable(page, on ? plc : "inherit");
+      } else if (t === "mindmap") {
+        var mttl = sec.querySelector('[data-field="title"]');
+        setCe(mttl, on ? plc : "inherit");
+        if (on) applyMindmapEditable(sec);
+        else {
+          $all(".mindmap-node__label, .mindmap-node__note", sec).forEach(function (n) {
+            setCe(n, "inherit");
+          });
+        }
       }
     });
     var mbody = $("#modal-body");
@@ -2610,6 +2773,7 @@
     bindDeckPastePlainOnly();
     bindPageToolbar();
     bindMatrixAxisPickMemory();
+    bindMindmapDelegations();
     loadSnapshot()
       .then(function (snap) {
         if (snap && snap.v === 2 && Array.isArray(snap.pages)) {

@@ -59,6 +59,19 @@ html[data-deck-theme="tech"] body {
   --deck-version-fg: rgba(170, 220, 238, 0.52);
   --deck-version-bg: rgba(0, 229, 255, 0.06);
   --deck-version-border: rgba(0, 229, 255, 0.14);
+  --mindmap-viewport-radius: 6px;
+  --mindmap-viewport-bg: rgba(4, 14, 26, 0.55);
+  --mindmap-viewport-border: rgba(0, 234, 255, 0.14);
+  --mindmap-edge-stroke: rgba(124, 77, 255, 0.55);
+  --mindmap-node-radius: 6px;
+  --mindmap-node-bg: rgba(8, 20, 36, 0.94);
+  --mindmap-node-fg: #e8fbff;
+  --mindmap-node-border: rgba(0, 234, 255, 0.28);
+  --mindmap-node-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --mindmap-node-selected-border: #00e5ff;
+  --mindmap-node-selected-shadow: 0 0 0 2px rgba(0, 229, 255, 0.4), 0 0 22px rgba(0, 229, 255, 0.2);
+  --mindmap-note-bg: rgba(124, 77, 255, 0.18);
+  --mindmap-note-fg: #b8ecff;
 }
 
 html[data-deck-theme="tech"] body.deck {
@@ -96,4 +109,14 @@ html[data-deck-theme="tech"] .deck-chrome-hover-target:focus-visible {
     rgba(0, 229, 255, 0.14) 0%,
     rgba(255, 255, 255, 0) 100%
   );
+}
+
+html[data-deck-theme="tech"] section[data-page-type="mindmap"] .mindmap-node--root {
+  border-color: rgba(0, 234, 255, 0.55);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.22);
+}
+
+html[data-deck-theme="tech"] section[data-page-type="mindmap"] .mindmap-edge {
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.25));
 }

@@ -1760,3 +1760,134 @@ html:not([data-deck-fit-disabled="true"]) section[data-page-type="table"] .matri
 html:not([data-deck-fit-disabled="true"]) .matrix-sync-bar {
   font-size: 12px;
 }
+
+/* —— 思维导图页 —— */
+section[data-page-type="mindmap"] {
+  overflow: hidden;
+}
+
+section[data-page-type="mindmap"] .slide-inner {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  row-gap: clamp(0.45rem, 1.1vw, 0.85rem);
+  min-height: 0;
+  height: 100%;
+  max-width: none;
+}
+
+section[data-page-type="mindmap"] .mindmap-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.18;
+}
+
+section[data-page-type="mindmap"] .mindmap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+section[data-page-type="mindmap"] .mindmap-toolbar__hint {
+  opacity: 0.72;
+  margin-right: 0.25rem;
+}
+
+body:not(.deck--editing) section[data-page-type="mindmap"] .mindmap-toolbar {
+  display: none;
+}
+
+section[data-page-type="mindmap"] .mindmap-viewport {
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  border-radius: var(--mindmap-viewport-radius, 8px);
+  background: var(--mindmap-viewport-bg, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--mindmap-viewport-border, rgba(255, 255, 255, 0.08));
+}
+
+section[data-page-type="mindmap"] .mindmap-canvas {
+  position: relative;
+  margin: 0.75rem;
+}
+
+section[data-page-type="mindmap"] .mindmap-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+section[data-page-type="mindmap"] .mindmap-edge {
+  fill: none;
+  stroke: var(--mindmap-edge-stroke, rgba(140, 180, 220, 0.55));
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+section[data-page-type="mindmap"] .mindmap-nodes {
+  position: relative;
+  z-index: 1;
+}
+
+section[data-page-type="mindmap"] .mindmap-node {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--mindmap-node-radius, 8px);
+  border: 1px solid var(--mindmap-node-border, rgba(255, 255, 255, 0.2));
+  background: var(--mindmap-node-bg, rgba(12, 22, 38, 0.92));
+  color: var(--mindmap-node-fg, inherit);
+  box-shadow: var(--mindmap-node-shadow, none);
+  cursor: default;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-node {
+  cursor: pointer;
+}
+
+section[data-page-type="mindmap"] .mindmap-node.is-selected {
+  border-color: var(--mindmap-node-selected-border, #00e5ff);
+  box-shadow: var(--mindmap-node-selected-shadow, 0 0 0 2px rgba(0, 229, 255, 0.35));
+}
+
+section[data-page-type="mindmap"] .mindmap-node--root {
+  font-weight: 600;
+}
+
+section[data-page-type="mindmap"] .mindmap-node__label {
+  font-size: clamp(0.82rem, 1.35vw, 0.95rem);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+section[data-page-type="mindmap"] .mindmap-node__note {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  padding: 0.35rem 0.45rem;
+  border-radius: calc(var(--mindmap-node-radius, 8px) * 0.65);
+  background: var(--mindmap-note-bg, rgba(0, 0, 0, 0.2));
+  color: var(--mindmap-note-fg, inherit);
+  opacity: 0.92;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 220px;
+}
+
+section[data-page-type="mindmap"] .mindmap-node__note--empty {
+  display: none;
+}
+
+html:not([data-deck-fit-disabled="true"]) section[data-page-type="mindmap"] .slide-inner {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}

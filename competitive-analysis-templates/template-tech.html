@@ -3,7 +3,7 @@
   template-tech.html — 科技风竞品分析演示
   维护约定（给后续聊天机器人阅读）：
   1) 内容数据见 <script id="deck-data" type="application/json"> … </script>
-     - 新版顶层结构为 `deck.pages = [{ id, type, data }]`，type ∈ {cover, overview, table, ending}
+     - 新版顶层结构为 `deck.pages = [{ id, type, data }]`，type ∈ {cover, overview, table, mindmap, ending}
      - 旧版顶层结构（cover/overview/matrix/matrixSubjective/ending）会被自动迁移成 pages
   2) <main id="deck-stage"> 内的 <section data-slide> 由 matrix-core.js 渲染而来，HTML 不再硬编码每一页
   3) 工具条包在 `#deck-chrome-shell` 内：`#deck-edit-bar` 与浮层（modal / 对比报告）在 stage 之外
@@ -65,6 +65,7 @@
           <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="cover">+ 封面</button>
           <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="overview">+ 概述</button>
           <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="table">+ 表格</button>
+          <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="mindmap">+ 思维导图</button>
           <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-add="ending">+ 结束页</button>
           <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-action="duplicate" title="复制当前页">⎘ 复制本页</button>
           <button type="button" class="btn btn--ghost deck-edit-bar__btn" data-page-action="delete" title="删除当前页">✕ 删除本页</button>
@@ -209,6 +210,7 @@
 }
   </script>
   <script src="assets/sheetjs.full.min.js"></script>
+  <script src="assets/mindmap-core.js"></script>
   <script src="assets/matrix-core.js"></script>
   <script src="assets/deck-stage-fit.js"></script>
 </body>
