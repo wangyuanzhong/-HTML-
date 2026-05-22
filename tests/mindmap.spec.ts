@@ -63,6 +63,68 @@ test.describe("mindmap slide", () => {
       .toBeGreaterThan(50);
   });
 
+  test("IndexedDB snapshot without mindmap still gets mindmap slide after reload", async ({
+    page,
+  }) => {
+    await page.goto("/template-tech.html");
+    await page.waitForSelector("#deck-stage");
+
+    await page.evaluate(async () => {
+      const dbName = "matrix-cell-detail-uploads";
+      const store = "deckPatch";
+      const key = "deck-pages-v1";
+      const snap = {
+        v: 2,
+        theme: "tech",
+        pages: [
+          {
+            id: "snap_cover",
+            type: "cover",
+            data: { eyebrow: "测试", title: "快照封面", subtitle: "" },
+          },
+          {
+            id: "snap_overview",
+            type: "overview",
+            data: { title: "概述", sections: [] },
+          },
+          {
+            id: "snap_table",
+            type: "table",
+            data: {
+              title: "矩阵",
+              matrix: { cornerLabel: "", rows: [], columns: [], cells: {} },
+            },
+          },
+          {
+            id: "snap_ending",
+            type: "ending",
+            data: { eyebrow: "", title: "结束", bodyHtml: "<p>完</p>" },
+          },
+        ],
+      };
+      await new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open(dbName, 2);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction(store, "readwrite");
+          tx.objectStore(store).put(snap, key);
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+      });
+    });
+
+    await page.reload();
+    await page.locator('[data-slide-dot="2"]').click();
+    const slide = page.locator('section[data-page-type="mindmap"]:not([hidden])');
+    await expect(slide).toBeVisible({ timeout: 8000 });
+    await expect(slide.locator("[data-mindmap-enter-edit]")).toBeVisible();
+  });
+
   test("zoom controls change stage scale without edit mode", async ({ page }) => {
     const slide = await openMindmapSlide(page);
     const stage = slide.locator("[data-mindmap-stage]");
