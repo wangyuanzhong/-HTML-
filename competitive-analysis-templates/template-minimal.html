@@ -12,9 +12,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>消费类导入产品横向对比 · 简约模板</title>
-  <link rel="stylesheet" href="themes/layout.css" />
-  <link rel="stylesheet" href="themes/theme-minimal.css" />
+  <script>
+    (function () {
+      var version = "20260523b";
+      window.__DECK_APP_VERSION__ = version;
+      try {
+        var last = localStorage.getItem("matrix-deck-app-version");
+        if (last === version) return;
+        localStorage.setItem("matrix-deck-app-version", version);
+        var tasks = [];
+        if (window.caches && caches.keys) {
+          tasks.push(caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+          }));
+        }
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+          }));
+        }
+        Promise.all(tasks).catch(function () {}).then(function () {
+          var url = new URL(window.location.href);
+          if (url.searchParams.get("_deckv") !== version) {
+            url.searchParams.set("_deckv", version);
+            window.location.replace(url.toString());
+          }
+        });
+      } catch (err) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="themes/layout.css?v=20260523b" />
+  <link rel="stylesheet" href="themes/theme-minimal.css?v=20260523b" />
 </head>
 <body class="deck">
   <a class="deck-skip" href="#deck-stage">跳到内容</a>
@@ -166,8 +198,8 @@
 }
   </script>
   <script src="assets/sheetjs.full.min.js"></script>
-  <script src="assets/mindmap-core.js?v=20260523a"></script>
-  <script src="assets/matrix-core.js?v=20260523a"></script>
+  <script src="assets/mindmap-core.js?v=20260523b"></script>
+  <script src="assets/matrix-core.js?v=20260523b"></script>
   <script src="assets/deck-stage-fit.js"></script>
 </body>
 </html>
