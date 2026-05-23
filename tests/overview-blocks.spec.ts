@@ -55,6 +55,19 @@ test("overview edit toolbar inserts and removes blocks", async ({ page }) => {
   await expect(section.locator(".overview-block")).toHaveCount(beforeCount + 1);
 });
 
+test("overview next page works after inserting blocks in edit mode", async ({ page }) => {
+  await page.goto("/template-tech.html");
+  await goOverview(page);
+  await enterEdit(page);
+
+  const section = page.locator('[data-slide-index="1"]');
+  await section.locator('[data-overview-action="add-h2"]').click();
+  await section.locator('button[data-slide-go="2"]').click();
+
+  await expect(page.locator('[data-slide-index="2"]')).toBeVisible();
+  await expect(page.locator('[data-slide-index="1"]')).toBeHidden();
+});
+
 test("overview blocks persist after save and reload", async ({ page }) => {
   await page.goto("/template-tech.html");
   await goOverview(page);

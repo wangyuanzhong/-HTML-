@@ -66,7 +66,7 @@
       zoom: ZOOM_DEFAULT,
       panX: 0,
       panY: 0,
-      panMode: false,
+      groupMoveMode: false,
       roots: [a],
       smallNodes: [],
       links: [],
@@ -146,7 +146,8 @@
     data.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(data.zoom)));
     data.panX = sanitizePan(data.panX);
     data.panY = sanitizePan(data.panY);
-    data.panMode = !!data.panMode;
+    if (data.groupMoveMode == null && data.panMode) data.groupMoveMode = !!data.panMode;
+    data.groupMoveMode = !!data.groupMoveMode;
     if (!data.title) data.title = "思维导图";
     return data;
   }
@@ -1172,10 +1173,48 @@
     syncNodeSelectionClasses(section);
   }
 
-  function isPanMode(section, pageData) {
-    if (section && section.classList.contains("mindmap--pan-mode")) return true;
+  /** 树形父子 + 自定义连线，求与 startId 连通的所有节点 id */
+  function collectConnectedNodeIds(pageData, startId) {
+    var data = normalizePageData(pageData);
+    var start = String(startId || "");
+    if (!start) return [];
+    var valid = {};
+    collectAllIds(data, valid);
+    if (!valid[start]) return [start];
+
+    var seen = {};
+    var queue = [start];
+    seen[start] = true;
+
+    function enqueue(id) {
+      var sid = String(id);
+      if (!sid || !valid[sid] || seen[sid]) return;
+      seen[sid] = true;
+      queue.push(sid);
+    }
+
+    while (queue.length) {
+      var id = queue.shift();
+      var treeNode = findNodeInForest(data.roots, id);
+      if (treeNode) {
+        var par = findParentInForest(data.roots, id);
+        if (par) enqueue(par.id);
+        (treeNode.children || []).forEach(function (ch) {
+          enqueue(ch.id);
+        });
+      }
+      (data.links || []).forEach(function (l) {
+        if (String(l.from) === String(id)) enqueue(l.to);
+        if (String(l.to) === String(id)) enqueue(l.from);
+      });
+    }
+    return Object.keys(seen);
+  }
+
+  function isGroupMoveMode(section, pageData) {
+    if (section && section.classList.contains("mindmap--group-move")) return true;
     var data = pageData ? normalizePageData(pageData) : null;
-    return !!(data && data.panMode);
+    return !!(data && data.groupMoveMode);
   }
 
   function getLinkPickFrom(section) {
@@ -1346,17 +1385,12 @@
 
     var drag = {
       active: false,
-      mode: "node",
       nodeId: null,
       kind: "tree",
       el: null,
       captureEl: null,
       startX: 0,
       startY: 0,
-      originX: 0,
-      originY: 0,
-      startPanX: 0,
-      startPanY: 0,
       group: [],
       moved: false,
     };
@@ -1365,19 +1399,22 @@
       return document.body.classList.contains("deck--editing");
     }
 
-    function applyPanTransform() {
-      var viewport = section.querySelector("[data-mindmap-viewport]");
-      var stage = section.querySelector("[data-mindmap-stage]");
-      if (!viewport || !stage) return;
-      var data = normalizePageData(pageData);
-      applyViewportTransform(
-        viewport,
-        stage,
-        computeLayout(data),
-        data.zoom,
-        data.panX,
-        data.panY
-      );
+    function buildDragGroupFromIds(ids) {
+      var idSet = selectionIdSet(ids);
+      var items = [];
+      $allNodesIn(section).forEach(function (el) {
+        var id = el.getAttribute("data-node-id");
+        if (!idSet[String(id)]) return;
+        items.push({
+          el: el,
+          id: id,
+          kind: el.getAttribute("data-node-kind") || "tree",
+          originX: parseFloat(el.style.left) || 0,
+          originY: parseFloat(el.style.top) || 0,
+        });
+        el.classList.add("is-dragging");
+      });
+      return items;
     }
 
     section.addEventListener("pointerdown", function (ev) {
@@ -1399,48 +1436,22 @@
       nodeEl.classList.add("is-dragging");
 
       var data = normalizePageData(pageData);
-      if (isPanMode(section, data)) {
-        drag.mode = "pan";
-        drag.startPanX = data.panX;
-        drag.startPanY = data.panY;
-        drag.group = [];
+      var sid = String(drag.nodeId);
+      var moveIds;
+
+      if (isGroupMoveMode(section, data)) {
+        moveIds = collectConnectedNodeIds(data, sid);
+        setSelectedIds(section, moveIds);
       } else {
-        drag.mode = "node";
         var selected = getSelectedIds(section);
-        var sid = String(drag.nodeId);
         if (selected.indexOf(sid) < 0) {
           if (!(ev.ctrlKey || ev.metaKey)) setSelectedIds(section, [sid]);
           selected = getSelectedIds(section);
         }
-        drag.originX = parseFloat(nodeEl.style.left) || 0;
-        drag.originY = parseFloat(nodeEl.style.top) || 0;
-        if (selected.length > 1 && selected.indexOf(sid) >= 0) {
-          drag.group = [];
-          var selSet = selectionIdSet(selected);
-          $allNodesIn(section).forEach(function (el) {
-            var id = el.getAttribute("data-node-id");
-            if (!selSet[String(id)]) return;
-            drag.group.push({
-              el: el,
-              id: id,
-              kind: el.getAttribute("data-node-kind") || "tree",
-              originX: parseFloat(el.style.left) || 0,
-              originY: parseFloat(el.style.top) || 0,
-            });
-            el.classList.add("is-dragging");
-          });
-        } else {
-          drag.group = [
-            {
-              el: nodeEl,
-              id: drag.nodeId,
-              kind: drag.kind,
-              originX: drag.originX,
-              originY: drag.originY,
-            },
-          ];
-        }
+        moveIds =
+          selected.length > 1 && selected.indexOf(sid) >= 0 ? selected : [sid];
       }
+      drag.group = buildDragGroupFromIds(moveIds);
 
       if (nodeEl.setPointerCapture) nodeEl.setPointerCapture(ev.pointerId);
       ev.preventDefault();
@@ -1452,17 +1463,6 @@
       var dy = ev.clientY - drag.startY;
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
       drag.moved = true;
-
-      if (drag.mode === "pan") {
-        var stage = section.querySelector("[data-mindmap-stage]");
-        var scale = stage ? pointerScaleForElement(stage) : 1;
-        var data = normalizePageData(pageData);
-        data.panX = drag.startPanX + dx / scale;
-        data.panY = drag.startPanY + dy / scale;
-        applyPanTransform();
-        ev.preventDefault();
-        return;
-      }
 
       var scaleN = pointerScaleForElement(drag.el || drag.group[0].el);
       var sdx = dx / scaleN;
@@ -1479,25 +1479,21 @@
       if (!drag.active) return;
       var cap = drag.captureEl;
 
-      if (drag.mode === "pan") {
-        if (drag.moved && typeof onMoved === "function") onMoved();
-      } else {
+      drag.group.forEach(function (item) {
+        item.el.classList.remove("is-dragging");
+      });
+      if (drag.moved) {
         drag.group.forEach(function (item) {
-          item.el.classList.remove("is-dragging");
+          setNodePosition(
+            pageData,
+            item.id,
+            parseFloat(item.el.style.left) || 0,
+            parseFloat(item.el.style.top) || 0,
+            item.kind
+          );
+          item.el.setAttribute("data-user-moved", "1");
         });
-        if (drag.moved) {
-          drag.group.forEach(function (item) {
-            setNodePosition(
-              pageData,
-              item.id,
-              parseFloat(item.el.style.left) || 0,
-              parseFloat(item.el.style.top) || 0,
-              item.kind
-            );
-            item.el.setAttribute("data-user-moved", "1");
-          });
-          if (typeof onMoved === "function") onMoved();
-        }
+        if (typeof onMoved === "function") onMoved();
       }
 
       if (drag.el) drag.el.classList.remove("is-dragging");
@@ -1588,6 +1584,8 @@
     refreshViewportWhenSized: refreshViewportWhenSized,
     collectPageFromDom: collectPageFromDom,
     collectMindmapLightFromDom: collectMindmapLightFromDom,
+    collectConnectedNodeIds: collectConnectedNodeIds,
+    isGroupMoveMode: isGroupMoveMode,
     getSelectedId: getSelectedId,
     getSelectedIds: getSelectedIds,
     setSelectedId: setSelectedId,
@@ -1597,7 +1595,7 @@
     setSelectedLinkId: setSelectedLinkId,
     clearLinkSelection: clearLinkSelection,
     syncLinkSelectionClasses: syncLinkSelectionClasses,
-    isPanMode: isPanMode,
+    isGroupMoveMode: isGroupMoveMode,
     getLinkPickFrom: getLinkPickFrom,
     setLinkPickFrom: setLinkPickFrom,
     bindViewportFit: bindViewportFit,

@@ -9,6 +9,8 @@ async function openMindmapSlide(page: import("@playwright/test").Page) {
 }
 
 async function enterDeckEdit(page: import("@playwright/test").Page) {
+  await page.locator("#deck-chrome-hover-target").hover();
+  await page.waitForTimeout(60);
   await page.locator("#deck-edit-enter").click();
   await expect(page.locator("body")).toHaveClass(/deck--editing/);
 }
@@ -408,32 +410,41 @@ test.describe("mindmap slide", () => {
     ).toBeCloseTo(delta.dy, 0);
   });
 
-  test("pan mode updates panX/panY without changing node fx/fy", async ({ page }) => {
+  test("group move mode drags nodes connected by tree edges and custom links", async ({
+    page,
+  }) => {
     const slide = await openMindmapSlide(page);
     await enterDeckEdit(page);
 
     const hub = slide.locator(".mindmap-node--hub").first();
-    const posBefore = await nodePosition(hub);
+    const groupBtn = slide.locator('[data-mindmap-action="group-move"]');
+    await groupBtn.click();
+    await expect(groupBtn).toHaveAttribute("aria-pressed", "true");
 
-    const stage = slide.locator("[data-mindmap-stage]");
-    const beforePan = await stage.evaluate((el) => ({
-      panX: Number((el as HTMLElement).dataset.panX || 0),
-      panY: Number((el as HTMLElement).dataset.panY || 0),
-    }));
+    await hub.click();
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    const small = slide.locator(".mindmap-node--small").last();
+    await expect(small).toBeVisible();
 
-    await slide.locator('[data-mindmap-action="pan-mode"]').click();
-    await expect(slide.locator('[data-mindmap-action="pan-mode"]')).toHaveClass(/is-active/);
-    await dragMindmapNodeBy(page, hub, 80, 50, { expectNodeMove: false });
-    await expect.poll(() => nodePosition(hub)).toEqual(posBefore);
+    await hub.click();
+    await slide.locator('[data-mindmap-action="add-link"]').click();
+    await small.click();
+    await expect(slide.locator("path.mindmap-edge--link")).toHaveCount(1);
 
-    const afterPan = await stage.evaluate((el) => ({
-      panX: Number((el as HTMLElement).dataset.panX || 0),
-      panY: Number((el as HTMLElement).dataset.panY || 0),
-    }));
+    const hubBefore = await nodePosition(hub);
+    const smallBefore = await nodePosition(small);
+    await dragMindmapNodeBy(page, small, 70, 45);
 
-    expect(Math.abs(afterPan.panX - beforePan.panX) + Math.abs(afterPan.panY - beforePan.panY)).toBeGreaterThan(
-      5
-    );
+    const hubAfter = await nodePosition(hub);
+    const smallAfter = await nodePosition(small);
+    const dSmallX = parseFloat(smallAfter.left) - parseFloat(smallBefore.left);
+    const dSmallY = parseFloat(smallAfter.top) - parseFloat(smallBefore.top);
+    const dHubX = parseFloat(hubAfter.left) - parseFloat(hubBefore.left);
+    const dHubY = parseFloat(hubAfter.top) - parseFloat(hubBefore.top);
+
+    expect(Math.abs(dSmallX) + Math.abs(dSmallY)).toBeGreaterThan(20);
+    expect(dHubX).toBeCloseTo(dSmallX, 0);
+    expect(dHubY).toBeCloseTo(dSmallY, 0);
   });
 
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {

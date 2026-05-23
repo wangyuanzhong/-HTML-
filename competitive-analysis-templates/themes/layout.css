@@ -1986,7 +1986,7 @@ section[data-page-type="mindmap"] .mindmap-link.is-selected .mindmap-edge--link 
   filter: drop-shadow(0 0 4px rgba(255, 200, 120, 0.45));
 }
 
-section[data-page-type="mindmap"] .mindmap-toolbar__pan-mode.is-active {
+section[data-page-type="mindmap"] .mindmap-toolbar__group-move.is-active {
   background: rgba(120, 180, 255, 0.22);
   border-color: rgba(140, 200, 255, 0.55);
 }

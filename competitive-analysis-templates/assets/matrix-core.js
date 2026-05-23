@@ -908,16 +908,16 @@
           mindmapToolBtn(page.id, "add-link", "+ 连线") +
           mindmapToolBtn(
             page.id,
-            "pan-mode",
-            "整图移动",
-            "开启后拖动节点平移整张导图（不改变节点坐标）",
-            data.panMode ? "is-active" : ""
+            "group-move",
+            "连带移动",
+            "开启后拖动节点时，树形连线与自定义连线连通的节点一起移动",
+            data.groupMoveMode ? "is-active" : ""
           ) +
           mindmapToolBtn(page.id, "remove-selection", "删除", "删除选中节点或自定义连线") +
           (MM
             ? '<span class="mindmap-toolbar__zoom">' + MM.renderZoomControls(page.id, data.zoom) + "</span>"
             : "") +
-          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>自定义连线：点击连线选中后「删除」；树形边随节点删除。多选：Ctrl/Cmd+点击；整图移动：开「整图移动」后拖动</span>' +
+          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>自定义连线：点击连线选中后「删除」；树形边随节点删除。多选：Ctrl/Cmd+点击；连带移动：开「连带移动」后拖动已连通的节点</span>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
@@ -988,7 +988,7 @@
     return (
       '<button type="button" class="btn btn--ghost' +
       (action === "remove-selection" ? " mindmap-toolbar__delete" : "") +
-      (action === "pan-mode" ? " mindmap-toolbar__pan-mode" : "") +
+      (action === "group-move" ? " mindmap-toolbar__group-move" : "") +
       (extraClass ? " " + extraClass : "") +
       '" data-mindmap-page="' +
       escapeHtmlAttr(pageId) +
@@ -996,7 +996,7 @@
       action +
       '"' +
       (title ? ' title="' + escapeHtmlAttr(title) + '"' : "") +
-      (action === "pan-mode" ? ' aria-pressed="false"' : "") +
+      (action === "group-move" ? ' aria-pressed="false"' : "") +
       ">" +
       label +
       "</button>"
@@ -1088,11 +1088,11 @@
     canvas.innerHTML =
       MM.renderEdgesSvg(layout.treeEdges, layout.linkEdges) +
       MM.renderNodesHtml(layout.nodes, selected);
-    section.classList.toggle("mindmap--pan-mode", !!page.data.panMode);
-    var panBtn = section.querySelector('[data-mindmap-action="pan-mode"]');
-    if (panBtn) {
-      panBtn.classList.toggle("is-active", !!page.data.panMode);
-      panBtn.setAttribute("aria-pressed", page.data.panMode ? "true" : "false");
+    section.classList.toggle("mindmap--group-move", !!page.data.groupMoveMode);
+    var groupBtn = section.querySelector('[data-mindmap-action="group-move"]');
+    if (groupBtn) {
+      groupBtn.classList.toggle("is-active", !!page.data.groupMoveMode);
+      groupBtn.setAttribute("aria-pressed", page.data.groupMoveMode ? "true" : "false");
     }
     MM.applyViewportTransform(
       viewport,
@@ -1369,17 +1369,22 @@
   }
 
   function bindSlideNav() {
-    $all("[data-slide-go]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var n = parseInt(btn.getAttribute("data-slide-go"), 10);
+    if (document.documentElement.dataset.slideNavBound === "1") return;
+    document.documentElement.dataset.slideNavBound = "1";
+    document.addEventListener("click", function (ev) {
+      var t = ev.target;
+      if (!(t instanceof Element)) return;
+      var go = t.closest("[data-slide-go]");
+      if (go) {
+        var n = parseInt(go.getAttribute("data-slide-go"), 10);
         if (!isNaN(n)) goSlide(n);
-      });
-    });
-    $all("[data-slide-dot]").forEach(function (dot) {
-      dot.addEventListener("click", function () {
-        var n = parseInt(dot.getAttribute("data-slide-dot"), 10);
-        if (!isNaN(n)) goSlide(n);
-      });
+        return;
+      }
+      var dot = t.closest("[data-slide-dot]");
+      if (dot) {
+        var n2 = parseInt(dot.getAttribute("data-slide-dot"), 10);
+        if (!isNaN(n2)) goSlide(n2);
+      }
     });
   }
 
@@ -2586,28 +2591,34 @@
 
   function bindMindmapDelegations() {
     if (document.documentElement.dataset.mindmapDelegBound === "1") return;
-    var MM = window.MindmapDeck;
-    if (!MM) return;
     document.documentElement.dataset.mindmapDelegBound = "1";
 
     document.addEventListener("click", function (ev) {
+      var MM = window.MindmapDeck;
+      if (!MM) return;
       var t = ev.target;
       if (!(t instanceof Element)) return;
 
       var btn = t.closest("[data-mindmap-action]");
       if (!btn) return;
       var action = btn.getAttribute("data-mindmap-action");
-      var pageId = btn.getAttribute("data-mindmap-page");
+      var section =
+        btn.closest('section[data-page-type="mindmap"]') ||
+        document.querySelector(
+          '[data-slide][data-page-id="' +
+            btn.getAttribute("data-mindmap-page") +
+            '"][data-page-type="mindmap"]:not([hidden])'
+        );
+      if (!section) return;
+      var pageId = section.getAttribute("data-page-id") || btn.getAttribute("data-mindmap-page");
       var page = pageById(pageId);
       if (!page || page.type !== "mindmap") return;
-      var section = document.querySelector(
-        '[data-slide][data-page-id="' + page.id + '"]'
-      );
-      if (!section) return;
 
-      if (!document.body.classList.contains("deck--editing")) return;
+      if (!deckEditActive && !document.body.classList.contains("deck--editing")) return;
 
-      syncMindmapLabelsFromDom(section, page);
+      if (action !== "group-move") {
+        syncMindmapLabelsFromDom(section, page);
+      }
       page.data = MM.normalizePageData(page.data);
       var sel = MM.getSelectedId(section);
       var selIds = MM.getSelectedIds(section);
@@ -2667,14 +2678,17 @@
             paintMindmapSection(section, page);
           }
         }
-      } else if (action === "pan-mode") {
-        page.data.panMode = !page.data.panMode;
-        section.classList.toggle("mindmap--pan-mode", !!page.data.panMode);
-        var panToggle = section.querySelector('[data-mindmap-action="pan-mode"]');
-        if (panToggle) {
-          panToggle.classList.toggle("is-active", !!page.data.panMode);
-          panToggle.setAttribute("aria-pressed", page.data.panMode ? "true" : "false");
+      } else if (action === "group-move") {
+        page.data.groupMoveMode = !page.data.groupMoveMode;
+        section.classList.toggle("mindmap--group-move", !!page.data.groupMoveMode);
+        var groupToggle = section.querySelector('[data-mindmap-action="group-move"]');
+        if (groupToggle) {
+          groupToggle.classList.toggle("is-active", !!page.data.groupMoveMode);
+          groupToggle.setAttribute("aria-pressed", page.data.groupMoveMode ? "true" : "false");
         }
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
       } else if (action === "add-small") {
         var anchor = sel;
         if (MM.getSelectionKind(page.data, sel) === "small" && page.data.roots[0]) {
