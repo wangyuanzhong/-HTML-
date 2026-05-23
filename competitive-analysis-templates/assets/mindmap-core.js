@@ -318,10 +318,8 @@
     if (hasFixedPos(node)) {
       var y2 = ny + m.h + SIBLING_GAP;
       for (var j = 0; j < ch.length; j++) {
-        if (!hasFixedPos(ch[j])) {
-          var subH2 = layoutAssign(ch[j], depth + 1, y2, out, originX);
-          y2 += subH2;
-        }
+        var subH2 = layoutAssign(ch[j], depth + 1, y2, out, originX);
+        y2 += subH2;
       }
       return Math.max(consumed, y2 - ny, m.h + SIBLING_GAP);
     }

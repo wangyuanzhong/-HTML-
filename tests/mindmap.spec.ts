@@ -48,6 +48,14 @@ async function nodePosition(node: import("@playwright/test").Locator) {
   }));
 }
 
+async function selectedMindmapNode(page: import("@playwright/test").Page) {
+  const id = await page
+    .locator('section[data-page-type="mindmap"]:not([hidden])')
+    .getAttribute("data-mindmap-selected");
+  expect(id).toBeTruthy();
+  return page.locator(`section[data-page-type="mindmap"]:not([hidden]) .mindmap-node[data-node-id="${id}"]`);
+}
+
 test.describe("mindmap slide", () => {
   test("canvas is much smaller than viewport; chrome stays put on zoom", async ({ page }) => {
     const slide = await openMindmapSlide(page);
@@ -290,6 +298,38 @@ test.describe("mindmap slide", () => {
     await expect(branch).toBeVisible();
     await expect(slide.locator("path.mindmap-edge--link")).toHaveCount(1);
     await expect.poll(() => nodePosition(branch)).toEqual(branchPosition);
+  });
+
+  test("dragged nested branches remain visible and keep positions after saving", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-branch"]').click();
+    const parent = await selectedMindmapNode(page);
+    await expect(parent).toBeVisible();
+
+    await parent.click();
+    await slide.locator('[data-mindmap-action="add-branch"]').click();
+    const child = await selectedMindmapNode(page);
+    await expect(child).toBeVisible();
+
+    await dragMindmapNodeBy(page, child, -90, -55);
+    const childPosition = await nodePosition(child);
+    await page.locator("#deck-edit-save").click();
+    await page.waitForTimeout(350);
+    await expect(parent).toBeVisible();
+    await expect(child).toBeVisible();
+    await expect.poll(() => nodePosition(child)).toEqual(childPosition);
+
+    await dragMindmapNodeBy(page, parent, -110, -70);
+    const parentPosition = await nodePosition(parent);
+    await page.locator("#deck-edit-save").click();
+    await page.waitForTimeout(350);
+    await expect(parent).toBeVisible();
+    await expect(child).toBeVisible();
+    await expect.poll(() => nodePosition(parent)).toEqual(parentPosition);
+    await expect.poll(() => nodePosition(child)).toEqual(childPosition);
   });
 
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {
