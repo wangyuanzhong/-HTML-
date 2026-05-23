@@ -13,6 +13,25 @@ async function enterDeckEdit(page: import("@playwright/test").Page) {
   await expect(page.locator("body")).toHaveClass(/deck--editing/);
 }
 
+async function dragMindmapNodeBy(
+  page: import("@playwright/test").Page,
+  node: import("@playwright/test").Locator,
+  dx: number,
+  dy: number
+) {
+  await expect(node).toBeVisible();
+  const box = await node.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+  expect(box.width).toBeGreaterThan(0);
+  expect(box.height).toBeGreaterThan(0);
+  await page.mouse.move(box.x + 8, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 8 + dx, box.y + box.height / 2 + dy, { steps: 8 });
+  await page.mouse.up();
+}
+
 test.describe("mindmap slide", () => {
   test("canvas is much smaller than viewport; chrome stays put on zoom", async ({ page }) => {
     const slide = await openMindmapSlide(page);
@@ -149,6 +168,46 @@ test.describe("mindmap slide", () => {
     await expect(slide.locator(".mindmap-toolbar")).toBeHidden();
 
     await page.waitForTimeout(250);
+    await page.reload();
+    await page.locator('[data-slide-dot="2"]').click();
+    const restoredSlide = page.locator('section[data-page-type="mindmap"]:not([hidden])');
+    await expect(restoredSlide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)")).toHaveCount(
+      branchesBefore + 1
+    );
+    await expect(restoredSlide.locator(".mindmap-node--small")).toHaveCount(smallBefore + 1);
+    await expect(restoredSlide.locator(".mindmap-node__label", { hasText: "新分支" })).toBeVisible();
+    await expect(restoredSlide.locator(".mindmap-node--small .mindmap-node__label", { hasText: "小节点" })).toBeVisible();
+  });
+
+  test("dragged new mindmap nodes remain after save, exit, and reload", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+    const branches = slide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)");
+    const smallNodes = slide.locator(".mindmap-node--small");
+    const branchesBefore = await branches.count();
+    const smallBefore = await smallNodes.count();
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-branch"]').click();
+    const newBranch = slide.locator('.mindmap-node:has(.mindmap-node__label:text-is("新分支"))');
+    await expect(newBranch).toHaveCount(1);
+    await dragMindmapNodeBy(page, newBranch, -130, -90);
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    const newSmall = slide.locator(".mindmap-node--small").last();
+    await expect(smallNodes).toHaveCount(smallBefore + 1);
+    await dragMindmapNodeBy(page, newSmall, -90, -60);
+
+    await page.locator("#deck-edit-save").click();
+    await page.waitForTimeout(450);
+    await expect(branches).toHaveCount(branchesBefore + 1);
+    await expect(smallNodes).toHaveCount(smallBefore + 1);
+    await page.locator("#deck-edit-exit").click();
+    await expect(page.locator("body")).not.toHaveClass(/deck--editing/);
+    await expect(branches).toHaveCount(branchesBefore + 1);
+    await expect(smallNodes).toHaveCount(smallBefore + 1);
+
     await page.reload();
     await page.locator('[data-slide-dot="2"]').click();
     const restoredSlide = page.locator('section[data-page-type="mindmap"]:not([hidden])');
