@@ -3291,26 +3291,88 @@
     return -1;
   }
 
+  function sanitizePortableExportFilename(name) {
+    var s = String(name || "")
+      .replace(/[/\\?%*:|"<>]/g, "_")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!s) return "";
+    if (!/\.json$/i.test(s)) s += ".json";
+    return s;
+  }
+
+  function portableExportSuggestedFilename() {
+    var base = "matrix-deck-data";
+    if (deck && Array.isArray(deck.pages)) {
+      for (var i = 0; i < deck.pages.length; i++) {
+        var p = deck.pages[i];
+        if (p && p.type === "cover" && p.data && p.data.title) {
+          var strip = String(p.data.title).replace(/<[^>]*>/g, "").trim();
+          if (strip) base = strip.slice(0, 72);
+          break;
+        }
+      }
+    }
+    return sanitizePortableExportFilename(base) || "matrix-deck-data.json";
+  }
+
+  function downloadPortableJsonBlob(filename, jsonText) {
+    var blob = new Blob([jsonText], { type: "application/json;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function exportDeckPortableDownload() {
-    if (!deck) return;
+    if (!deck) return Promise.resolve();
     collectDOMIntoDeck();
     flushModalDetailIntoDeckWhenOpen();
+    var jsonText = JSON.stringify(deck, null, 2);
+    var suggested = portableExportSuggestedFilename();
+
+    if (typeof window.showSaveFilePicker === "function") {
+      return window
+        .showSaveFilePicker({
+          suggestedName: suggested,
+          types: [
+            {
+              description: "JSON 文稿",
+              accept: { "application/json": [".json"] },
+            },
+          ],
+        })
+        .then(function (handle) {
+          return handle.createWritable().then(function (writable) {
+            return writable.write(jsonText).then(function () {
+              return writable.close();
+            });
+          });
+        })
+        .catch(function (err) {
+          if (err && err.name === "AbortError") return;
+          console.warn("[matrix-core] 另存为对话框失败，改用下载", err);
+          return exportDeckPortableDownloadFallback(suggested, jsonText);
+        });
+    }
+    return exportDeckPortableDownloadFallback(suggested, jsonText);
+  }
+
+  function exportDeckPortableDownloadFallback(suggested, jsonText) {
+    var input = window.prompt("请输入导出文件名（可修改路径下的文件名）", suggested);
+    if (input === null) return Promise.resolve();
+    var filename = sanitizePortableExportFilename(input) || suggested;
     try {
-      var blob = new Blob([JSON.stringify(deck, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = "matrix-deck-data.json";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadPortableJsonBlob(filename, jsonText);
     } catch (err) {
       console.warn("[matrix-core] 导出失败", err);
     }
+    return Promise.resolve();
   }
 
   function applyPortableDeckImported(next) {
@@ -3356,7 +3418,12 @@
     if (!exBtn || !trig || !inp) return;
     if (document.documentElement.dataset.deckPortableBound === "1") return;
     document.documentElement.dataset.deckPortableBound = "1";
-    exBtn.addEventListener("click", exportDeckPortableDownload);
+    exBtn.addEventListener("click", function () {
+      exportDeckPortableDownload().catch(function (err) {
+        if (err && err.name === "AbortError") return;
+        console.warn("[matrix-core] 导出失败", err);
+      });
+    });
     trig.addEventListener("click", function () {
       inp.click();
     });
