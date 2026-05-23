@@ -882,6 +882,53 @@ body:not(.deck--editing) [data-edit-only="1"] {
   display: block;
 }
 
+.overview-block + .overview-block {
+  margin-top: 1.55rem;
+}
+
+.overview-block__h2 {
+  margin: 0 0 0.55rem;
+  font-size: clamp(1.42rem, 2.45vw, 1.85rem);
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+}
+
+section[data-page-type="overview"] .overview-toolbar {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+}
+
+body.deck--editing section[data-page-type="overview"] .overview-toolbar,
+html[data-deck-always-edit="1"] section[data-page-type="overview"] .overview-toolbar {
+  display: flex;
+}
+
+section[data-page-type="overview"] .overview-toolbar__hint {
+  opacity: 0.72;
+  margin-right: 0.25rem;
+}
+
+section[data-page-type="overview"] .overview-toolbar__hint--ops {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  font-size: 0.76rem;
+  opacity: 0.58;
+}
+
+section[data-page-type="overview"] .overview-toolbar__delete:hover {
+  color: var(--danger, #e85d5d);
+}
+
+.deck--editing .overview-block.is-selected {
+  outline: 2px dashed var(--cell-focus, rgba(0, 229, 255, 0.45));
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
 .deck--editing [contenteditable="true"]:focus {
   outline: 2px solid var(--cell-focus, rgba(0, 229, 255, 0.45));
   outline-offset: 2px;

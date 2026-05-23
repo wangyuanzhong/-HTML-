@@ -7,7 +7,7 @@
  *       { theme, pages: [ { id, type, data }, ... ] }
  *     type ∈ { cover, overview, table, mindmap, ending }
  *     - cover.data:    { eyebrow, title, subtitle }
- *     - overview.data: { title, sections: [ { heading, bodyHtml } ] }
+ *     - overview.data: { blocks: [ { id, type: h1|h2|h3|body, html } ], title, sections[]（兼容字段，由 blocks 同步） }
  *     - table.data:    { title, matrix: { cornerLabel, rows[], columns[], cells } }
  *     - ending.data:   { eyebrow, title, bodyHtml }
  *
@@ -345,6 +345,363 @@
   }
 
   /* ============================================================
+   * 3b. 概述页内容块（blocks）
+   * ============================================================ */
+
+  var _overviewBlockSeq = 0;
+
+  function newOverviewBlockId() {
+    _overviewBlockSeq += 1;
+    return "ovb_" + Date.now().toString(36) + "_" + _overviewBlockSeq;
+  }
+
+  function normalizeOverviewBlockType(t) {
+    var k = String(t || "")
+      .toLowerCase()
+      .trim();
+    if (k === "h1" || k === "h2" || k === "h3" || k === "body") return k;
+    return "body";
+  }
+
+  function defaultOverviewBlockHtml(type) {
+    if (type === "h1") return "概述";
+    if (type === "h2") return "二级标题";
+    if (type === "h3") return "小标题";
+    return "<p>正文段落…</p>";
+  }
+
+  function plainTextFromHtml(html) {
+    var d = document.createElement("div");
+    d.innerHTML = String(html == null ? "" : html);
+    return String(d.innerText || "").trim();
+  }
+
+  /** 由 blocks 写回 title + sections，供旧 JSON / 外部工具读取 */
+  function syncOverviewLegacyFields(data) {
+    if (!data) return;
+    var blocks = Array.isArray(data.blocks) ? data.blocks : [];
+    var firstH1 = null;
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i].type === "h1" && !firstH1) {
+        firstH1 = blocks[i];
+        break;
+      }
+    }
+    data.title = firstH1 ? plainTextFromHtml(firstH1.html) : "";
+    var sections = [];
+    var cur = null;
+    blocks.forEach(function (b) {
+      if (b.type === "h3" || b.type === "h2") {
+        if (cur) sections.push(cur);
+        cur = { heading: b.html, bodyHtml: "" };
+      } else if (b.type === "body") {
+        if (!cur) cur = { heading: "", bodyHtml: "" };
+        cur.bodyHtml = b.html;
+        sections.push(cur);
+        cur = null;
+      }
+    });
+    if (cur) sections.push(cur);
+    data.sections = sections;
+  }
+
+  /** 旧 title + sections → blocks；已有 blocks 则规范化 */
+  function normalizeOverviewPageData(data) {
+    if (!data) data = {};
+    if (Array.isArray(data.blocks) && data.blocks.length) {
+      data.blocks = data.blocks.map(function (b) {
+        return {
+          id: b.id || newOverviewBlockId(),
+          type: normalizeOverviewBlockType(b.type),
+          html: String(b.html != null ? b.html : ""),
+        };
+      });
+      syncOverviewLegacyFields(data);
+      return data;
+    }
+    var blocks = [];
+    if (data.title && String(data.title).trim()) {
+      blocks.push({
+        id: newOverviewBlockId(),
+        type: "h1",
+        html: escapeHtml(String(data.title).trim()),
+      });
+    }
+    var sections = Array.isArray(data.sections) ? data.sections : [];
+    sections.forEach(function (sec) {
+      if (sec.heading && String(sec.heading).trim() !== "") {
+        blocks.push({
+          id: newOverviewBlockId(),
+          type: "h3",
+          html: String(sec.heading),
+        });
+      }
+      blocks.push({
+        id: newOverviewBlockId(),
+        type: "body",
+        html: sec.bodyHtml || "<p></p>",
+      });
+    });
+    if (!blocks.length) {
+      blocks.push({
+        id: newOverviewBlockId(),
+        type: "h1",
+        html: "概述",
+      });
+      blocks.push({
+        id: newOverviewBlockId(),
+        type: "body",
+        html: "<p>填充本页正文…</p>",
+      });
+    }
+    data.blocks = blocks;
+    syncOverviewLegacyFields(data);
+    return data;
+  }
+
+  function overviewBlockTagAndClass(type) {
+    if (type === "h1") {
+      return { tag: "h1", cls: "overview-title overview-block__content" };
+    }
+    if (type === "h2") {
+      return { tag: "h2", cls: "overview-block__h2 overview-block__content" };
+    }
+    if (type === "h3") {
+      return { tag: "h3", cls: "nested-heading overview-block__content" };
+    }
+    return { tag: "div", cls: "nested-body overview-block__content" };
+  }
+
+  function renderOverviewBlockHtml(block, page, blockIndex) {
+    var type = normalizeOverviewBlockType(block.type);
+    var meta = overviewBlockTagAndClass(type);
+    var idAttr = escapeHtmlAttr(block.id || newOverviewBlockId());
+    var html =
+      '<div class="overview-block" data-overview-block-id="' +
+      idAttr +
+      '" data-overview-block-type="' +
+      type +
+      '">';
+    html +=
+      "<" +
+      meta.tag +
+      ' class="' +
+      meta.cls +
+      '" data-field="block-content">' +
+      (block.html || "") +
+      "</" +
+      meta.tag +
+      ">";
+    html += "</div>";
+    if (firstPageOfType("overview") === page && blockIndex === 0 && type === "h1") {
+      html = html.replace(
+        'class="overview-title overview-block__content"',
+        'class="overview-title overview-block__content" id="overview-title"'
+      );
+    }
+    return html;
+  }
+
+  function overviewToolBtn(pageId, action, label, title) {
+    return (
+      '<button type="button" class="btn btn--ghost' +
+      (action === "remove-block" ? " overview-toolbar__delete" : "") +
+      '" data-overview-page="' +
+      escapeHtmlAttr(pageId) +
+      '" data-overview-action="' +
+      escapeHtmlAttr(action) +
+      '" title="' +
+      escapeHtmlAttr(title || label) +
+      '">' +
+      escapeHtml(label) +
+      "</button>"
+    );
+  }
+
+  function renderOverviewToolbarHtml(pageId) {
+    return (
+      '<div class="overview-toolbar" aria-label="概述内容块" data-edit-only="1">' +
+      '<span class="overview-toolbar__hint">插入</span>' +
+      overviewToolBtn(pageId, "add-h1", "+ H1", "插入一级标题") +
+      overviewToolBtn(pageId, "add-h2", "+ H2", "插入二级标题") +
+      overviewToolBtn(pageId, "add-h3", "+ H3", "插入三级标题") +
+      overviewToolBtn(pageId, "add-body", "+ 正文", "插入正文段落") +
+      overviewToolBtn(pageId, "remove-block", "删除当前块", "删除选中或光标所在的内容块") +
+      '<span class="overview-toolbar__hint overview-toolbar__hint--ops">标题为纯文本；正文支持富文本（与单元格详情相同）</span>' +
+      "</div>"
+    );
+  }
+
+  function setOverviewSelectedBlock(section, blockId) {
+    if (!section) return;
+    var id = blockId ? String(blockId) : "";
+    if (id) section.setAttribute("data-overview-selected-block", id);
+    else section.removeAttribute("data-overview-selected-block");
+    $all(".overview-block", section).forEach(function (blk) {
+      blk.classList.toggle(
+        "is-selected",
+        String(blk.getAttribute("data-overview-block-id")) === id
+      );
+    });
+  }
+
+  function findOverviewBlockIdForAction(section) {
+    if (!section) return "";
+    var sel = section.getAttribute("data-overview-selected-block");
+    if (sel) return sel;
+    var ae = document.activeElement;
+    if (ae && section.contains(ae)) {
+      var blk = ae.closest(".overview-block");
+      if (blk) return blk.getAttribute("data-overview-block-id") || "";
+    }
+    return "";
+  }
+
+  function collectOverviewBlocksFromDom(section) {
+    var root = section.querySelector('[data-field="overview-sections"]');
+    if (!root) return [];
+    return $all(".overview-block", root).map(function (blk) {
+      var content = blk.querySelector('[data-field="block-content"]');
+      return {
+        id: blk.getAttribute("data-overview-block-id") || newOverviewBlockId(),
+        type: normalizeOverviewBlockType(blk.getAttribute("data-overview-block-type")),
+        html: content ? String(content.innerHTML || "").trim() : "",
+      };
+    });
+  }
+
+  function flushOverviewBlocksFromDom(section, page) {
+    page.data = page.data || {};
+    page.data.blocks = collectOverviewBlocksFromDom(section);
+    syncOverviewLegacyFields(page.data);
+  }
+
+  function insertOverviewBlock(page, type, afterBlockId) {
+    normalizeOverviewPageData(page.data);
+    var blocks = page.data.blocks;
+    var nb = {
+      id: newOverviewBlockId(),
+      type: normalizeOverviewBlockType(type),
+      html: defaultOverviewBlockHtml(type),
+    };
+    if (!afterBlockId) {
+      blocks.push(nb);
+    } else {
+      var at = -1;
+      for (var i = 0; i < blocks.length; i++) {
+        if (String(blocks[i].id) === String(afterBlockId)) {
+          at = i;
+          break;
+        }
+      }
+      if (at < 0) blocks.push(nb);
+      else blocks.splice(at + 1, 0, nb);
+    }
+    syncOverviewLegacyFields(page.data);
+    return nb.id;
+  }
+
+  function removeOverviewBlock(page, blockId) {
+    normalizeOverviewPageData(page.data);
+    if (!blockId || page.data.blocks.length <= 1) return false;
+    var before = page.data.blocks.length;
+    page.data.blocks = page.data.blocks.filter(function (b) {
+      return String(b.id) !== String(blockId);
+    });
+    if (page.data.blocks.length >= before) return false;
+    syncOverviewLegacyFields(page.data);
+    return true;
+  }
+
+  function applyOverviewEditable(section) {
+    if (!section || section.getAttribute("data-page-type") !== "overview") return;
+    var plc = bestPlainCe();
+    $all(".overview-block", section).forEach(function (blk) {
+      var content = blk.querySelector('[data-field="block-content"]');
+      if (!content) return;
+      var type = normalizeOverviewBlockType(blk.getAttribute("data-overview-block-type"));
+      if (type === "body") setCe(content, "true");
+      else setCe(content, plc);
+    });
+  }
+
+  function repaintOverviewSection(section, page, selectBlockId) {
+    if (!section || !page) return;
+    var idx = Number(section.getAttribute("data-slide-index") || 0);
+    var keepSel = selectBlockId != null ? selectBlockId : section.getAttribute("data-overview-selected-block");
+    TEMPLATES.overview.render(section, page, {
+      index: idx,
+      total: deck.pages.length,
+    });
+    if (keepSel) setOverviewSelectedBlock(section, keepSel);
+    if (deckEditActive) applyOverviewEditable(section);
+  }
+
+  function bindOverviewDelegations() {
+    if (document.documentElement.dataset.overviewToolbarBound === "1") return;
+    document.documentElement.dataset.overviewToolbarBound = "1";
+
+    document.addEventListener(
+      "click",
+      function (ev) {
+        if (!deckEditActive) return;
+        var t = ev.target;
+        if (!(t instanceof Element)) return;
+        var blk = t.closest(".overview-block");
+        if (!blk) return;
+        var section = blk.closest('section[data-page-type="overview"]');
+        if (!section || !section.contains(blk)) return;
+        if (t.closest("[data-overview-action]")) return;
+        setOverviewSelectedBlock(section, blk.getAttribute("data-overview-block-id"));
+      },
+      true
+    );
+
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target instanceof Element ? ev.target.closest("[data-overview-action]") : null;
+      if (!btn) return;
+      if (!document.body.classList.contains("deck--editing")) return;
+      var pageId = btn.getAttribute("data-overview-page");
+      var action = btn.getAttribute("data-overview-action");
+      var page = pageById(pageId);
+      if (!page || page.type !== "overview") return;
+      var section = document.querySelector(
+        'section[data-page-id="' + pageId + '"][data-page-type="overview"]'
+      );
+      if (!section) return;
+
+      flushOverviewBlocksFromDom(section, page);
+      var anchorId = findOverviewBlockIdForAction(section);
+
+      if (action === "add-h1" || action === "add-h2" || action === "add-h3" || action === "add-body") {
+        var type = action === "add-body" ? "body" : action.replace("add-", "");
+        var newId = insertOverviewBlock(page, type, anchorId);
+        repaintOverviewSection(section, page, newId);
+        var focusBlk = null;
+        $all(".overview-block", section).forEach(function (ob) {
+          if (!focusBlk && String(ob.getAttribute("data-overview-block-id")) === String(newId)) {
+            focusBlk = ob.querySelector('[data-field="block-content"]');
+          }
+        });
+        if (focusBlk && focusBlk.focus) focusBlk.focus();
+      } else if (action === "remove-block") {
+        var rid = anchorId;
+        if (!rid) {
+          var blocks = page.data.blocks || [];
+          rid = blocks.length ? blocks[blocks.length - 1].id : "";
+        }
+        if (rid && removeOverviewBlock(page, rid)) {
+          var nextSel =
+            page.data.blocks.length ? page.data.blocks[page.data.blocks.length - 1].id : "";
+          repaintOverviewSection(section, page, nextSel);
+        }
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+  }
+
+  /* ============================================================
    * 4. 模板注册表
    * ============================================================ */
 
@@ -396,65 +753,39 @@
     overview: {
       label: "概述",
       defaultData: function () {
-        return {
-          title: "概述",
-          sections: [
-            { heading: "", bodyHtml: "<p>填充本页正文…</p>" },
+        return normalizeOverviewPageData({
+          blocks: [
+            { id: newOverviewBlockId(), type: "h1", html: "概述" },
+            { id: newOverviewBlockId(), type: "body", html: "<p>填充本页正文…</p>" },
           ],
-        };
+        });
       },
       render: function (section, page, ctx) {
-        var data = page.data || {};
-        var sections = Array.isArray(data.sections) ? data.sections : [];
-        var titleVisible = !!(data.title && String(data.title).trim());
+        var data = normalizeOverviewPageData(page.data || {});
+        page.data = data;
         section.setAttribute("aria-label", "概述");
+        var blocks = data.blocks || [];
         var html =
           '<div class="slide-inner">' +
-          '<h2 class="overview-title" data-field="overview-title"' +
-          (titleVisible ? "" : " hidden") +
-          ">" +
-          escapeHtml(data.title || "") +
-          "</h2>" +
-          '<div class="overview-sections" data-field="overview-sections">';
-        sections.forEach(function (sec) {
-          html += '<article class="nested-block">';
-          if (sec.heading && String(sec.heading).trim() !== "") {
-            html +=
-              '<h3 class="nested-heading">' + sec.heading + "</h3>";
-          }
-          html +=
-            '<div class="nested-body">' + (sec.bodyHtml || "") + "</div>";
-          html += "</article>";
+          renderOverviewToolbarHtml(page.id) +
+          '<div class="overview-sections overview-blocks" data-field="overview-sections">';
+        blocks.forEach(function (blk, bi) {
+          html += renderOverviewBlockHtml(blk, page, bi);
         });
         html += "</div>" + renderSlideActionsHtml(ctx) + "</div>";
         section.innerHTML = html;
 
         if (firstPageOfType("overview") === page) {
-          var tt = section.querySelector('[data-field="overview-title"]');
-          if (tt) tt.id = "overview-title";
           var os = section.querySelector('[data-field="overview-sections"]');
           if (os) os.id = "overview-sections";
         }
+        var selKeep = section.getAttribute("data-overview-selected-block");
+        if (selKeep) setOverviewSelectedBlock(section, selKeep);
       },
       collectFromDom: function (section, page) {
-        var titleEl = section.querySelector('[data-field="overview-title"]');
-        var sectionsRoot = section.querySelector('[data-field="overview-sections"]');
         page.data = page.data || {};
-        if (titleEl && !titleEl.hasAttribute("hidden")) {
-          page.data.title = String(titleEl.innerText || "").trim();
-        }
-        if (sectionsRoot) {
-          page.data.sections = $all("article.nested-block", sectionsRoot).map(
-            function (art) {
-              var h = art.querySelector(".nested-heading");
-              var b = art.querySelector(".nested-body");
-              return {
-                heading: h ? String(h.innerHTML || "").trim() : "",
-                bodyHtml: b ? String(b.innerHTML || "").trim() : "",
-              };
-            }
-          );
-        }
+        page.data.blocks = collectOverviewBlocksFromDom(section);
+        syncOverviewLegacyFields(page.data);
       },
     },
 
@@ -2442,11 +2773,12 @@
         setCe(tt, on ? "true" : "inherit");
         setCe(bo, on ? "true" : "inherit");
       } else if (t === "overview") {
-        var ot = sec.querySelector('[data-field="overview-title"]');
-        if (ot && !ot.hasAttribute("hidden")) setCe(ot, on ? plc : "inherit");
-        $all(".nested-heading, .nested-body", sec).forEach(function (n) {
-          setCe(n, on ? "true" : "inherit");
-        });
+        if (on) applyOverviewEditable(sec);
+        else {
+          $all(".overview-block__content", sec).forEach(function (n) {
+            setCe(n, "inherit");
+          });
+        }
       } else if (t === "table") {
         var ttl = sec.querySelector('[data-field="title"]');
         setCe(ttl, on ? plc : "inherit");
@@ -3274,6 +3606,7 @@
     bindPageToolbar();
     bindMatrixAxisPickMemory();
     bindMindmapDelegations();
+    bindOverviewDelegations();
     loadSnapshot()
       .then(function (snap) {
         if (snap && snap.v === 2 && Array.isArray(snap.pages)) {
@@ -3305,6 +3638,22 @@
 
   /** 控制台：__matrixDeckReload() 重新解析 deck-data 并渲染 */
   window.__matrixEnterEdit = enterDeckEditMode;
+
+  /** E2E：读取概述页 blocks（已规范化） */
+  window.__matrixOverviewBlocks = function (pageId) {
+    var page = pageId ? pageById(pageId) : null;
+    if (!page) {
+      for (var i = 0; deck && i < deck.pages.length; i++) {
+        if (deck.pages[i].type === "overview") {
+          page = deck.pages[i];
+          break;
+        }
+      }
+    }
+    if (!page || page.type !== "overview") return null;
+    normalizeOverviewPageData(page.data);
+    return deepClone(page.data.blocks || []);
+  };
 
   /** E2E：读取内存中的思维导图计数（与 DOM 绘制一致） */
   window.__matrixMindmapCounts = function (pageId) {
