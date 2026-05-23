@@ -20,16 +20,32 @@ async function dragMindmapNodeBy(
   dy: number
 ) {
   await expect(node).toBeVisible();
-  const box = await node.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, width: r.width, height: r.height };
-  });
-  expect(box.width).toBeGreaterThan(0);
-  expect(box.height).toBeGreaterThan(0);
-  await page.mouse.move(box.x + 8, box.y + box.height / 2);
+  const before = await nodePosition(node);
+  const grip = node.locator(".mindmap-node__grip");
+  await expect(grip).toBeVisible();
+  const box = (await grip.boundingBox()) || (await node.boundingBox());
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + 8 + dx, box.y + box.height / 2 + dy, { steps: 8 });
+  await page.mouse.move(box!.x + box!.width / 2 + dx, box!.y + box!.height / 2 + dy, { steps: 8 });
   await page.mouse.up();
+  await page.waitForTimeout(100);
+  if (JSON.stringify(await nodePosition(node)) === JSON.stringify(before)) {
+    const nodeBox = await node.boundingBox();
+    expect(nodeBox).not.toBeNull();
+    await page.mouse.move(nodeBox!.x + 8, nodeBox!.y + nodeBox!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(nodeBox!.x + 8 + dx, nodeBox!.y + nodeBox!.height / 2 + dy, { steps: 8 });
+    await page.mouse.up();
+  }
+  await expect.poll(() => nodePosition(node)).not.toEqual(before);
+}
+
+async function nodePosition(node: import("@playwright/test").Locator) {
+  return node.evaluate((el) => ({
+    left: (el as HTMLElement).style.left,
+    top: (el as HTMLElement).style.top,
+  }));
 }
 
 test.describe("mindmap slide", () => {
@@ -192,17 +208,21 @@ test.describe("mindmap slide", () => {
     const newBranch = slide.locator('.mindmap-node:has(.mindmap-node__label:text-is("新分支"))');
     await expect(newBranch).toHaveCount(1);
     await dragMindmapNodeBy(page, newBranch, -130, -90);
+    const branchPosition = await nodePosition(newBranch);
 
     await slide.locator(".mindmap-node--hub").first().click();
     await slide.locator('[data-mindmap-action="add-small"]').click();
     const newSmall = slide.locator(".mindmap-node--small").last();
     await expect(smallNodes).toHaveCount(smallBefore + 1);
     await dragMindmapNodeBy(page, newSmall, -90, -60);
+    const smallPosition = await nodePosition(newSmall);
 
     await page.locator("#deck-edit-save").click();
     await page.waitForTimeout(450);
     await expect(branches).toHaveCount(branchesBefore + 1);
     await expect(smallNodes).toHaveCount(smallBefore + 1);
+    await expect.poll(() => nodePosition(newBranch)).toEqual(branchPosition);
+    await expect.poll(() => nodePosition(newSmall)).toEqual(smallPosition);
     await page.locator("#deck-edit-exit").click();
     await expect(page.locator("body")).not.toHaveClass(/deck--editing/);
     await expect(branches).toHaveCount(branchesBefore + 1);
@@ -215,8 +235,61 @@ test.describe("mindmap slide", () => {
       branchesBefore + 1
     );
     await expect(restoredSlide.locator(".mindmap-node--small")).toHaveCount(smallBefore + 1);
-    await expect(restoredSlide.locator(".mindmap-node__label", { hasText: "新分支" })).toBeVisible();
-    await expect(restoredSlide.locator(".mindmap-node--small .mindmap-node__label", { hasText: "小节点" })).toBeVisible();
+    const restoredBranch = restoredSlide.locator('.mindmap-node:has(.mindmap-node__label:text-is("新分支"))');
+    const restoredSmall = restoredSlide.locator(".mindmap-node--small").last();
+    await expect(restoredBranch).toBeVisible();
+    await expect(restoredSmall.locator(".mindmap-node__label", { hasText: "小节点" })).toBeVisible();
+    await expect.poll(() => nodePosition(restoredBranch)).toEqual(branchPosition);
+    await expect.poll(() => nodePosition(restoredSmall)).toEqual(smallPosition);
+  });
+
+  test("dragged center and small nodes keep exact position after save", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+    const center = slide.locator(".mindmap-node--hub").first();
+    await dragMindmapNodeBy(page, center, -120, -70);
+    const centerPosition = await nodePosition(center);
+
+    await center.click();
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    const small = slide.locator(".mindmap-node--small").last();
+    await dragMindmapNodeBy(page, small, -90, -60);
+    const smallPosition = await nodePosition(small);
+
+    await page.locator("#deck-edit-save").click();
+    await page.waitForTimeout(450);
+    await expect.poll(() => nodePosition(center)).toEqual(centerPosition);
+    await expect.poll(() => nodePosition(small)).toEqual(smallPosition);
+  });
+
+  test("linking to a dragged branch preserves the branch and renders the link", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    const small = slide.locator(".mindmap-node--small").last();
+
+    await slide.locator(".mindmap-node--hub").first().click();
+    await slide.locator('[data-mindmap-action="add-branch"]').click();
+    const branch = slide.locator('.mindmap-node:has(.mindmap-node__label:text-is("新分支"))');
+    await dragMindmapNodeBy(page, branch, -130, -90);
+    const branchPosition = await nodePosition(branch);
+
+    await page.evaluate(() => {
+      const sec = document.querySelector('section[data-page-type="mindmap"]:not([hidden])');
+      const branch = Array.from(sec?.querySelectorAll(".mindmap-node") || []).find(
+        (el) => el.querySelector(".mindmap-node__label")?.textContent?.trim() === "新分支"
+      );
+      const MM = (window as Window & { MindmapDeck?: { setSelectedId: (s: Element, id: string) => void } }).MindmapDeck;
+      if (sec && branch && MM) MM.setSelectedId(sec, branch.getAttribute("data-node-id") || "");
+    });
+    await slide.locator('[data-mindmap-action="add-link"]').click();
+    await small.click();
+
+    await expect(branch).toBeVisible();
+    await expect(slide.locator("path.mindmap-edge--link")).toHaveCount(1);
+    await expect.poll(() => nodePosition(branch)).toEqual(branchPosition);
   });
 
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {

@@ -454,8 +454,6 @@
       });
     });
 
-    normalizeLayoutOrigin(out);
-
     var nodesById = {};
     var maxX = PAD;
     var maxY = PAD;
@@ -484,23 +482,6 @@
     out.width = Math.max(200, Math.ceil(maxX));
     out.height = Math.max(160, Math.ceil(maxY));
     return out;
-  }
-
-  function normalizeLayoutOrigin(layout) {
-    if (!layout || !layout.nodes || !layout.nodes.length) return;
-    var minX = Infinity;
-    var minY = Infinity;
-    layout.nodes.forEach(function (n) {
-      minX = Math.min(minX, n.x);
-      minY = Math.min(minY, n.y);
-    });
-    var dx = minX < PAD ? PAD - minX : 0;
-    var dy = minY < PAD ? PAD - minY : 0;
-    if (!dx && !dy) return;
-    layout.nodes.forEach(function (n) {
-      n.x += dx;
-      n.y += dy;
-    });
   }
 
   function addHub(pageData) {
@@ -676,17 +657,20 @@
 
   function setNodePosition(pageData, nodeId, x, y, kind) {
     var data = normalizePageData(pageData);
+    var nx = Number(x);
+    var ny = Number(y);
+    if (isNaN(nx) || isNaN(ny)) return false;
     if (kind === "small" || isSmallNodeId(data, nodeId)) {
       var s = findSmallNode(data, nodeId);
       if (!s) return false;
-      s.fx = Math.round(x);
-      s.fy = Math.round(y);
+      s.fx = nx;
+      s.fy = ny;
       return true;
     }
     var n = findNodeInForest(data.roots, nodeId);
     if (!n) return false;
-    n.fx = Math.round(x);
-    n.fy = Math.round(y);
+    n.fx = nx;
+    n.fy = ny;
     return true;
   }
 
