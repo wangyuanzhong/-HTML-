@@ -36,3 +36,56 @@ for (const file of templates) {
     });
   });
 }
+
+test("V0.2 ignores legacy saved snapshots", async ({ page }) => {
+  await page.goto("/template-tech.html");
+  await page.evaluate(async () => {
+    const oldSnapshot = {
+      v: 2,
+      theme: "tech",
+      pages: [
+        {
+          id: "old_cover",
+          type: "cover",
+          data: { eyebrow: "旧标签", title: "旧标题", subtitle: "<p>旧内容</p>" },
+        },
+        {
+          id: "old_mind",
+          type: "mindmap",
+          data: {
+            title: "旧思维导图",
+            zoom: 1,
+            roots: [{ id: "old_root", label: "旧总分支", fx: null, fy: null, children: [] }],
+            smallNodes: [],
+            links: [],
+          },
+        },
+      ],
+    };
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open("matrix-cell-detail-uploads", 2);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains("deckPatch")) db.createObjectStore("deckPatch");
+      };
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction("deckPatch", "readwrite");
+        tx.objectStore("deckPatch").put(oldSnapshot, "deck-pages-v1");
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  });
+
+  await page.reload();
+  await expect(page.locator('section[data-slide-index="0"] .cover-title')).toContainText("总标题");
+  await page.locator('[data-slide-dot="2"]').click();
+  const mindmap = page.locator('section[data-page-type="mindmap"]:not([hidden])');
+  await expect(mindmap.locator(".mindmap-node__label", { hasText: "总分支" })).toBeVisible();
+  await expect(mindmap.locator(".mindmap-node__label", { hasText: "旧总分支" })).toHaveCount(0);
+});

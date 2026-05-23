@@ -2691,7 +2691,8 @@
   var DECK_DB_NAME = "matrix-cell-detail-uploads";
   var DECK_DB_STORE = "deckPatch";
   var DECK_DB_VER = 2;
-  var DECK_DB_KEY = "deck-pages-v1";
+  var DECK_DB_KEY = "deck-pages-v2-generic";
+  var DECK_DB_LEGACY_KEYS = ["deck-pages-v1"];
   var DECK_DB_OK = true;
   var MEM_DECK_FULL = null;
 
@@ -3298,7 +3299,11 @@
             return;
           }
           var tx = db.transaction(DECK_DB_STORE, "readwrite");
-          tx.objectStore(DECK_DB_STORE).delete(DECK_DB_KEY);
+          var store = tx.objectStore(DECK_DB_STORE);
+          store.delete(DECK_DB_KEY);
+          DECK_DB_LEGACY_KEYS.forEach(function (key) {
+            store.delete(key);
+          });
           tx.oncomplete = function () {
             db.close();
             resolve();
