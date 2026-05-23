@@ -56,10 +56,10 @@
   }
 
   function defaultPageData() {
-    var a = defaultHub("中心主题");
+    var a = defaultHub("总分支");
     a.children = [
-      { id: newNodeId(), label: "分支一", fx: null, fy: null, children: [] },
-      { id: newNodeId(), label: "分支二", fx: null, fy: null, children: [] },
+      { id: newNodeId(), label: "子分支一", fx: null, fy: null, children: [] },
+      { id: newNodeId(), label: "子分支二", fx: null, fy: null, children: [] },
     ];
     return {
       title: "思维导图",

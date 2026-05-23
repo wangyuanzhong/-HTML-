@@ -83,12 +83,11 @@
     return JSON.parse(JSON.stringify(o));
   }
 
-  /** 与 template-tech 演示稿第五页「收束」一致的新增结束页默认数据 */
+  /** 新增结束页默认数据 */
   var DEFAULT_ENDING_PAGE_DATA = {
-    eyebrow: "Session Closing",
-    title:
-      '收束<br><span style="opacity:.7;font-size:.48em;display:block;margin-top:.45em;font-weight:500;">问题与对齐时间</span>',
-    bodyHtml: "<p>感谢聆听。若需进一步对齐资源与排期，会后单独沟通。</p>",
+    eyebrow: "结束标签",
+    title: "结束标题",
+    bodyHtml: "<p>这里填写结束页说明。</p>",
   };
 
   function cellKey(rowId, colId) {
@@ -142,7 +141,7 @@
       pages.push({
         id: newPageId("cover"),
         type: "cover",
-        data: { eyebrow: "竞品分析", title: "新封面", subtitle: "" },
+        data: { eyebrow: "模板标签", title: "总标题", subtitle: "" },
       });
     }
     if (d.overview) {
@@ -158,13 +157,13 @@
       pages.push({
         id: newPageId("table"),
         type: "table",
-        data: { title: "竞品对比矩阵（客观）", matrix: d.matrix },
+        data: { title: "对比表格", matrix: d.matrix },
       });
       var subMatrix = d.matrixSubjective || deepClone(d.matrix);
       pages.push({
         id: newPageId("table"),
         type: "table",
-        data: { title: "竞品对比矩阵（主观）", matrix: subMatrix },
+        data: { title: "对比表格（副本）", matrix: subMatrix },
       });
     }
     if (d.mindmap) {
@@ -353,7 +352,7 @@
     cover: {
       label: "封面",
       defaultData: function () {
-        return { eyebrow: "竞品分析", title: "新封面", subtitle: "" };
+        return { eyebrow: "模板标签", title: "总标题", subtitle: "" };
       },
       render: function (section, page, ctx) {
         var data = page.data || {};
@@ -361,7 +360,7 @@
         section.innerHTML =
           '<div class="slide-inner">' +
           '<p class="cover-eyebrow" data-field="eyebrow">' +
-          escapeHtml(data.eyebrow || "竞品分析") +
+          escapeHtml(data.eyebrow || "模板标签") +
           "</p>" +
           '<h1 class="cover-title" data-field="title">' +
           (data.title || "") +

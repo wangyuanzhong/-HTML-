@@ -255,7 +255,7 @@ test.describe("mindmap slide", () => {
     const slide = await openMindmapSlide(page);
     await enterDeckEdit(page);
     const center = slide.locator(".mindmap-node--hub").first();
-    await dragMindmapNodeBy(page, center, -120, -70);
+    await dragMindmapNodeBy(page, center, 90, 55);
     const centerPosition = await nodePosition(center);
 
     await center.click();

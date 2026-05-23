@@ -15,10 +15,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>消费类导入产品横向对比 · 简约模板</title>
+  <title>总标题 · 简约模板</title>
   <script>
     (function () {
-      var version = "20260523d";
+      var version = "20260523e";
       window.__DECK_APP_VERSION__ = version;
       try {
         var last = localStorage.getItem("matrix-deck-app-version");
@@ -45,8 +45,8 @@
       } catch (err) {}
     })();
   </script>
-  <link rel="stylesheet" href="themes/layout.css?v=20260523d" />
-  <link rel="stylesheet" href="themes/theme-minimal.css?v=20260523d" />
+  <link rel="stylesheet" href="themes/layout.css?v=20260523e" />
+  <link rel="stylesheet" href="themes/theme-minimal.css?v=20260523e" />
 </head>
 <body class="deck">
   <a class="deck-skip" href="#deck-stage">跳到内容</a>
@@ -78,7 +78,7 @@
             <option value="template-minimal.html" selected>极简衬线</option>
           </select>
         </label>
-        <span class="deck-version" aria-label="版本">V 0.1</span>
+        <span class="deck-version" aria-label="版本">V 0.2</span>
         <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-enter">进入编辑模式</button>
         <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-save" disabled>保存</button>
         <button type="button" class="btn btn--ghost deck-edit-bar__btn" id="deck-edit-exit" disabled>退出</button>
@@ -149,57 +149,55 @@
 {
   "theme": "minimal",
   "cover": {
-    "eyebrow": "竞品分析",
-    "title": "消费类产品导入<br><span style=\"opacity:.65;font-size:.48em;letter-spacing:.12em;text-transform:uppercase;display:block;margin-top:.35em;\">横向对比</span>",
-    "subtitle": "<p>研发中心：王元中</p>"
+    "eyebrow": "模板标签",
+    "title": "总标题<br><span style=\"opacity:.65;font-size:.48em;letter-spacing:.12em;text-transform:uppercase;display:block;margin-top:.35em;\">副标题</span>",
+    "subtitle": "<p>这里填写封面说明。</p>"
   },
   "overview": {
-    "title": "概述",
+    "title": "概述标题",
     "sections": [
-      {
-        "heading": "",
-        "bodyHtml": "<p>结合资源开发提供的耳机、音箱、K歌宝，和竞品，进行整体分析</p>"
-      }
+      { "heading": "小标题一", "bodyHtml": "<p>这里填写概述内容。</p>" },
+      { "heading": "小标题二", "bodyHtml": "<p>这里填写补充说明。</p>" }
     ]
   },
   "matrix": {
-    "cornerLabel": "对比项 \\ 型号",
+    "cornerLabel": "维度 \\ 对象",
     "rows": [
-      { "id": "price", "label": "价格区间", "hidden": false },
-      { "id": "camera", "label": "主摄方案", "hidden": false },
-      { "id": "ai", "label": "端侧 AI", "hidden": false },
-      { "id": "eco", "label": "生态联动", "hidden": false }
+      { "id": "dimension_1", "label": "维度一", "hidden": false },
+      { "id": "dimension_2", "label": "维度二", "hidden": false },
+      { "id": "dimension_3", "label": "维度三", "hidden": false },
+      { "id": "dimension_4", "label": "维度四", "hidden": false }
     ],
     "columns": [
-      { "id": "p1", "label": "Phantom X2", "hidden": false },
-      { "id": "p2", "label": "Nova Air", "hidden": false },
-      { "id": "p3", "label": "Prism Lite", "hidden": false }
+      { "id": "item_a", "label": "对象 A", "hidden": false },
+      { "id": "item_b", "label": "对象 B", "hidden": false },
+      { "id": "item_c", "label": "对象 C", "hidden": false }
     ],
     "cells": {
-      "price::p1": { "summary": "¥6499 起", "detailHtml": "<p><strong>渠道价</strong>含标准套装。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/techprice1/520/220\" alt=\"价格示意\"></figure>" },
-      "price::p2": { "summary": "¥5299 起", "detailHtml": "<p>多存储梯度与捆绑服务差价。</p>" },
-      "price::p3": { "summary": "¥3999 起", "detailHtml": "<p>入门价位与成本控制取向。</p>" },
-      "camera::p1": { "summary": "1\" 云台主摄", "detailHtml": "<p>大底云台模组，夜景与防抖均衡。</p><figure class=\"detail-figure\"><img src=\"https://picsum.photos/seed/techcam1/520/240\" alt=\"模组示意\"></figure>" },
-      "camera::p2": { "summary": "50MP 双层晶体管", "detailHtml": "<p>弱光成像与算法侧协同方案。</p>" },
-      "camera::p3": { "summary": "64MP 主摄", "detailHtml": "<p>主流价位影像取向与成片风格。</p>" },
-      "ai::p1": { "summary": "NPU 12TOPS", "detailHtml": "<p>端侧推理与隐私边界下的能力边界。</p>" },
-      "ai::p2": { "summary": "端云混合", "detailHtml": "<p>时延与离线覆盖的组合策略。</p>" },
-      "ai::p3": { "summary": "基础场景", "detailHtml": "<p>覆盖日常智能助手与影像增强。</p>" },
-      "eco::p1": { "summary": "全场景互联", "detailHtml": "<p>手表、耳机、车况等多设备联动。</p>" },
-      "eco::p2": { "summary": "办公协同", "detailHtml": "<p>跨屏同步与会议场景配套。</p>" },
-      "eco::p3": { "summary": "轻量周边", "detailHtml": "<p>配件与第三方生态接入能力。</p>" }
+      "dimension_1::item_a": { "summary": "内容 A1", "detailHtml": "<p>这里填写对象 A 在维度一的说明。</p>" },
+      "dimension_1::item_b": { "summary": "内容 B1", "detailHtml": "<p>这里填写对象 B 在维度一的说明。</p>" },
+      "dimension_1::item_c": { "summary": "内容 C1", "detailHtml": "<p>这里填写对象 C 在维度一的说明。</p>" },
+      "dimension_2::item_a": { "summary": "内容 A2", "detailHtml": "<p>这里填写对象 A 在维度二的说明。</p>" },
+      "dimension_2::item_b": { "summary": "内容 B2", "detailHtml": "<p>这里填写对象 B 在维度二的说明。</p>" },
+      "dimension_2::item_c": { "summary": "内容 C2", "detailHtml": "<p>这里填写对象 C 在维度二的说明。</p>" },
+      "dimension_3::item_a": { "summary": "内容 A3", "detailHtml": "<p>这里填写对象 A 在维度三的说明。</p>" },
+      "dimension_3::item_b": { "summary": "内容 B3", "detailHtml": "<p>这里填写对象 B 在维度三的说明。</p>" },
+      "dimension_3::item_c": { "summary": "内容 C3", "detailHtml": "<p>这里填写对象 C 在维度三的说明。</p>" },
+      "dimension_4::item_a": { "summary": "内容 A4", "detailHtml": "<p>这里填写对象 A 在维度四的说明。</p>" },
+      "dimension_4::item_b": { "summary": "内容 B4", "detailHtml": "<p>这里填写对象 B 在维度四的说明。</p>" },
+      "dimension_4::item_c": { "summary": "内容 C4", "detailHtml": "<p>这里填写对象 C 在维度四的说明。</p>" }
     }
   },
   "ending": {
-    "eyebrow": "会议结束",
-    "title": "谢谢",
-    "bodyHtml": "<p>汇报至此。会后材料将同步至共享空间。</p>"
+    "eyebrow": "结束标签",
+    "title": "结束标题",
+    "bodyHtml": "<p>这里填写结束页说明。</p>"
   }
 }
   </script>
   <script src="assets/sheetjs.full.min.js"></script>
-  <script src="assets/mindmap-core.js?v=20260523d"></script>
-  <script src="assets/matrix-core.js?v=20260523d"></script>
+  <script src="assets/mindmap-core.js?v=20260523e"></script>
+  <script src="assets/matrix-core.js?v=20260523e"></script>
   <script src="assets/deck-stage-fit.js"></script>
 </body>
 </html>

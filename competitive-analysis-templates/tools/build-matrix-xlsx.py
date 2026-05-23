@@ -1,5 +1,5 @@
 """
-生成与网页矩阵「同版面」的两份表格（科技风演示数据）。
+生成与网页矩阵「同版面」的两份通用表格。
 
 输出：data/matrix-objective.xlsx、data/matrix-subjective.xlsx
 
@@ -24,19 +24,19 @@ from openpyxl.utils import get_column_letter
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 
-CORNER = r"对比项 \ 型号"
+CORNER = r"维度 \ 对象"
 
 ROWS = [
-    ("price", "价格区间"),
-    ("camera", "主摄方案"),
-    ("ai", "端侧 AI"),
-    ("eco", "生态联动"),
+    ("dimension_1", "维度一"),
+    ("dimension_2", "维度二"),
+    ("dimension_3", "维度三"),
+    ("dimension_4", "维度四"),
 ]
 
 COLS = [
-    ("p1", "Phantom X2"),
-    ("p2", "Nova Air"),
-    ("p3", "Prism Lite"),
+    ("item_a", "对象 A"),
+    ("item_b", "对象 B"),
+    ("item_c", "对象 C"),
 ]
 
 
@@ -52,30 +52,18 @@ def _cell_map(
 
 # 摘要 + 详情文 + 图路径（请将图片放到与 HTML 相对路径下，或改写为实际 URL）
 _RAW: list[tuple[str, str, str, str, str]] = [
-    (
-        "price",
-        "p1",
-        "¥6499 起",
-        "渠道价含标准套装。可写多段文案；空行分段显示为独立段落。",
-        "https://picsum.photos/seed/techprice1/520/220",
-    ),
-    ("price", "p2", "¥5299 起", "多存储梯度与捆绑服务差价。", ""),
-    ("price", "p3", "¥3999 起", "入门价位与成本控制取向。", ""),
-    (
-        "camera",
-        "p1",
-        '1" 云台主摄',
-        "大底云台模组，夜景与防抖均衡。",
-        "https://picsum.photos/seed/techcam1/520/240",
-    ),
-    ("camera", "p2", "50MP 双层晶体管", "弱光成像与算法侧协同方案。", ""),
-    ("camera", "p3", "64MP 主摄", "主流价位影像取向与成片风格。", ""),
-    ("ai", "p1", "NPU 12TOPS", "端侧推理与隐私边界下的能力边界。", ""),
-    ("ai", "p2", "端云混合", "时延与离线覆盖的组合策略。", ""),
-    ("ai", "p3", "基础场景", "覆盖日常智能助手与影像增强。", ""),
-    ("eco", "p1", "全场景互联", "手表、耳机、车况等多设备联动。", ""),
-    ("eco", "p2", "办公协同", "跨屏同步与会议场景配套。", ""),
-    ("eco", "p3", "轻量周边", "配件与第三方生态接入能力。", ""),
+    ("dimension_1", "item_a", "内容 A1", "这里填写对象 A 在维度一的说明。", ""),
+    ("dimension_1", "item_b", "内容 B1", "这里填写对象 B 在维度一的说明。", ""),
+    ("dimension_1", "item_c", "内容 C1", "这里填写对象 C 在维度一的说明。", ""),
+    ("dimension_2", "item_a", "内容 A2", "这里填写对象 A 在维度二的说明。", ""),
+    ("dimension_2", "item_b", "内容 B2", "这里填写对象 B 在维度二的说明。", ""),
+    ("dimension_2", "item_c", "内容 C2", "这里填写对象 C 在维度二的说明。", ""),
+    ("dimension_3", "item_a", "内容 A3", "这里填写对象 A 在维度三的说明。", ""),
+    ("dimension_3", "item_b", "内容 B3", "这里填写对象 B 在维度三的说明。", ""),
+    ("dimension_3", "item_c", "内容 C3", "这里填写对象 C 在维度三的说明。", ""),
+    ("dimension_4", "item_a", "内容 A4", "这里填写对象 A 在维度四的说明。", ""),
+    ("dimension_4", "item_b", "内容 B4", "这里填写对象 B 在维度四的说明。", ""),
+    ("dimension_4", "item_c", "内容 C4", "这里填写对象 C 在维度四的说明。", ""),
 ]
 
 TECH_CELLS = _cell_map(_RAW)
