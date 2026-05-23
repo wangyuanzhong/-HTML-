@@ -80,6 +80,21 @@ test.describe("mindmap slide", () => {
     expect(actBoxAfter!.x).toBeCloseTo(actBoxBefore!.x, 0);
   });
 
+  test("branch persists after add-small", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    const hub = slide.locator(".mindmap-node--hub").first();
+    await hub.locator(".mindmap-node__label").click();
+    const branches = slide.locator(
+      ".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)"
+    );
+    const branchesBefore = await branches.count();
+    await slide.locator('[data-mindmap-action="add-branch"]').click();
+    await expect(branches).toHaveCount(branchesBefore + 1);
+    await slide.locator('[data-mindmap-action="add-small"]').click();
+    await expect(branches).toHaveCount(branchesBefore + 1);
+    await expect(slide.locator(".mindmap-node--small")).toHaveCount(1);
+  });
+
   test("structure tools work in deck edit mode", async ({ page }) => {
     const slide = await openMindmapSlide(page);
     const hubsBefore = await slide.locator(".mindmap-node--hub").count();

@@ -628,9 +628,40 @@
 
   function resolveBranchParentId(data, selId) {
     var kind = getSelectionKind(data, selId);
-    if (kind === "hub" || kind === "branch") return String(selId);
+    if (kind === "hub") return String(selId);
+    if (kind === "branch") {
+      var par = findParentInForest(data.roots, selId);
+      return par ? String(par.id) : data.roots[0] ? String(data.roots[0].id) : "";
+    }
     if (kind === "small" && data.roots[0]) return data.roots[0].id;
     return data.roots[0] ? data.roots[0].id : "";
+  }
+
+  /** 孤儿树节点应挂到哪个父节点下（避免选中分支时误挂到 hub 同级） */
+  function resolveOrphanTreeParent(data, sel, anchor) {
+    if (anchor && findNodeInForest(data.roots, anchor.id)) return anchor;
+    var pid = resolveBranchParentId(data, sel);
+    if (pid) {
+      var p = findNodeInForest(data.roots, pid);
+      if (p) return p;
+    }
+    return data.roots[0] || null;
+  }
+
+  function dedupeTreeIdsInForest(roots) {
+    var seen = {};
+    function walk(list) {
+      for (var i = list.length - 1; i >= 0; i--) {
+        var n = list[i];
+        if (!n || !n.id || seen[String(n.id)]) {
+          list.splice(i, 1);
+          continue;
+        }
+        seen[String(n.id)] = true;
+        if (n.children && n.children.length) walk(n.children);
+      }
+    }
+    walk(roots);
   }
 
   /** 删除当前选中项：仅删除选中本身（小节点 / 总节点 / 分支），不误删兄弟节点 */
@@ -934,14 +965,7 @@
         byId[id] = hub;
         return;
       }
-      var parent = anchor;
-      if (parent && isHubNode(data.roots, parent.id)) {
-        /* 选中总节点时，新分支挂在该总节点下 */
-      } else if (sel && findParentInForest(data.roots, sel)) {
-        parent = findParentInForest(data.roots, sel);
-      } else if (data.roots[0]) {
-        parent = data.roots[0];
-      }
+      var parent = resolveOrphanTreeParent(data, sel, anchor);
       if (!parent) return;
       if (!parent.children) parent.children = [];
       if (parent.children.length >= 24) return;
@@ -961,9 +985,9 @@
     });
   }
 
-  function collectPageFromDom(section, pageData) {
+  /** 仅同步标题、缩放、文案与坐标；不改树结构（结构由 add/remove API 维护） */
+  function collectMindmapLightFromDom(section, pageData) {
     var data = normalizePageData(pageData);
-    mergeOrphanDomNodesIntoData(section, data);
     var byId = {};
     forEachNode(data.roots, function (n) {
       byId[n.id] = n;
@@ -999,6 +1023,14 @@
     delete data.root;
     delete data.callouts;
     return data;
+  }
+
+  /** 保存前：合并 DOM 孤儿节点并同步文案（勿在每次点工具栏时调用） */
+  function collectPageFromDom(section, pageData) {
+    var data = normalizePageData(pageData);
+    mergeOrphanDomNodesIntoData(section, data);
+    dedupeTreeIdsInForest(data.roots);
+    return collectMindmapLightFromDom(section, data);
   }
 
   function getSelectedId(section) {
@@ -1307,6 +1339,7 @@
     applyViewportTransform: applyViewportTransform,
     refreshViewportWhenSized: refreshViewportWhenSized,
     collectPageFromDom: collectPageFromDom,
+    collectMindmapLightFromDom: collectMindmapLightFromDom,
     getSelectedId: getSelectedId,
     setSelectedId: setSelectedId,
     getLinkPickFrom: getLinkPickFrom,

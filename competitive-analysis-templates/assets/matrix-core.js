@@ -599,7 +599,7 @@
         paintMindmapSection(section, page);
       },
       collectFromDom: function (section, page) {
-        syncMindmapPageFromDom(section, page);
+        syncMindmapLabelsFromDom(section, page);
       },
     },
 
@@ -2236,7 +2236,7 @@
 
       if (!document.body.classList.contains("deck--editing")) return;
 
-      syncMindmapPageFromDom(section, page);
+      syncMindmapLabelsFromDom(section, page);
       page.data = MM.normalizePageData(page.data);
       var sel = MM.getSelectedId(section);
 
@@ -2781,6 +2781,19 @@
     /* theme 不随快照恢复：每个 template-*.html 只链一份 theme-*.css */
   }
 
+  /** 工具栏/编辑中：只拉取标题、缩放、节点文案，不重建树结构 */
+  function syncMindmapLabelsFromDom(section, page) {
+    var MM = window.MindmapDeck;
+    if (!MM || !section || !page || page.type !== "mindmap") return;
+    if (!page.data || typeof page.data !== "object") {
+      page.data = MM.defaultPageData ? MM.defaultPageData() : { title: "思维导图", zoom: 1, roots: [] };
+    }
+    if (MM.collectMindmapLightFromDom) {
+      page.data = MM.collectMindmapLightFromDom(section, page.data);
+    }
+  }
+
+  /** 保存前：合并 DOM 与内存树（含孤儿节点） */
   function syncMindmapPageFromDom(section, page) {
     var MM = window.MindmapDeck;
     if (!MM || !section || !page || page.type !== "mindmap") return;
