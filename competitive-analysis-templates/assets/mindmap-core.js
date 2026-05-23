@@ -64,10 +64,20 @@
     return {
       title: "思维导图",
       zoom: ZOOM_DEFAULT,
+      panX: 0,
+      panY: 0,
+      panMode: false,
       roots: [a],
       smallNodes: [],
       links: [],
     };
+  }
+
+  function sanitizePan(v) {
+    if (v == null || v === "") return 0;
+    var n = Number(v);
+    if (isNaN(n) || Math.abs(n) > COORD_MAX) return 0;
+    return n;
   }
 
   var COORD_MAX = 8000;
@@ -134,6 +144,9 @@
     });
     if (data.zoom == null || isNaN(Number(data.zoom))) data.zoom = ZOOM_DEFAULT;
     data.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(data.zoom)));
+    data.panX = sanitizePan(data.panX);
+    data.panY = sanitizePan(data.panY);
+    data.panMode = !!data.panMode;
     if (!data.title) data.title = "思维导图";
     return data;
   }
@@ -471,6 +484,7 @@
       var b = nodesById[lnk.to];
       if (!a || !b) return;
       out.linkEdges.push({
+        id: lnk.id,
         d: optimizedLinkPath(a, b),
         from: lnk.from,
         to: lnk.to,
@@ -727,10 +741,19 @@
       paths += '<path class="mindmap-edge mindmap-edge--tree" d="' + d + '"/>';
     });
     (linkEdges || []).forEach(function (e) {
+      var lid = escapeHtmlAttr(e.id || "");
       paths +=
-        '<path class="mindmap-edge mindmap-edge--link" marker-end="url(#mindmap-arrowhead)" d="' +
+        '<g class="mindmap-link" data-link-id="' +
+        lid +
+        '">' +
+        '<path class="mindmap-edge mindmap-edge--link-hit" d="' +
         e.d +
-        '"/>';
+        '" fill="none" stroke="transparent" stroke-width="14"/>' +
+        '<path class="mindmap-edge mindmap-edge--link" data-link-id="' +
+        lid +
+        '" marker-end="url(#mindmap-arrowhead)" d="' +
+        e.d +
+        '"/></g>';
     });
     return (
       '<svg class="mindmap-edges" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
@@ -741,10 +764,32 @@
     );
   }
 
-  function renderNodesHtml(nodes, selectedId) {
+  function selectionIdSet(selected) {
+    if (!selected) return {};
+    if (Array.isArray(selected)) {
+      var o = {};
+      selected.forEach(function (id) {
+        if (id) o[String(id)] = true;
+      });
+      return o;
+    }
+    var s = String(selected);
+    if (s.indexOf(",") >= 0) {
+      var out = {};
+      s.split(",").forEach(function (part) {
+        part = part.trim();
+        if (part) out[part] = true;
+      });
+      return out;
+    }
+    return s ? { [s]: true } : {};
+  }
+
+  function renderNodesHtml(nodes, selected) {
+    var selSet = selectionIdSet(selected);
     var html = '<div class="mindmap-nodes" role="tree">';
     nodes.forEach(function (n) {
-      var sel = selectedId && String(selectedId) === String(n.id) ? " is-selected" : "";
+      var sel = selSet[String(n.id)] ? " is-selected" : "";
       var hub = n.isHub ? " mindmap-node--hub" : "";
       var small = n.kind === "small" ? " mindmap-node--small" : "";
       html +=
@@ -802,7 +847,7 @@
     return { vw: Math.max(vw, 320), vh: Math.max(vh, 220) };
   }
 
-  function applyViewportTransform(viewport, stage, layout, zoom) {
+  function applyViewportTransform(viewport, stage, layout, zoom, panX, panY) {
     if (!viewport || !stage || !layout) return false;
     var vp = viewportClientSize(viewport);
     var vw = vp.vw;
@@ -820,15 +865,20 @@
     }
     var z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(zoom) || ZOOM_DEFAULT));
     var total = fit * z;
+    var px = sanitizePan(panX);
+    var py = sanitizePan(panY);
     stage.dataset.fitScale = String(fit);
     stage.dataset.userZoom = String(z);
+    stage.dataset.panX = String(px);
+    stage.dataset.panY = String(py);
     stage.style.width = cw + "px";
     stage.style.height = ch + "px";
     stage.style.position = "absolute";
     stage.style.left = "50%";
     stage.style.top = "50%";
     stage.style.margin = "0";
-    stage.style.transform = "translate(-50%, -50%) scale(" + total + ")";
+    stage.style.transform =
+      "translate(-50%, -50%) translate(" + px + "px," + py + "px) scale(" + total + ")";
     stage.style.transformOrigin = "center center";
     return true;
   }
@@ -836,7 +886,14 @@
   function refreshViewportWhenSized(viewport, stage, pageData) {
     if (!viewport || !stage || !pageData) return false;
     var data = normalizePageData(pageData);
-    return applyViewportTransform(viewport, stage, computeLayout(data), data.zoom);
+    return applyViewportTransform(
+      viewport,
+      stage,
+      computeLayout(data),
+      data.zoom,
+      data.panX,
+      data.panY
+    );
   }
 
   function $allNodesIn(root) {
@@ -907,7 +964,7 @@
       var a = nodesById[lnk.from];
       var b = nodesById[lnk.to];
       if (!a || !b) return;
-      linkEdges.push({ d: optimizedLinkPath(a, b) });
+      linkEdges.push({ id: lnk.id, d: optimizedLinkPath(a, b) });
     });
     var svg = canvas.querySelector(".mindmap-edges");
     if (svg) svg.outerHTML = renderEdgesSvg(treeEdges, linkEdges);
@@ -1033,15 +1090,92 @@
     return collectMindmapLightFromDom(section, data);
   }
 
+  function syncNodeSelectionClasses(section) {
+    var selSet = selectionIdSet(getSelectedIds(section));
+    $allNodesIn(section).forEach(function (el) {
+      el.classList.toggle(
+        "is-selected",
+        !!selSet[String(el.getAttribute("data-node-id"))]
+      );
+    });
+  }
+
+  function syncLinkSelectionClasses(section) {
+    var linkId = getSelectedLinkId(section);
+    var svg = section.querySelector(".mindmap-edges");
+    if (!svg) return;
+    Array.prototype.forEach.call(svg.querySelectorAll(".mindmap-link[data-link-id]"), function (g) {
+      var on = linkId && String(g.getAttribute("data-link-id")) === String(linkId);
+      g.classList.toggle("is-selected", !!on);
+      var vis = g.querySelector(".mindmap-edge--link");
+      if (vis) vis.classList.toggle("is-selected", !!on);
+    });
+  }
+
+  function getSelectedIds(section) {
+    var raw = section.getAttribute("data-mindmap-selected") || "";
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map(function (s) {
+        return s.trim();
+      })
+      .filter(Boolean);
+  }
+
   function getSelectedId(section) {
-    return section.getAttribute("data-mindmap-selected") || "";
+    var ids = getSelectedIds(section);
+    return ids.length ? ids[0] : "";
+  }
+
+  function clearLinkSelection(section) {
+    section.removeAttribute("data-mindmap-selected-link");
+    syncLinkSelectionClasses(section);
+  }
+
+  function getSelectedLinkId(section) {
+    return section.getAttribute("data-mindmap-selected-link") || "";
+  }
+
+  function setSelectedLinkId(section, linkId) {
+    if (linkId) {
+      section.setAttribute("data-mindmap-selected-link", linkId);
+      section.setAttribute("data-mindmap-selected", "");
+      setLinkPickFrom(section, "");
+      syncNodeSelectionClasses(section);
+    } else {
+      clearLinkSelection(section);
+    }
+    syncLinkSelectionClasses(section);
+  }
+
+  function setSelectedIds(section, ids) {
+    ids = (ids || []).filter(Boolean).map(String);
+    clearLinkSelection(section);
+    section.setAttribute("data-mindmap-selected", ids.join(","));
+    syncNodeSelectionClasses(section);
   }
 
   function setSelectedId(section, id) {
-    section.setAttribute("data-mindmap-selected", id || "");
-    $allNodesIn(section).forEach(function (el) {
-      el.classList.toggle("is-selected", String(el.getAttribute("data-node-id")) === String(id));
-    });
+    setSelectedIds(section, id ? [id] : []);
+  }
+
+  function toggleSelectedId(section, id) {
+    if (!id) return;
+    clearLinkSelection(section);
+    var ids = getSelectedIds(section);
+    var sid = String(id);
+    var i = ids.indexOf(sid);
+    if (i >= 0) ids.splice(i, 1);
+    else ids.push(sid);
+    section.setAttribute("data-mindmap-selected", ids.join(","));
+    syncNodeSelectionClasses(section);
+  }
+
+  function isPanMode(section, pageData) {
+    if (section && section.classList.contains("mindmap--pan-mode")) return true;
+    var data = pageData ? normalizePageData(pageData) : null;
+    return !!(data && data.panMode);
   }
 
   function getLinkPickFrom(section) {
@@ -1061,7 +1195,14 @@
     var run = function () {
       var o = getLayoutAndZoom();
       if (!o) return;
-      var ok = applyViewportTransform(viewport, stage, o.layout, o.zoom);
+      var ok = applyViewportTransform(
+        viewport,
+        stage,
+        o.layout,
+        o.zoom,
+        o.panX,
+        o.panY
+      );
       if (!ok) {
         fitRetries += 1;
         if (fitRetries < 32) requestAnimationFrame(run);
@@ -1111,6 +1252,18 @@
         var t = ev.target;
         if (!(t instanceof Element)) return;
         if (t.closest("[data-mindmap-action], .mindmap-zoom")) return;
+
+        var linkHit = t.closest(".mindmap-link[data-link-id], .mindmap-edge--link[data-link-id]");
+        if (linkHit && section.contains(linkHit)) {
+          var g = linkHit.closest(".mindmap-link[data-link-id]") || linkHit;
+          var lid = g.getAttribute("data-link-id");
+          if (lid) {
+            setSelectedLinkId(section, lid);
+            ev.stopPropagation();
+          }
+          return;
+        }
+
         var nodeEl = t.closest(".mindmap-node[data-node-id]");
         if (!nodeEl || !section.contains(nodeEl)) return;
         var nid = nodeEl.getAttribute("data-node-id");
@@ -1124,7 +1277,11 @@
           ev.stopPropagation();
           return;
         }
-        setSelectedId(section, nid);
+        if (ev.ctrlKey || ev.metaKey) {
+          toggleSelectedId(section, nid);
+        } else {
+          setSelectedId(section, nid);
+        }
       },
       true
     );
@@ -1189,18 +1346,38 @@
 
     var drag = {
       active: false,
+      mode: "node",
       nodeId: null,
       kind: "tree",
       el: null,
+      captureEl: null,
       startX: 0,
       startY: 0,
       originX: 0,
       originY: 0,
+      startPanX: 0,
+      startPanY: 0,
+      group: [],
       moved: false,
     };
 
     function editOn() {
       return document.body.classList.contains("deck--editing");
+    }
+
+    function applyPanTransform() {
+      var viewport = section.querySelector("[data-mindmap-viewport]");
+      var stage = section.querySelector("[data-mindmap-stage]");
+      if (!viewport || !stage) return;
+      var data = normalizePageData(pageData);
+      applyViewportTransform(
+        viewport,
+        stage,
+        computeLayout(data),
+        data.zoom,
+        data.panX,
+        data.panY
+      );
     }
 
     section.addEventListener("pointerdown", function (ev) {
@@ -1210,58 +1387,129 @@
       var nodeEl = t.closest(".mindmap-node[data-node-id]");
       if (!nodeEl || !section.contains(nodeEl)) return;
       if (!t.closest(".mindmap-node__grip") && t.closest('[data-field="label"]')) return;
+
       drag.active = true;
       drag.nodeId = nodeEl.getAttribute("data-node-id");
       drag.kind = nodeEl.getAttribute("data-node-kind") || "tree";
       drag.el = nodeEl;
+      drag.captureEl = nodeEl;
       drag.startX = ev.clientX;
       drag.startY = ev.clientY;
-      drag.originX = parseFloat(nodeEl.style.left) || 0;
-      drag.originY = parseFloat(nodeEl.style.top) || 0;
       drag.moved = false;
       nodeEl.classList.add("is-dragging");
-      setSelectedId(section, drag.nodeId);
+
+      var data = normalizePageData(pageData);
+      if (isPanMode(section, data)) {
+        drag.mode = "pan";
+        drag.startPanX = data.panX;
+        drag.startPanY = data.panY;
+        drag.group = [];
+      } else {
+        drag.mode = "node";
+        var selected = getSelectedIds(section);
+        var sid = String(drag.nodeId);
+        if (selected.indexOf(sid) < 0) {
+          if (!(ev.ctrlKey || ev.metaKey)) setSelectedIds(section, [sid]);
+          selected = getSelectedIds(section);
+        }
+        drag.originX = parseFloat(nodeEl.style.left) || 0;
+        drag.originY = parseFloat(nodeEl.style.top) || 0;
+        if (selected.length > 1 && selected.indexOf(sid) >= 0) {
+          drag.group = [];
+          var selSet = selectionIdSet(selected);
+          $allNodesIn(section).forEach(function (el) {
+            var id = el.getAttribute("data-node-id");
+            if (!selSet[String(id)]) return;
+            drag.group.push({
+              el: el,
+              id: id,
+              kind: el.getAttribute("data-node-kind") || "tree",
+              originX: parseFloat(el.style.left) || 0,
+              originY: parseFloat(el.style.top) || 0,
+            });
+            el.classList.add("is-dragging");
+          });
+        } else {
+          drag.group = [
+            {
+              el: nodeEl,
+              id: drag.nodeId,
+              kind: drag.kind,
+              originX: drag.originX,
+              originY: drag.originY,
+            },
+          ];
+        }
+      }
+
       if (nodeEl.setPointerCapture) nodeEl.setPointerCapture(ev.pointerId);
       ev.preventDefault();
     });
 
     section.addEventListener("pointermove", function (ev) {
-      if (!drag.active || !drag.el) return;
+      if (!drag.active) return;
       var dx = ev.clientX - drag.startX;
       var dy = ev.clientY - drag.startY;
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD) return;
       drag.moved = true;
-      var scale = pointerScaleForElement(drag.el);
-      drag.el.style.left = drag.originX + dx / scale + "px";
-      drag.el.style.top = drag.originY + dy / scale + "px";
+
+      if (drag.mode === "pan") {
+        var stage = section.querySelector("[data-mindmap-stage]");
+        var scale = stage ? pointerScaleForElement(stage) : 1;
+        var data = normalizePageData(pageData);
+        data.panX = drag.startPanX + dx / scale;
+        data.panY = drag.startPanY + dy / scale;
+        applyPanTransform();
+        ev.preventDefault();
+        return;
+      }
+
+      var scaleN = pointerScaleForElement(drag.el || drag.group[0].el);
+      var sdx = dx / scaleN;
+      var sdy = dy / scaleN;
+      drag.group.forEach(function (item) {
+        item.el.style.left = item.originX + sdx + "px";
+        item.el.style.top = item.originY + sdy + "px";
+      });
       repaintEdgesFromDom(section, pageData);
       ev.preventDefault();
     });
 
     function endDrag(ev) {
       if (!drag.active) return;
-      var el = drag.el;
-      if (el) {
-        el.classList.remove("is-dragging");
+      var cap = drag.captureEl;
+
+      if (drag.mode === "pan") {
+        if (drag.moved && typeof onMoved === "function") onMoved();
+      } else {
+        drag.group.forEach(function (item) {
+          item.el.classList.remove("is-dragging");
+        });
         if (drag.moved) {
-          setNodePosition(
-            pageData,
-            drag.nodeId,
-            parseFloat(el.style.left) || 0,
-            parseFloat(el.style.top) || 0,
-            drag.kind
-          );
-          el.setAttribute("data-user-moved", "1");
+          drag.group.forEach(function (item) {
+            setNodePosition(
+              pageData,
+              item.id,
+              parseFloat(item.el.style.left) || 0,
+              parseFloat(item.el.style.top) || 0,
+              item.kind
+            );
+            item.el.setAttribute("data-user-moved", "1");
+          });
           if (typeof onMoved === "function") onMoved();
         }
-        if (ev && ev.pointerId != null && el.releasePointerCapture) {
-          try {
-            el.releasePointerCapture(ev.pointerId);
-          } catch (e2) {}
-        }
+      }
+
+      if (drag.el) drag.el.classList.remove("is-dragging");
+      if (ev && ev.pointerId != null && cap && cap.releasePointerCapture) {
+        try {
+          cap.releasePointerCapture(ev.pointerId);
+        } catch (e2) {}
       }
       drag.active = false;
       drag.el = null;
+      drag.captureEl = null;
+      drag.group = [];
     }
 
     section.addEventListener("pointerup", endDrag);
@@ -1341,7 +1589,15 @@
     collectPageFromDom: collectPageFromDom,
     collectMindmapLightFromDom: collectMindmapLightFromDom,
     getSelectedId: getSelectedId,
+    getSelectedIds: getSelectedIds,
     setSelectedId: setSelectedId,
+    setSelectedIds: setSelectedIds,
+    toggleSelectedId: toggleSelectedId,
+    getSelectedLinkId: getSelectedLinkId,
+    setSelectedLinkId: setSelectedLinkId,
+    clearLinkSelection: clearLinkSelection,
+    syncLinkSelectionClasses: syncLinkSelectionClasses,
+    isPanMode: isPanMode,
     getLinkPickFrom: getLinkPickFrom,
     setLinkPickFrom: setLinkPickFrom,
     bindViewportFit: bindViewportFit,

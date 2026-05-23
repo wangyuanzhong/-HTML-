@@ -1895,6 +1895,15 @@ section[data-page-type="mindmap"] .mindmap-edges {
   height: 100%;
   pointer-events: none;
   overflow: visible;
+  z-index: 0;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-edges {
+  z-index: 2;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-link {
+  pointer-events: none;
 }
 
 section[data-page-type="mindmap"] .mindmap-edge {
@@ -1913,6 +1922,26 @@ section[data-page-type="mindmap"] .mindmap-edge--link {
   stroke: var(--mindmap-link-stroke, rgba(255, 200, 120, 0.85));
   stroke-width: 2;
   fill: none;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-edge--link-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+body.deck--editing section[data-page-type="mindmap"] .mindmap-edge--link {
+  pointer-events: none;
+}
+
+section[data-page-type="mindmap"] .mindmap-link.is-selected .mindmap-edge--link {
+  stroke-width: 3;
+  stroke: var(--mindmap-link-stroke-selected, rgba(255, 220, 140, 1));
+  filter: drop-shadow(0 0 4px rgba(255, 200, 120, 0.45));
+}
+
+section[data-page-type="mindmap"] .mindmap-toolbar__pan-mode.is-active {
+  background: rgba(120, 180, 255, 0.22);
+  border-color: rgba(140, 200, 255, 0.55);
 }
 
 section[data-page-type="mindmap"] .mindmap-arrow-head {

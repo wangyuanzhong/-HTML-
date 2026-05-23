@@ -17,8 +17,10 @@ async function dragMindmapNodeBy(
   page: import("@playwright/test").Page,
   node: import("@playwright/test").Locator,
   dx: number,
-  dy: number
+  dy: number,
+  opts?: { expectNodeMove?: boolean }
 ) {
+  const expectMove = opts?.expectNodeMove !== false;
   await expect(node).toBeVisible();
   const before = await nodePosition(node);
   const grip = node.locator(".mindmap-node__grip");
@@ -30,7 +32,7 @@ async function dragMindmapNodeBy(
   await page.mouse.move(box!.x + box!.width / 2 + dx, box!.y + box!.height / 2 + dy, { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(100);
-  if (JSON.stringify(await nodePosition(node)) === JSON.stringify(before)) {
+  if (expectMove && JSON.stringify(await nodePosition(node)) === JSON.stringify(before)) {
     const nodeBox = await node.boundingBox();
     expect(nodeBox).not.toBeNull();
     await page.mouse.move(nodeBox!.x + 8, nodeBox!.y + nodeBox!.height / 2);
@@ -38,7 +40,9 @@ async function dragMindmapNodeBy(
     await page.mouse.move(nodeBox!.x + 8 + dx, nodeBox!.y + nodeBox!.height / 2 + dy, { steps: 8 });
     await page.mouse.up();
   }
-  await expect.poll(() => nodePosition(node)).not.toEqual(before);
+  if (expectMove) {
+    await expect.poll(() => nodePosition(node)).not.toEqual(before);
+  }
 }
 
 async function nodePosition(node: import("@playwright/test").Locator) {
@@ -82,6 +86,7 @@ test.describe("mindmap slide", () => {
 
   test("branch persists after add-small", async ({ page }) => {
     const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
     const hub = slide.locator(".mindmap-node--hub").first();
     await hub.locator(".mindmap-node__label").click();
     const branches = slide.locator(
@@ -337,6 +342,7 @@ test.describe("mindmap slide", () => {
     await expect(child).toBeVisible();
     await expect.poll(() => nodePosition(child)).toEqual(childPosition);
 
+    await parent.click();
     await dragMindmapNodeBy(page, parent, -110, -70);
     const parentPosition = await nodePosition(parent);
     await page.locator("#deck-edit-save").click();
@@ -345,6 +351,89 @@ test.describe("mindmap slide", () => {
     await expect(child).toBeVisible();
     await expect.poll(() => nodePosition(parent)).toEqual(parentPosition);
     await expect.poll(() => nodePosition(child)).toEqual(childPosition);
+  });
+
+  test("custom link can be selected and deleted without removing nodes", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+
+    const hub = slide.locator(".mindmap-node--hub").first();
+    const branch = slide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)").first();
+    await hub.locator(".mindmap-node__label").click();
+    await slide.locator('[data-mindmap-action="add-link"]').click();
+    await branch.locator(".mindmap-node__label").click();
+    await expect(slide.locator("path.mindmap-edge--link")).toHaveCount(1);
+
+    const linkHit = slide.locator("path.mindmap-edge--link-hit").first();
+    await linkHit.click({ force: true });
+    await expect(slide).toHaveAttribute("data-mindmap-selected-link", /.+/);
+
+    await slide.locator('[data-mindmap-action="remove-selection"]').click();
+    await expect(slide.locator("path.mindmap-edge--link")).toHaveCount(0);
+    await expect(hub).toBeVisible();
+    await expect(branch).toBeVisible();
+  });
+
+  test("ctrl+click multi-select moves together on drag", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+
+    const hub = slide.locator(".mindmap-node--hub").first();
+    const branches = slide.locator(".mindmap-node:not(.mindmap-node--hub):not(.mindmap-node--small)");
+    const b0 = branches.nth(0);
+    const b1 = branches.nth(1);
+    const pos0Before = await nodePosition(b0);
+    const pos1Before = await nodePosition(b1);
+    const delta = {
+      dx: parseFloat(pos1Before.left) - parseFloat(pos0Before.left),
+      dy: parseFloat(pos1Before.top) - parseFloat(pos0Before.top),
+    };
+
+    await b0.click();
+    await b1.click({ modifiers: ["Control"] });
+
+    await expect(b0).toHaveClass(/is-selected/);
+    await expect(b1).toHaveClass(/is-selected/);
+
+    await dragMindmapNodeBy(page, b0, 55, 40);
+    const pos0After = await nodePosition(b0);
+    const pos1After = await nodePosition(b1);
+    expect(pos0After.left).not.toBe(pos0Before.left);
+    expect(pos1After.left).not.toBe(pos1Before.left);
+    expect(
+      parseFloat(pos1After.left) - parseFloat(pos0After.left)
+    ).toBeCloseTo(delta.dx, 0);
+    expect(
+      parseFloat(pos1After.top) - parseFloat(pos0After.top)
+    ).toBeCloseTo(delta.dy, 0);
+  });
+
+  test("pan mode updates panX/panY without changing node fx/fy", async ({ page }) => {
+    const slide = await openMindmapSlide(page);
+    await enterDeckEdit(page);
+
+    const hub = slide.locator(".mindmap-node--hub").first();
+    const posBefore = await nodePosition(hub);
+
+    const stage = slide.locator("[data-mindmap-stage]");
+    const beforePan = await stage.evaluate((el) => ({
+      panX: Number((el as HTMLElement).dataset.panX || 0),
+      panY: Number((el as HTMLElement).dataset.panY || 0),
+    }));
+
+    await slide.locator('[data-mindmap-action="pan-mode"]').click();
+    await expect(slide.locator('[data-mindmap-action="pan-mode"]')).toHaveClass(/is-active/);
+    await dragMindmapNodeBy(page, hub, 80, 50, { expectNodeMove: false });
+    await expect.poll(() => nodePosition(hub)).toEqual(posBefore);
+
+    const afterPan = await stage.evaluate((el) => ({
+      panX: Number((el as HTMLElement).dataset.panX || 0),
+      panY: Number((el as HTMLElement).dataset.panY || 0),
+    }));
+
+    expect(Math.abs(afterPan.panX - beforePan.panX) + Math.abs(afterPan.panY - beforePan.panY)).toBeGreaterThan(
+      5
+    );
   });
 
   test("zoom in toolbar only in edit; hidden after exit", async ({ page }) => {

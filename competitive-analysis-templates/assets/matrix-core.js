@@ -575,11 +575,18 @@
           mindmapToolBtn(page.id, "add-branch", "+ 节点") +
           mindmapToolBtn(page.id, "add-small", "+ 小节点") +
           mindmapToolBtn(page.id, "add-link", "+ 连线") +
-          mindmapToolBtn(page.id, "remove-selection", "删除", "删除当前选中（节点或连线）") +
+          mindmapToolBtn(
+            page.id,
+            "pan-mode",
+            "整图移动",
+            "开启后拖动节点平移整张导图（不改变节点坐标）",
+            data.panMode ? "is-active" : ""
+          ) +
+          mindmapToolBtn(page.id, "remove-selection", "删除", "删除选中节点或自定义连线") +
           (MM
             ? '<span class="mindmap-toolbar__zoom">' + MM.renderZoomControls(page.id, data.zoom) + "</span>"
             : "") +
-          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>选中后点「删除」移除节点或连线；连线：选起点→「+ 连线」→点终点</span>' +
+          '<span class="mindmap-toolbar__hint mindmap-toolbar__hint--ops" data-mindmap-hint>自定义连线：点击连线选中后「删除」；树形边随节点删除。多选：Ctrl/Cmd+点击；整图移动：开「整图移动」后拖动</span>' +
           "</div>" +
           '<div class="mindmap-viewport" data-mindmap-viewport>' +
           '<div class="mindmap-stage" data-mindmap-stage>' +
@@ -646,16 +653,19 @@
     },
   };
 
-  function mindmapToolBtn(pageId, action, label, title) {
+  function mindmapToolBtn(pageId, action, label, title, extraClass) {
     return (
       '<button type="button" class="btn btn--ghost' +
       (action === "remove-selection" ? " mindmap-toolbar__delete" : "") +
+      (action === "pan-mode" ? " mindmap-toolbar__pan-mode" : "") +
+      (extraClass ? " " + extraClass : "") +
       '" data-mindmap-page="' +
       escapeHtmlAttr(pageId) +
       '" data-mindmap-action="' +
       action +
       '"' +
       (title ? ' title="' + escapeHtmlAttr(title) + '"' : "") +
+      (action === "pan-mode" ? ' aria-pressed="false"' : "") +
       ">" +
       label +
       "</button>"
@@ -732,7 +742,8 @@
     var canvas = section.querySelector("[data-mindmap-canvas]");
     if (!viewport || !stage || !canvas) return;
     page.data = MM.normalizePageData(page.data);
-    var selected = MM.getSelectedId(section);
+    var selected = MM.getSelectedIds(section);
+    var selectedLink = MM.getSelectedLinkId(section);
     var layout = MM.computeLayout(page.data);
     if (
       !layout.nodeCount &&
@@ -746,9 +757,29 @@
     canvas.innerHTML =
       MM.renderEdgesSvg(layout.treeEdges, layout.linkEdges) +
       MM.renderNodesHtml(layout.nodes, selected);
-    MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
+    section.classList.toggle("mindmap--pan-mode", !!page.data.panMode);
+    var panBtn = section.querySelector('[data-mindmap-action="pan-mode"]');
+    if (panBtn) {
+      panBtn.classList.toggle("is-active", !!page.data.panMode);
+      panBtn.setAttribute("aria-pressed", page.data.panMode ? "true" : "false");
+    }
+    MM.applyViewportTransform(
+      viewport,
+      stage,
+      layout,
+      page.data.zoom,
+      page.data.panX,
+      page.data.panY
+    );
+    if (selectedLink) MM.syncLinkSelectionClasses(section);
     MM.bindViewportFit(viewport, stage, function () {
-      return { layout: MM.computeLayout(page.data), zoom: page.data.zoom };
+      var d = MM.normalizePageData(page.data);
+      return {
+        layout: MM.computeLayout(d),
+        zoom: d.zoom,
+        panX: d.panX,
+        panY: d.panY,
+      };
     });
     if (section.dataset.mindmapSelectBound !== "1") {
       MM.bindNodeSelectionAndLink(section, page.data, function () {
@@ -767,7 +798,14 @@
       MM.fitAllNodeWidthsInSection(section);
       MM.repaintEdgesFromDom(section, page.data);
       layout = MM.computeLayout(page.data);
-      MM.applyViewportTransform(viewport, stage, layout, page.data.zoom);
+      MM.applyViewportTransform(
+        viewport,
+        stage,
+        layout,
+        page.data.zoom,
+        page.data.panX,
+        page.data.panY
+      );
     }
     var zr = section.querySelector("[data-mindmap-zoom-range]");
     var zl = section.querySelector("[data-mindmap-zoom-label]");
@@ -783,7 +821,9 @@
             viewport,
             stage,
             MM.computeLayout(page.data),
-            page.data.zoom
+            page.data.zoom,
+            page.data.panX,
+            page.data.panY
           );
         });
       }
@@ -2239,6 +2279,8 @@
       syncMindmapLabelsFromDom(section, page);
       page.data = MM.normalizePageData(page.data);
       var sel = MM.getSelectedId(section);
+      var selIds = MM.getSelectedIds(section);
+      var selLink = MM.getSelectedLinkId(section);
 
       if (action === "add-hub") {
         MM.addHub(page.data);
@@ -2256,19 +2298,51 @@
           paintMindmapSection(section, page);
         }
       } else if (action === "remove-selection") {
-        if (!sel) return;
-        var kind = MM.getSelectionKind(page.data, sel);
-        var parBefore =
-          kind === "branch" ? MM.findParentInForest(page.data.roots, sel) : null;
-        if (MM.removeSelection(page.data, sel)) {
-          MM.setLinkPickFrom(section, "");
-          section.classList.remove("mindmap--link-pick");
-          if (kind === "small" || kind === "hub") {
+        if (selLink) {
+          if (MM.removeLink(page.data, selLink)) {
+            MM.clearLinkSelection(section);
             if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
-          } else if (parBefore) {
-            MM.setSelectedId(section, parBefore.id);
+            paintMindmapSection(section, page);
           }
-          paintMindmapSection(section, page);
+        } else if (selIds.length > 1) {
+          var rank = { branch: 0, small: 1, hub: 2, none: 3 };
+          var ordered = selIds.slice().sort(function (a, b) {
+            var ka = MM.getSelectionKind(page.data, a);
+            var kb = MM.getSelectionKind(page.data, b);
+            return (rank[ka] || 3) - (rank[kb] || 3);
+          });
+          var removed = false;
+          ordered.forEach(function (id) {
+            if (MM.removeSelection(page.data, id)) removed = true;
+          });
+          if (removed) {
+            MM.setLinkPickFrom(section, "");
+            section.classList.remove("mindmap--link-pick");
+            if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
+            paintMindmapSection(section, page);
+          }
+        } else if (sel) {
+          var kind = MM.getSelectionKind(page.data, sel);
+          var parBefore =
+            kind === "branch" ? MM.findParentInForest(page.data.roots, sel) : null;
+          if (MM.removeSelection(page.data, sel)) {
+            MM.setLinkPickFrom(section, "");
+            section.classList.remove("mindmap--link-pick");
+            if (kind === "small" || kind === "hub") {
+              if (page.data.roots[0]) MM.setSelectedId(section, page.data.roots[0].id);
+            } else if (parBefore) {
+              MM.setSelectedId(section, parBefore.id);
+            }
+            paintMindmapSection(section, page);
+          }
+        }
+      } else if (action === "pan-mode") {
+        page.data.panMode = !page.data.panMode;
+        section.classList.toggle("mindmap--pan-mode", !!page.data.panMode);
+        var panToggle = section.querySelector('[data-mindmap-action="pan-mode"]');
+        if (panToggle) {
+          panToggle.classList.toggle("is-active", !!page.data.panMode);
+          panToggle.setAttribute("aria-pressed", page.data.panMode ? "true" : "false");
         }
       } else if (action === "add-small") {
         var anchor = sel;
@@ -2402,7 +2476,9 @@
                   vp,
                   st,
                   MMm.computeLayout(pageMm.data),
-                  pageMm.data.zoom
+                  pageMm.data.zoom,
+                  pageMm.data.panX,
+                  pageMm.data.panY
                 );
               }
             }
