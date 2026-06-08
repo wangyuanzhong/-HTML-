@@ -643,11 +643,7 @@
 
   function resolveBranchParentId(data, selId) {
     var kind = getSelectionKind(data, selId);
-    if (kind === "hub") return String(selId);
-    if (kind === "branch") {
-      var par = findParentInForest(data.roots, selId);
-      return par ? String(par.id) : data.roots[0] ? String(data.roots[0].id) : "";
-    }
+    if (kind === "hub" || kind === "branch") return String(selId);
     if (kind === "small" && data.roots[0]) return data.roots[0].id;
     return data.roots[0] ? data.roots[0].id : "";
   }

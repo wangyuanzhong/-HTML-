@@ -76,12 +76,13 @@ test.describe("mindmap logic (selection, add, delete)", () => {
     expect(before.branch).toBeGreaterThanOrEqual(2);
 
     await clickBranch(page, 0);
+    const hubChildrenBefore = (await countMindmapNodes(page)).childCount;
     await slide.locator('[data-mindmap-action="add-branch"]').click();
 
     const after = await countMindmapNodes(page);
     expect(after.branch).toBe(before.branch + 1);
     expect(after.hub).toBe(before.hub);
-    expect(after.childCount).toBeGreaterThanOrEqual(before.childCount);
+    expect(after.childCount).toBe(hubChildrenBefore);
 
     await expect(
       page.locator('section[data-page-type="mindmap"] .mindmap-node__label:text-is("新分支")')
